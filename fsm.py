@@ -21,160 +21,830 @@
 # http://qntm.org/fsm
 # http://qntm.org/greenery
 
+class BadFsmException(Exception):
+	pass
+
 class fsm:
-    """An FSM has a set of states and a starting state. It also has an alphabet,
-    and final states, and a map with states and symbols and results."""
-    def __init__(self, alphabet, states, initialState, finalStates, map):
-        self.__setAlphabet(alphabet)
-        self.__setStates(states)
-        self.__setInitialState(initialState)
-        self.__setFinalStates(finalStates)
-        self.__setMap(map)
+	'''
+		A Finite State Machine or FSM has an alphabet and a set of states. At any
+		given moment, the FSM is in one state. When passed a symbol from the
+		alphabet, the FSM jumps to another state (or possibly the same state).
+		A map (Python dictionary) indicates where to jump.
+		One state is nominated as a starting state. Zero or more states are
+		nominated as final states. If, after consuming a string of symbols,
+		the FSM is in a final state, then it is said to "accept" the string.
+		This class also has some pretty powerful methods which allow FSMs to
+		be concatenated, alternated between, multiplied, looped (Kleene star
+		closure), intersected, and simplified.
+	'''
+	def __setattr__(self, name, value):
+		'''Immutability prevents some potential problems.'''
+		raise Exception("Can't set " + str(self) + " attribute " + str(name) + " to " + str(value))
 
-    # alphabet must be iterable. An alphabet MAY be empty! If you want no
-    # transitions, that is.
-    def __setAlphabet(self, alphabet):
-        if type(alphabet) != set:
-            raise Exception("Alphabet is not a set!")
-        self.__alphabet = alphabet
+	def __init__(self, alphabet, states, initialState, finalStates, map):
+		'''Initialise the hard way due to immutability.'''
+		self.__dict__["alphabet"    ] = alphabet
+		self.__dict__["states"      ] = states
+		self.__dict__["initialState"] = initialState
+		self.__dict__["finalStates" ] = set(finalStates)
+		self.__dict__["map"         ] = map
 
-    # states must form a set
-    def __setStates(self, states):
-        if type(states) != set:
-            raise Exception("States do not form a set!")
-        self.__states = states
+		# Validation. Thanks to immutability, this only needs to be carried out once.
+		if self.initialState not in self.states:
+			raise BadFsmException("Initial state " + str(self.initialState) + " not in " + str(self.states))
+		if not self.finalStates.issubset(self.states):
+			raise BadFsmException("Final states " + str(self.finalStates) + " not in " + str(self.states))
+		for state in self.states:
+			if state not in self.map.keys():
+				raise BadFsmException("State " + str(state) + " not in " + str(self.map.keys()))
+			for symbol in self.alphabet:
+				if symbol not in self.map[state]:
+					raise BadFsmException("Symbol " + str(symbol) + " not in " + str(self.map[state]))
+				if self.map[state][symbol] not in self.states:
+					raise BadFsmException("State " + str(self.map[state][symbol]) + " not in " + str(self.states))
 
-    # initial state must be a real state
-    def __setInitialState(self, initialState):
-        if initialState not in self.getStates():
-            raise Exception("Initial state is not among states!")
-        self.__initialState = initialState
+	def accepts(self, input):
+		'''This is actually only used for unit testing purposes'''
+		state = self.initialState
+		for symbol in input:
+			state = self.map[state][symbol]
+		return state in self.finalStates
 
-    # final states must be a subset of the states
-    def __setFinalStates(self, finalStates):
-        if type(finalStates) != set:
-            raise Exception("Final states don't form a set!")
-        if not finalStates.issubset(self.getStates()):
-            raise Exception("Final states are outside this machine!")
-        self.__finalStates = finalStates
+	def equivalent(self, state1, state2):
+		'''
+			See whether two states in this state machine are
+			functionally equivalent: that is, they have the same
+			finality and the same transition function.
+			Equivalent states appear quite commonly in automatically-
+			generated FSMs.
+			This could be broadened to 3 or more states quite simply...
+		'''
+		if (state1 in self.finalStates) != (state2 in self.finalStates):
+			return False
 
-    # map must be a dict containing every state
-    def __setMap(self, f):
-        if type(f) != dict:
-            raise Exception("Map is not a dictionary!")
-        if not set(f.keys()) == self.getStates():
-            raise Exception("Map has wrong states!")
-        self.__map = dict()
-        for (state, stateMap) in f.items():
-            self.__map[state] = self.__buildStateMap(stateMap)
+		# hypothetically merge state2 into state1. What do the
+		# transitions look like?
+		for symbol in self.alphabet:
+			next1 = self.map[state1][symbol]
+			next2 = self.map[state2][symbol]
+			if next1 == state2:
+				next1 = state1
+			if next2 == state2:
+				next2 = state1
+			if next1 != next2:
+				return False
 
-    # each stateMap must be a dict containing 0 or more symbols
-    def __buildStateMap(self, f):
-        if type(f) != dict:
-            raise Exception("Map for this state is not a dictionary!")
-        if not set(f.keys()).issubset(self.getAlphabet()):
-            raise Exception("Map for this state has an extra symbol!")
-        stateMap = dict()
-        for (symbol, result) in f.items():
-            stateMap[symbol] = self.__buildTransition(result)
-        return stateMap
+		return True
 
-    # each transition in an FSM must result in a single valid state
-    def __buildTransition(self, result):
-        if result not in self.getStates():
-            raise Exception("Map maps to nonexistent state!")
-        return result
+	def merge(self, state1, state2):
+		'''
+			Merge the second state into the first. Replace all references to
+			the second state with references to the first. Return a new
+			FSM with the merger carried out.
+			You should check that equivalent(state1, state2) returns True
+			before doing this. Nothing is actually stopping you otherwise
+		'''
 
-    def getAlphabet(self):
-        return self.__alphabet
+		# this is counterproductive
+		if state2 == state1:
+			return self
 
-    def getStates(self):
-        return self.__states
+		# states could contain duplicates in theory -_-
+		states = [x for x in self.states if x != state2]
 
-    def getInitialState(self):
-        return self.__initialState
+		# yes, the initial state could be a dupe
+		initialState = state1 if self.initialState == state2 else self.initialState
 
-    def getFinalStates(self):
-        return self.__finalStates
+		# finalStates could also contain dupes
+		finalStates = [state1 if x == state2 else x for x in self.finalStates]
 
-    def getMap(self):
-        return self.__map
+		# map
+		map = {}
+		for state in self.states:
+			if state == state2:
+				continue
+			else:
+				map[state] = {}
+			for symbol in self.alphabet:
+				if self.map[state][symbol] == state2:
+					map[state][symbol] = state1
+				else:
+					map[state][symbol] = self.map[state][symbol]
 
-    def getStateMap(self, state):
-        return self.getMap()[state]
+		# return new, modified
+		return fsm(self.alphabet, states, initialState, finalStates, map)
 
-    # "OBLIVION" may be omitted from the FSMs for brevity. A symbol resulting
-    # in oblivion raises an exception
-    def getNext(self, state, symbol):
-        stateMap = self.getStateMap(state)
-        if symbol not in stateMap:
-            raise Exception("You just fell out of this FSM!")
-        return stateMap[symbol]
+	def automerge(self):
+		'''
+			Search through our own states looking for duplicates.
+			If found, merge them and repeat. If not, return
+		'''
 
-    # returns a frozenset of all states which lead to this state on this
-    # symbol (could be empty)
-    # basically inverse of the transition function
-    def getPrevious(self, state, symbol):
-        previousStates = set()
-        for thisState in self.getStates():
-            stateMap = self.getStateMap(thisState)
-            if symbol not in stateMap:
-                continue
-            if stateMap[symbol] != state:
-                continue
-            previousStates.add(thisState)
-        return frozenset(previousStates)
+		def trymerge(self):
+			'''
+				Find and merge two equivalent states, return True.
+				Return False if they can't be found.
+			'''
+			for this in self.states:
+				for that in self.states:
+					if that == this:
+						continue
+					if self.equivalent(this, that):
+						return True, self.merge(this, that)
+			return False, self
 
-    # this routine gets called whenever you print() a FSM
-    def __repr__(self):
-        width = max([len(str(symbol)) for symbol in self.getAlphabet()]) + 1
-        string = ""
-        string += " name isFinal "
-        for symbol in sorted(self.getAlphabet()):
-            string += str(symbol).ljust(width)
-        string += "\n"
-        string += "--------------"
-        for symbol in sorted(self.getAlphabet()):
-            string += "-" * width
-        string += "\n"
-        for state in sorted(self.getStates()):
-            if state == self.getInitialState():
-                string += "*"
-            else:
-                string += " "
-            string += str(state).ljust(5)
-            if state in self.getFinalStates():
-                string += "True".ljust(8)
-            else:
-                string += "False".ljust(8)
-            stateMap = self.getMap()[state]
-            for symbol in sorted(self.getAlphabet()):
-                if symbol in stateMap:
-                    string += str(stateMap.get(symbol)).ljust(width)
-                else:
-                    string += " " * width
-            string += "\n"
-        return string
+		# Do it until it hurts
+		new = self
+		keepMerging = True
+		while(keepMerging):
+			keepMerging, new = trymerge(new)
 
-# An FSM accepting nothing (not even the empty string). This is
-# not very useful, but demonstrates that this is possible.
-null = fsm(
-    alphabet = set(),
-    states = {0},
-    initialState = 0,
-    finalStates = set(),
-    map = {
-        0: {},
-    },
-)
+		return new
 
-# an FSM matching an empty string, "", only
-epsilon = fsm(
-    alphabet = set(),
-    states = {0},
-    initialState = 0,
-    finalStates = {0},
-    map = {
-        0: {},
-    },
-)
+	def replace(self, state1, state2):
+		'''
+			Return a new FSM with state1 replaced with state2,
+			including all references in the map, etc.
+			This is used when renumbering() the FSM.
+		'''
+
+		# accomplish nothing in style!
+		if state1 not in self.states:
+			return self
+
+		# this is counterproductive
+		if state2 == state1:
+			return self
+
+		# states
+		states = [x for x in self.states if x != state1] + [state2]
+
+		# initial state
+		initialState = state2 if self.initialState == state1 else self.initialState
+
+		# finalStates could also contain dupes
+		finalStates = [x for x in self.finalStates if x != state1]
+		if state1 in self.finalStates:
+			finalStates.append(state2)
+
+		# map
+		map = {}
+		for state in self.states:
+			if state == state1:
+				map[state2] = {}
+			else:
+				map[state] = {}
+			for symbol in self.alphabet:
+				if state == state1:
+					if self.map[state][symbol] == state1:
+						map[state2][symbol] = state2
+					else:
+						map[state2][symbol] = self.map[state][symbol]
+				else:
+					if self.map[state][symbol] == state1:
+						map[state][symbol] = state2
+					else:
+						map[state][symbol] = self.map[state][symbol]
+
+		# return new, modified
+		return fsm(self.alphabet, states, initialState, finalStates, map)
+
+	def renumber(self):
+		'''
+			Automatically-generated FSMs often have really ODD
+			states, like frozensets or tuples. These are hard to
+			read in a printout. So, replace whatever states we currently
+			have with numbers beginning at zero. NICE
+		'''
+		new = self
+		states = list(self.states)
+		for i in range(len(states)):
+			new = new.replace(states[i], i)
+		return new
+
+	def __repr__(self):
+		'''This routine gets called whenever you print() a FSM'''
+		rows = []
+
+		# top row
+		row = ["", "name", "isFinal"]
+		row.extend(str(symbol) for symbol in sorted(self.alphabet, key=str))
+		rows.append(row)
+
+		# other rows
+		for state in self.states:
+			row = []
+			if(state == self.initialState):
+				row.append("*")
+			else:
+				row.append("")
+			row.append(str(state))
+			if state in self.finalStates:
+				row.append("True")
+			else:
+				row.append("False")
+			row.extend(str(self.map[state][symbol]) for symbol in sorted(self.alphabet, key=str))
+			rows.append(row)
+		
+		# column widths
+		colwidths = []
+		for x in range(len(rows[0])):
+			colwidths.append(max(len(str(rows[y][x])) for y in range(len(rows))) + 1)
+
+		# apply padding
+		for y in range(len(rows)):
+			for x in range(len(rows[y])):
+				rows[y][x] = rows[y][x].ljust(colwidths[x])
+
+		# horizontal line
+		rows.insert(1, ["-" * colwidths[x] for x in range(len(rows[0]))])
+
+		return "".join("".join(rows[y]) + "\n" for y in range(len(rows)))
+
+	def __add__(self, other):
+		'''
+			Concatenate two finite state machines together.
+			For example, if self accepts "0*" and other accepts "1+(0|1)",
+			will return a finite state machine accepting "0*1+(0|1)".
+			Done by effectively following non-deterministically.
+		'''
+		# alphabets must be equal
+		if other.alphabet != self.alphabet:
+			raise Exception("Alphabet " + str(other.alphabet) + " must be " + str(self.alphabet))
+
+		# We start at the start of self. If this starting state happens to be
+		# final in self, we also start at the start of other.
+		if self.initialState in self.finalStates:
+			newInitialState = frozenset([
+				(0, self.initialState),
+				(1, other.initialState),
+			])
+		else:
+			newInitialState = frozenset([(0, self.initialState)])
+
+		def isFinal(currentState):
+			for (fsmId, state) in currentState:
+				# self
+				if fsmId == 0:
+					if state in self.finalStates:
+						return isFinal(frozenset([(1, other.initialState)]))
+
+				# other
+				elif fsmId == 1:
+					if state in other.finalStates:
+						return True
+
+				else:
+					raise Exception("What")
+
+			return False
+
+		# dedicated function accepts a "superset" and returns the next "superset"
+		# obtained by following this transition in the new FSM
+		def getNext(currentState, symbol):
+
+			nextStates = []
+
+			for (fsmId, state) in currentState:
+				if fsmId == 0:
+					nextStates.append((0, self.map[state][symbol]))
+					# final of self? merge with other initial
+					if self.map[state][symbol] in self.finalStates:
+						nextStates.append((1, other.initialState))
+				elif fsmId == 1:
+					nextStates.append((1, other.map[state][symbol]))
+				else:
+					raise Exception("Whaat")
+
+			return frozenset(nextStates)
+
+		return _crawl(self.alphabet, newInitialState, isFinal, getNext)
+
+	def star(self):
+		'''
+			If the present FSM accepts X, returns an FSM accepting X* (i.e. 0 or
+			more Xes).
+
+			This is NOT as simple as naively connecting the final states back to the
+			initial state: see (b*ab)* for example.
+			
+			Instead we must create an articial "omega state" which is our only accepting
+			state and which dives into the FSM and from which all exits return.
+		'''
+
+		omegaState = 0
+		while omegaState in self.states:
+			omegaState += 1
+
+		newInitialState = frozenset([omegaState])
+
+		def getNext(currentState, symbol):
+
+			nextState = []
+
+			for state in currentState:
+
+				# the special new starting "omegaState" behaves exactly like the
+				# original starting state did
+				if state == omegaState:
+					state = self.initialState
+
+				nextAState = self.map[state][symbol]
+				nextState.append(nextAState)
+
+				# loop back to beginning
+				if nextAState in self.finalStates:
+					nextState.append(omegaState)
+
+			return frozenset(nextState)
+
+		# final if currentState contains omegaState
+		def isFinal(currentState):
+			return omegaState in currentState
+
+		return _crawl(self.alphabet, newInitialState, isFinal, getNext)
+
+	def __mul__(self, multiplier):
+		'''Given an FSM and a multiplier, return the multiplied FSM.'''
+		min, max = multiplier
+
+		# worked example: (min, max) = (5, 7) or (5, None)
+
+		output = epsilon(self.alphabet)
+		# accepts ""
+
+		for i in range(min):
+			output += self
+		# now accepts e.g. "ababababab"
+
+		# unlimited additional copies
+		if max is None:
+			output += self.star()
+			# now accepts e.g. "ababababab(ab)*" = "(ab){5,}"
+
+		# finite additional copies
+		else:
+			q = self | epsilon(self.alphabet)
+			# accepts "(ab)?"
+
+			for i in range(min, max):
+				output += q
+				# now accepts e.g. "ababababab(ab)?(ab)?" = "(ab){5,7}"
+
+		return output
+
+	def __or__(self, other):
+		'''
+			Alternation.
+			Return a finite state machine which accepts any sequence of symbols
+			that is accepted by either self or other.
+
+			The "superstates"/"statesets" used to make the new FSM has states of the
+			form "(
+				state in self that you would be in right now
+				state in other that you would be in right now,
+			)"
+		'''
+
+		# alphabets must be equal
+		if other.alphabet != self.alphabet:
+			raise Exception("Alphabet " + str(other.alphabet) + " must be " + str(self.alphabet))
+
+		newInitialState = (self.initialState, other.initialState)
+
+		# dedicated function accepts a "superset" and returns the next "superset"
+		# obtained by following this transition in the new FSM
+		def getNext(currentState, symbol):
+			return (
+				self.map[currentState[0]][symbol],
+				other.map[currentState[1]][symbol]
+			)
+
+		# currentState is final if *any* of its internal states are final
+		def isFinal(currentState):
+			return currentState[0] in self.finalStates \
+			or currentState[1] in other.finalStates
+
+		return _crawl(
+			self.alphabet,
+			newInitialState,
+			isFinal,
+			getNext
+		)
+
+	def __and__(self, other):
+		'''
+			Intersection.
+			Take FSMs and AND them together. That is, return an FSM which
+			accepts any sequence of symbols that is accepted by all of the original
+			FSMs.
+			
+			The superstate is (state in self, state in other).
+		'''
+
+		# alphabets must be equal
+		if other.alphabet != self.alphabet:
+			raise Exception("Alphabet " + str(other.alphabet) + " must be " + str(self.alphabet))
+
+		newInitialState = (self.initialState, other.initialState)
+
+		# dedicated function accepts a "superset" and returns the next "superset"
+		# obtained by following this transition in the new FSM
+		def getNext(currentState, symbol):
+			return (
+				self.map[currentState[0]][symbol],
+				other.map[currentState[1]][symbol]
+			)
+
+		# currentState is final if *all* of its internal states are final
+		def isFinal(currentState):
+			return currentState[0] in self.finalStates \
+			and currentState[1] in other.finalStates
+
+		return _crawl(
+			self.alphabet,
+			newInitialState,
+			isFinal,
+			getNext
+		)
+
+def null(alphabet):
+	'''
+		An FSM accepting nothing (not even the empty string). This is
+		demonstrates that this is possible, and is also extremely useful
+		in some situations
+	'''
+	return fsm(
+		alphabet     = alphabet,
+		states       = {0},
+		initialState = 0,
+		finalStates  = set(),
+		map          = {
+			0: dict([(symbol, 0) for symbol in alphabet]),
+		},
+	)
+
+def epsilon(alphabet):
+	'''
+		Return an FSM matching an empty string, "", only.
+		This is very useful in many situations
+	'''
+	return fsm(
+		alphabet     = alphabet,
+		states       = {0, 1},
+		initialState = 0,
+		finalStates  = {0},
+		map          = {
+			0: dict([(symbol, 1) for symbol in alphabet]),
+			1: dict([(symbol, 1) for symbol in alphabet]),
+		},
+	)
+
+def _crawl(alphabet, initialState, isFinal, getNext):
+	'''
+		Given the above conditions and instructions, crawl a new
+		unknown FSM, mapping its states, final states and
+		transitions. Return the new one.
+	'''
+
+	states = [initialState] # will convert to set later
+	finalStates = set()
+	map = {}
+
+	# iterate over a growing list
+	i = 0
+	while i < len(states):
+		state = states[i]
+
+		# add to finalStates
+		if isFinal(state):
+			finalStates.add(state)
+
+		# compute map for this state
+		map[state] = {}
+		for symbol in sorted(alphabet, key=str):
+			nextState = getNext(state, symbol)
+
+			if nextState not in states:
+				states.append(nextState)
+
+			map[state][symbol] = nextState
+
+		i += 1
+
+	states = set(states)
+
+	result = fsm(alphabet, states, initialState, finalStates, map)
+	result = result.automerge()
+	result = result.renumber()
+	return result
+
+if __name__ == "__main__":
+
+	# Check FSM validation problems.
+
+	# initialState is not a state
+	try:
+		fsm(
+			alphabet = set(),
+			states = {0},
+			initialState = 1,
+			finalStates = set(),
+			map = {
+				0: {}
+			},
+		)
+		print("FAIL")
+	except BadFsmException as e:
+		pass
+	
+	# finalStates aren't valid
+	try:
+		fsm(
+			alphabet = set(),
+			states = {0},
+			initialState = 0,
+			finalStates = {1},
+			map = {
+				0: {}
+			},
+		)
+		print("FAIL")
+	except BadFsmException as e:
+		pass
+
+	# map keys != states
+	try:
+		fsm(
+			alphabet = set(),
+			states = {0},
+			initialState = 0,
+			finalStates = set(),
+			map = {},
+		)
+		print("FAIL")
+	except BadFsmException as e:
+		pass
+	
+	# map key keys != alphabet
+	try:
+		fsm(
+			alphabet = {"a"},
+			states = {0},
+			initialState = 0,
+			finalStates = set(),
+			map = {
+				0: {}
+			},
+		)
+		print("FAIL")
+	except BadFsmException as e:
+		pass
+
+	# Equivalence testing.
+	mergeMe = fsm(
+		alphabet = {"0", "1"},
+		states = {1, 2, 3, 4, "oblivion"},
+		initialState = 1,
+		finalStates = {4},
+		map = {
+			1          : {"0" : 2         , "1" : 4         },
+			2          : {"0" : 3         , "1" : 4         },
+			3          : {"0" : 3         , "1" : 4         },
+			4          : {"0" : "oblivion", "1" : "oblivion"},
+			"oblivion" : {"0" : "oblivion", "1" : "oblivion"},
+		},
+	)
+	assert mergeMe.equivalent(1, 1)
+	assert not mergeMe.equivalent(1, 2)
+	assert not mergeMe.equivalent(1, 3)
+	assert not mergeMe.equivalent(1, 4)
+	assert not mergeMe.equivalent(1, "oblivion")
+	assert mergeMe.equivalent(2, 2)
+	assert mergeMe.equivalent(2, 3) # the important one
+	assert not mergeMe.equivalent(2, 4)
+	assert not mergeMe.equivalent(2, "oblivion")
+	assert mergeMe.equivalent(3, 3)
+	assert not mergeMe.equivalent(3, 4)
+	assert not mergeMe.equivalent(3, "oblivion")
+	assert mergeMe.equivalent(4, 4)
+	assert not mergeMe.equivalent(4, "oblivion")
+	assert mergeMe.equivalent("oblivion", "oblivion")
+	mergeMe = mergeMe.merge(2, 3)
+	assert not 3 in mergeMe.states
+	assert mergeMe.map[2]["0"] == 2 # formerly 3
+	assert mergeMe.equivalent(1, 2)
+	mergeMe = mergeMe.merge(1, 2)
+	assert not 2 in mergeMe.states
+	assert mergeMe.map[1]["0"] == 1 # formerly 2
+
+	# Slightly more advanced equivalence testing
+	# (0|1)0*
+	# States 2 and 3 are "equivalent" since they can be merged
+	mergeMe2 = fsm(
+		alphabet = {"0", "1"},
+		states = {1, 2, 3, 4},
+		initialState = 1,
+		finalStates = {2, 3},
+		map = {
+			1 : {"0" : 2, "1" : 3},
+			2 : {"0" : 2, "1" : 4},
+			3 : {"0" : 3, "1" : 4},
+			4 : {"0" : 4, "1" : 4},
+		},
+	)
+	assert mergeMe2.equivalent(1, 1)
+	assert not mergeMe2.equivalent(1, 2)
+	assert not mergeMe2.equivalent(1, 3)
+	assert not mergeMe2.equivalent(1, 4)
+	assert mergeMe2.equivalent(2, 2)
+	assert mergeMe2.equivalent(2, 3) # the important one
+	assert not mergeMe2.equivalent(2, 4)
+	assert mergeMe2.equivalent(3, 3)
+	assert not mergeMe2.equivalent(3, 4)
+	assert mergeMe2.equivalent(4, 4)
+	mergeMe2 = mergeMe2.automerge()
+	assert not (2 in mergeMe2.states and 3 in mergeMe2.states)
+	assert mergeMe2.map[1]["0"] == mergeMe2.map[1]["1"] # formerly 2 and 3
+
+	# replace() test
+	replaceMe = fsm(
+		alphabet = {"0", "1"},
+		states = {0, 1, 2},
+		initialState = 0,
+		finalStates = {0},
+		map = {
+			0 : {"0" : 0, "1" : 1},
+			1 : {"0" : 1, "1" : 2},
+			2 : {"0" : 2, "1" : 0},
+		},
+	)
+	replaceMe = replaceMe.replace(0, None)
+	assert set(replaceMe.states) == {None, 1, 2}
+	assert replaceMe.initialState == None
+	assert replaceMe.finalStates == {None}
+	assert 0 not in replaceMe.map
+	assert replaceMe.map[None]["0"] == None
+	assert replaceMe.map[2]["1"] == None
+
+	# renumber() test
+	renumberMe = fsm(
+		alphabet = {"0", "1"},
+		states = {"marty", "biff", "doc"},
+		initialState = "marty",
+		finalStates = {"biff"},
+		map = {
+			"marty" : {"0" : "marty", "1" : "doc"  },
+			"biff"  : {"0" : "biff" , "1" : "marty"},
+			"doc"   : {"0" : "doc"  , "1" : "biff" },
+		},
+	)
+	renumberMe = renumberMe.renumber()
+	assert set(renumberMe.states) == {0, 1, 2}
+	assert renumberMe.accepts("0100010111")
+	
+		# built-ins testing
+	assert not null("a").accepts("a")
+	assert epsilon("a").accepts("")
+	assert not epsilon("a").accepts("a")
+
+	a = fsm(
+		alphabet = {"a", "b"},
+		states = {0, 1, "ob"},
+		initialState = 0,
+		finalStates = {1},
+		map = {
+			0    : {"a" : 1   , "b" : "ob"},
+			1    : {"a" : "ob", "b" : "ob"},
+			"ob" : {"a" : "ob", "b" : "ob"},
+		},
+	)
+	assert not a.accepts("")
+	assert a.accepts("a")
+	assert not a.accepts("b")
+
+	b = fsm(
+		alphabet = {"a", "b"},
+		states = {0, 1, "ob"},
+		initialState = 0,
+		finalStates = {1},
+		map = {
+			0    : {"a" : "ob", "b" : 1   },
+			1    : {"a" : "ob", "b" : "ob"},
+			"ob" : {"a" : "ob", "b" : "ob"},
+		},
+	)
+	assert not b.accepts("")
+	assert not b.accepts("a")
+	assert b.accepts("b")
+
+	# concatenation simple test
+	concAA = a + a
+	assert not concAA.accepts("")
+	assert not concAA.accepts("a")
+	assert concAA.accepts("aa")
+	assert not concAA.accepts("aaa")
+
+	concAA = epsilon({"a", "b"}) + a + a
+	assert not concAA.accepts("")
+	assert not concAA.accepts("a")
+	assert concAA.accepts("aa")
+	assert not concAA.accepts("aaa")
+
+	concAB = a + b
+	assert not concAB.accepts("")
+	assert not concAB.accepts("a")
+	assert not concAB.accepts("b")
+	assert not concAB.accepts("aa")
+	assert concAB.accepts("ab")
+	assert not concAB.accepts("ba")
+	assert not concAB.accepts("bb")
+
+	# alternation simple test
+	altA = a | null({"a", "b"})
+	assert not altA.accepts("")
+	assert altA.accepts("a")
+
+	altAB = a | b
+	assert not altAB.accepts("")
+	assert altAB.accepts("a")
+	assert altAB.accepts("b")
+	assert not altAB.accepts("aa")
+	assert not altAB.accepts("ab")
+	assert not altAB.accepts("ba")
+	assert not altAB.accepts("bb")
+
+	# fsmstar simple test
+	starA = a.star()
+	assert starA.accepts("")
+	assert starA.accepts("a")
+	assert not starA.accepts("b")
+	assert starA.accepts("aaaaaaaaa")
+
+	# multiplication simple test
+	twoA = a * (2, 2)
+	assert not twoA.accepts("")
+	assert not twoA.accepts("a")
+	assert twoA.accepts("aa")
+	assert not twoA.accepts("aaa")
+
+	fourormoreA = a * (4, None)
+	assert not fourormoreA.accepts("")
+	assert not fourormoreA.accepts("a")
+	assert not fourormoreA.accepts("aa")
+	assert not fourormoreA.accepts("aaa")
+	assert fourormoreA.accepts("aaaa")
+	assert fourormoreA.accepts("aaaaa")
+	assert fourormoreA.accepts("aaaaaa")
+	assert fourormoreA.accepts("aaaaaaa")
+
+	# intersection simple test
+	intAB = a & b
+	assert not intAB.accepts("")
+	assert not intAB.accepts("a")
+	assert not intAB.accepts("b")
+
+	# this is "0*1" in heavy disguise. _crawl should resolve this duplication
+	# Notice how states 2 and 3 behave identically. When resolved together,
+	# states 1 and 2&3 also behave identically, so they, too should be resolved
+	# (this is impossible to spot before 2 and 3 have been combined).
+	merged = fsm(
+		alphabet = {"0", "1"},
+		states = {1, 2, 3, 4, "oblivion"},
+		initialState = 1,
+		finalStates = {4},
+		map = {
+			1          : {"0" : 2         , "1" : 4         },
+			2          : {"0" : 3         , "1" : 4         },
+			3          : {"0" : 3         , "1" : 4         },
+			4          : {"0" : "oblivion", "1" : "oblivion"},
+			"oblivion" : {"0" : "oblivion", "1" : "oblivion"},
+		}
+	).automerge()
+	assert len(merged.states) == 3
+
+	# this is (a*ba)*
+	starred = fsm(
+		alphabet = {"a", "b"},
+		states = {0, 1, 2, "oblivion"},
+		initialState = 0,
+		finalStates = {2},
+		map = {
+			0          : {"a" : 0         , "b" : 1         },
+			1          : {"a" : 2         , "b" : "oblivion"},
+			2          : {"a" : "oblivion", "b" : "oblivion"},
+			"oblivion" : {"a" : "oblivion", "b" : "oblivion"},
+		}
+	).star()
+	assert starred.alphabet == frozenset(["a", "b"])
+	assert starred.accepts("")
+	assert not starred.accepts("a")
+	assert not starred.accepts("b")
+	assert not starred.accepts("aa")
+	assert starred.accepts("ba")
+	assert starred.accepts("aba")
+	assert starred.accepts("aaba")
+	assert not starred.accepts("aabb")
+	assert starred.accepts("abababa")
+
+	print("OK")
