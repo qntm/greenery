@@ -188,6 +188,7 @@ class fsm:
 			finalStates.append(state2)
 
 		# map
+		# This could probably be done as a one-liner but never mind
 		map = {}
 		for state in self.states:
 			if state == state1:
@@ -266,7 +267,7 @@ class fsm:
 			Concatenate two finite state machines together.
 			For example, if self accepts "0*" and other accepts "1+(0|1)",
 			will return a finite state machine accepting "0*1+(0|1)".
-			Done by effectively following non-deterministically.
+			Accomplished by effectively following non-deterministically.
 		'''
 		# alphabets must be equal
 		if other.alphabet != self.alphabet:
@@ -287,7 +288,8 @@ class fsm:
 				# self
 				if fsmId == 0:
 					if state in self.finalStates:
-						return isFinal(frozenset([(1, other.initialState)]))
+						if other.initialState in other.finalStates:
+							return True
 
 				# other
 				elif fsmId == 1:
@@ -468,6 +470,192 @@ class fsm:
 			getNext
 		)
 
+	def pattern(self):
+		'''
+			This is the big kahuna of this module.
+			Turn the present FSM into a regular expression pattern object, as imported
+			from the lego module.
+			
+			This is accomplished by considering the FSM as a set of "equations"
+			which relate state-sets to other state-sets using transitions.
+			We start at a state-set composed of all the possible final
+			states... then we find all the possible routes to that final
+			state-set.
+		'''
+		from lego import nothing, charclass, emptystring, NoRegexException, star
+
+		class equation:
+			'''
+				This is a small representation of all the strings which could be used to
+				REACH the current state-set.
+
+				E.g. if:
+					'|0|33|A1|A4|B1|B75|C8'       = A
+					'(|0|33)|A(1|4)|B(1|75)|C(8)' = A
+					'(|0|33)|A[14]|B(1|75)|C8'    = A
+				where A, B and C are state-sets and 0, 1, 3, 4, 5, 7 and 8 are symbols
+				then:
+
+				equation = {
+					"lefts" : {
+						None : {
+							conc(),
+							charclass("0"),
+							mult(charclass("3"), multiplier(2, 2)),
+						},
+						"A" : {
+							charclass("1", "4"),
+						},
+						"B" : {
+							charclass("1"),
+							conc(
+								mult(charclass("7"), one),
+								mult(charclass("5"), one),
+							),
+						),
+						"C" : {
+							charclass("8"),
+						),
+					},
+					"right" : "A",
+				}
+
+				Notice how lefts is a dict of sets of lego bits. These
+				can be freely combined using methods in the lego module.
+			'''
+
+			def __init__(self, right, fsm):
+
+				# the equation needs to know what it represents
+				# this is for elimination purposes
+				self.right = frozenset(right)
+
+				# A simple dictionary of (state-set, transition symbol) indicating
+				# transitions leading FROM the other state-set TO the present state-set
+				# under that transition.
+				# Some state-sets can be reached by transitions (directly or
+				# indirectly) from themselves. Initially these will be just single
+				# internal transitions (e.g. f(A, 0) = A) but as backfilling continues
+				# more complex loops will appear
+				self.lefts = {}
+
+				for symbol in sorted(fsm.alphabet, key=str):
+
+					# find every possible way to reach the current state set
+					# using this symbol
+					left = set()
+					for state in right:
+						for key in fsm.map:
+							if fsm.map[key][symbol] == state:
+								left.add(key)
+					left = frozenset(left)
+
+					# ignore unreachables
+					if left == frozenset():
+						continue
+
+					# "None" is considered to be a stand-in for "every symbol
+					# not explicitly named in the rest of our alphabet"
+					# That is, [^abcd...z] or similar
+					if symbol is None:
+						self.__addTransition(left, ~charclass(fsm.alphabet - {None}))
+					else:
+						self.__addTransition(left, charclass({symbol}))
+
+				# initialState alone can be reached via an empty string ;)
+				if fsm.initialState in right:
+					self.__addTransition(None, emptystring)
+
+			def __addTransition(self, left, element):
+				if left not in self.lefts:
+					self.lefts[left] = nothing
+
+				# Can't put a pattern in a set of what are basically alternate
+				# possibilities.
+				self.lefts[left] |= element
+
+			# remove the self-transition from an equation
+			# e.g. "A0 | B1 | C2 = A" becomes "B10* | C10* = A"
+			def applyLoops(self):
+				if self.right not in self.lefts:
+					return
+				
+				loop = self.lefts[self.right] * star
+				del self.lefts[self.right]
+				
+				for left in self.lefts:
+					transition = self.lefts[left] + loop
+					del self.lefts[left]
+					self.__addTransition(left, transition)
+
+			# take the equation of some other state-set and substitute it into
+			# this equation, cancelling out any references to the other.
+			def eliminate(self, other):
+
+				# No transition from other to self? Then no substitution is required.
+				if other.right not in self.lefts:
+					return
+
+				# Now how about dynamic routes here
+				for otherLeft in other.lefts:
+
+					# self-transition? skip
+					if otherLeft == other.right:
+						raise Exception("Did you forget applyLoops()?")
+
+					# any transition from otherLeft to otherRight, coupled with
+					# the universal transition from otherRight to *here*, counts as
+					# as transition from otherLeft to here.
+					otherTransition = other.lefts[otherLeft] + self.lefts[other.right]
+
+					self.__addTransition(otherLeft, otherTransition)
+
+				del self.lefts[other.right]
+
+			def __repr__(self):
+				string = ""
+				string += "lefts:\n"
+				for left in self.lefts:
+					string += " " + str(left) + ": " + \
+					str(self.lefts[left]) + "\n"
+				string += "right: " + str(self.right) + "\n"
+				string += "\n"
+				return string
+
+		# iterate over a growing list, generating equations
+		equations = [equation(self.finalStates, self)]
+		i = 0;
+		while i < len(equations):
+
+			# record newly-found state-sets for future reference (no dupes)
+			for right in equations[i].lefts:
+
+				if right is not None \
+				and right not in [e.right for e in equations]:
+					equations.append(equation(right, self))
+
+			i += 1
+
+		# Next, we start at the end of our list, and fill backwards
+		# to show all possible routes.
+		for i in reversed(range(len(equations))):
+			equations[i].applyLoops()
+			for j in reversed(range(i)):
+				equations[j].eliminate(equations[i])
+
+		# by this point all back-substitutions have been performed and the final
+		# element in equations[] should be ready to convert into a regex.
+		# Only "None" (static transitions to final states) should be left after
+		# the back-substitution is completed.
+		try:
+			return equations[0].lefts[None]
+
+		# If no such transition exists, or it is empty, then an exception arises
+		# since there are no static strings leading to the final state-set.
+		# That means there's no pattern. So:
+		except KeyError:
+			return nothing
+
 def null(alphabet):
 	'''
 		An FSM accepting nothing (not even the empty string). This is
@@ -497,6 +685,21 @@ def epsilon(alphabet):
 		map          = {
 			0: dict([(symbol, 1) for symbol in alphabet]),
 			1: dict([(symbol, 1) for symbol in alphabet]),
+		},
+	)
+
+def acceptall(alphabet):
+	'''
+		Return an FSM matching every possible string,
+		including the empty string.
+	'''
+	return fsm(
+		alphabet     = alphabet,
+		states       = {0},
+		initialState = 0,
+		finalStates  = {0},
+		map          = {
+			0: dict([(symbol, 0) for symbol in alphabet]),
 		},
 	)
 
@@ -539,7 +742,53 @@ def _crawl(alphabet, initialState, isFinal, getNext):
 	result = result.renumber()
 	return result
 
+# unit tests
 if __name__ == "__main__":
+
+	# Odd bug with fsm.__add__(), exposed by "[bc]*c"
+	int5A = fsm(
+		alphabet     = {"a", "b", "c", None},
+		states       = {0, 1},
+		initialState = 1,
+		finalStates  = {1},
+		map = {
+			0: {None: 0, "a": 0, "b": 0, "c": 0},
+			1: {None: 0, "a": 0, "b": 1, "c": 1},
+		}
+	)
+	assert int5A.accepts("")
+
+	int5B = fsm(
+		alphabet     = {"a", "b", "c", None},
+		states       = {0, 1, 2},
+		initialState = 1,
+		finalStates  = {0},
+		map = {
+			0: {None: 2, "a": 2, "b": 2, "c": 2},
+			1: {None: 2, "a": 2, "b": 2, "c": 0},
+			2: {None: 2, "a": 2, "b": 2, "c": 2},
+		}
+	)
+	assert int5B.accepts("c")
+
+	int5C = int5A + int5B
+	assert int5C.accepts("c")
+
+	# fsm.pattern()
+
+	# Catch a recursion error
+	assert fsm(
+		alphabet     = {"0", "1"},
+		states       = {0, 1, 2, 3},
+		initialState = 3,
+		finalStates  = {1},
+		map          = {
+			0: {"0": 1, "1": 1},
+			1: {"0": 2, "1": 2},
+			2: {"0": 2, "1": 2},
+			3: {"0": 0, "1": 2},
+		}
+	).pattern().regex() == "0[01]"
 
 	# Check FSM validation problems.
 
@@ -846,5 +1095,8 @@ if __name__ == "__main__":
 	assert starred.accepts("aaba")
 	assert not starred.accepts("aabb")
 	assert starred.accepts("abababa")
+
+	assert acceptall({"a", "b"}).pattern().regex() == "[ab]*"
+	assert acceptall({"a", "b", None}).pattern().regex() == ".*"
 
 	print("OK")

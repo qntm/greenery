@@ -18,10 +18,39 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+'''
+	LEGO:
+	Classes and methods for the creation and manipulation of regular expression
+	objects and components.
+
+	* A regular expression is a "pattern" object.
+	* Each pattern alternates (with a pipe, "|") between zero or more "conc"
+	(concatenation) objects.
+	* Each conc is a concatenation of zero or more "mult" (multiplication)
+	objects.
+	* Each mult consists of a multiplicand and a multiplier. A multiplier consists
+	of a minimum and a maximum, e.g. min = 0, max = 1 indicates the "?"
+	multiplier. The multiplicand is either a nested pattern object, or a
+	charclass object.
+	* A charclass is a set of chars, such as "a", "[a-z]", "\\d", ".", with a
+	possible "negated" flag as in "[^a]".
+
+	We also include methods for parsing a string into a pattern object, serialising
+	a pattern object out as a string (or "regular expression", if you will), and
+	for concatenating or alternating between arbitrary "pieces of lego", using
+	overloaded operators.
+	
+	If the FSM module is available, call pattern.fsm() on any pattern to return
+	a finite state machine capable of accepting strings described by the pattern.
+
+	Most important are the reduce() methods present in charclass, mult, conc and
+	pattern. While there is no such thing as a canonical form for a given regex
+	pattern, these procedures will drastically simplify a regex structure for
+	readability.
+'''
+
 # http://qntm.org/lego
 # http://qntm.org/greenery
-
-import copy
 
 escapes = {
 	"\t" : "\\t", # tab
@@ -44,53 +73,58 @@ allSpecial = set("\\[]|().?*+{}")
 classSpecial = set("\\[]^-")
 
 # these are the character ranges which can be used inside square brackets e.g.
-# "[a-z]", "[F-J]". These ranges should be disjoint, and sorted in order.
+# "[a-z]", "[F-J]". These ranges should be disjoint.
 allowableRanges = {
 	"ABCDEFGHIJKLMNOPQRSTUVWXYZ",
 	"abcdefghijklmnopqrstuvwxyz",
 	"0123456789",
 }
 
-class ParseFailureException(Exception):
+class MatchFailureException(Exception):
+	'''Thrown when parsing fails. Almost always caught and almost never fatal'''
 	pass
 
 class lego:
-	''' Parent class for all lego pieces '''
+	'''
+		Parent class for all lego pieces.
+		All lego pieces have some things in common.
+	'''
 
-	# It causes some pretty severe potential problems when
-	# these things are mutable
 	def __setattr__(self, name, value):
+		'''
+			Lego pieces are immutable. It caused some pretty serious problems when
+			I didn't have this.
+		'''
 		raise Exception("Can't set " + str(self) + " attribute " + str(name) + " to " + str(value))
 
 	@classmethod
-	def parse(cls, string):
-		'''Parse a full string, fail if the whole string wasn't parsed'''
-		result, i = cls.match(string, 0)
-		if i != len(string):
-			raise ParseFailureException("Could not parse '" + string + "' beyond index " + str(i))
-		return result
-
-	@classmethod
-	def parseStatic(cls, string, i, static):
+	def matchStatic(cls, string, i, static):
 		if string[i:len(static)+i] == static:
 			return i+len(static)
-		raise ParseFailureException(
+		raise MatchFailureException(
 			"Can't find '" + static + "' at index " + str(i) + " in '" + string + "'"
 		)
 
 	@classmethod
-	def parseAny(cls, string, i, collection=None):
+	def matchAny(cls, string, i, collection=None):
 		if collection is None:
 			if i >= len(string):
-				raise ParseFailureException
+				raise MatchFailureException
 			return string[i], i+1
 		else:
 			for char in collection:
 				try:
-					return char, cls.parseStatic(string, i, char)
-				except ParseFailureException:
+					return char, cls.matchStatic(string, i, char)
+				except MatchFailureException:
 					pass
-			raise ParseFailureException("Can't find any of '" + str(collection) + "' at index " + str(i) + " in '" + string + "'")
+			raise MatchFailureException("Can't find any of '" + str(collection) + "' at index " + str(i) + " in '" + string + "'")
+
+class NoRegexException(Exception):
+	'''
+		This occurs if you try to regex() something which can't be printed, such
+		as an empty charclass, a zero or infinite multiplier, an empty pattern
+	'''
+	pass
 
 class charclass(lego):
 	'''
@@ -100,7 +134,7 @@ class charclass(lego):
 		to contain every symbol that is in the alphabet of all symbols but not
 		explicitly listed inside the frozenset. e.g. [^a]. This is very handy
 		if the full alphabet is extremely large, but also requires dedicated
-		combination functions like classunion and classissubset.
+		combination functions.
 
 		Important note: while symbols are characters in almost every example and
 		in unit tests, a symbol can be any hashable object.
@@ -109,6 +143,9 @@ class charclass(lego):
 	'''
 
 	def __init__(self, chars=set(), negateMe=False):
+		# chars should consist only of chars
+		if None in set(chars):
+			raise Exception("Can't put non-character None in a charclass")
 		self.__dict__["chars"]   = frozenset(chars)
 		self.__dict__["negated"] = negateMe
 
@@ -121,6 +158,7 @@ class charclass(lego):
 		return tuple.__hash__((self.chars, self.negated))
 
 	def __mul__(self, multiplier):
+		# e.g. "a" * {0,1} = "a?"
 		if multiplier == one:
 			return self
 		return mult(self, multiplier)
@@ -131,6 +169,10 @@ class charclass(lego):
 		# e.g. \w
 		if self in shorthand.keys():
 			return shorthand[self]
+
+		# i.e. charclass()
+		if len(self.chars) < 1:
+			raise NoRegexException("Can't print an empty charclass")
 
 		# e.g. [^a]
 		if self.negated:
@@ -185,7 +227,7 @@ class charclass(lego):
 
 		# look for ranges
 		currentRange = ""
-		for char in sorted(self.chars):
+		for char in sorted(self.chars, key=str):
 
 			# range is not empty: new char must fit after previous one
 			if len(currentRange) > 0:
@@ -217,14 +259,42 @@ class charclass(lego):
 
 		return output
 
-	def __repr__(self):
-		string = "charclass("
-		stuff = []
-		if len(self.chars) > 0:
-			stuff.append("".join(str(char) for char in sorted(self.chars, key=str)))
+	def fsm(self, alphabet):
+		'''Turn self into a finite state machine'''
+		from fsm import fsm
+		# 0 is initial, 1 is final, 2 is oblivion
+
+		# If negated, make a singular FSM accepting any other characters
 		if self.negated:
-			stuff.append("negateMe=True")
-		string += ", ".join(stuff)
+			map = {
+				0: dict([(symbol, 2 if symbol in self.chars else 1) for symbol in alphabet]),
+				1: dict([(symbol, 2) for symbol in alphabet]),
+				2: dict([(symbol, 2) for symbol in alphabet]),
+			}
+		
+		# If normal, make a singular FSM accepting only these characters
+		else:
+			map = {
+				0: dict([(symbol, 1 if symbol in self.chars else 2) for symbol in alphabet]),
+				1: dict([(symbol, 2) for symbol in alphabet]),
+				2: dict([(symbol, 2) for symbol in alphabet]),
+			}
+
+		return fsm(
+			alphabet     = alphabet,
+			states       = {0, 1, 2},
+			initialState = 0,
+			finalStates  = {1},
+			map          = map,
+		)
+
+	def __repr__(self):
+		string = ""
+		if self.negated is True:
+			string += "~"
+		string += "charclass("
+		for char in sorted(self.chars, key=str):
+			string += (str(char))
 		string += ")"
 		return string
 
@@ -244,120 +314,120 @@ class charclass(lego):
 		# wildcard ".", "\\w", "\\d", etc.
 		for key in shorthand.keys():
 			try:
-				return key, cls.parseStatic(string, i, shorthand[key])
-			except ParseFailureException:
+				return key, cls.matchStatic(string, i, shorthand[key])
+			except MatchFailureException:
 				pass
 
 		# "[^dsgsdg]"
 		try:
-			return cls.parseNegatedRange(string, i)
-		except ParseFailureException:
+			return cls.matchNegatedRange(string, i)
+		except MatchFailureException:
 			pass
 
 		# "[sdfsf]"
 		try:
-			return cls.parseRange(string, i)
-		except ParseFailureException:
+			return cls.matchRange(string, i)
+		except MatchFailureException:
 			pass
 
 		# e.g. if seeing "\\t", return "\t"
 		for key in escapes.keys():
 			try:
-				return charclass(key), cls.parseStatic(string, i, escapes[key])
-			except ParseFailureException:
+				return charclass(key), cls.matchStatic(string, i, escapes[key])
+			except MatchFailureException:
 				pass
 
 		# e.g. if seeing "\\{", return "{"
 		for char in allSpecial:
 			try:
-				return charclass(char), cls.parseStatic(string, i, "\\" + char)
-			except ParseFailureException:
+				return charclass(char), cls.matchStatic(string, i, "\\" + char)
+			except MatchFailureException:
 				pass
 
 		# single non-special character, not contained inside square brackets
-		char, i = cls.parseAny(string, i)
+		char, i = cls.matchAny(string, i)
 		if char in allSpecial:
-			raise ParseFailureException
+			raise MatchFailureException
 
 		return charclass(char), i
 
 	@classmethod
-	def parseNegatedRange(cls, string, i):
-		i = cls.parseStatic(string, i, "[^")
-		chars, i = cls.parseRangeInterior(string, i)
-		i = cls.parseStatic(string, i, "]")
-		return charclass(chars, negateMe=True), i
+	def matchNegatedRange(cls, string, i):
+		i = cls.matchStatic(string, i, "[^")
+		chars, i = cls.matchRangeInterior(string, i)
+		i = cls.matchStatic(string, i, "]")
+		return ~charclass(chars), i
 
 	@classmethod
-	def parseRange(cls, string, i):
-		i = cls.parseStatic(string, i, "[")
-		chars, i = cls.parseRangeInterior(string, i)
-		i = cls.parseStatic(string, i, "]")
+	def matchRange(cls, string, i):
+		i = cls.matchStatic(string, i, "[")
+		chars, i = cls.matchRangeInterior(string, i)
+		i = cls.matchStatic(string, i, "]")
 		return charclass(chars), i
 
 	@classmethod
-	def parseRangeInterior(cls, string, i):
+	def matchRangeInterior(cls, string, i):
 		internals = ""
 		try:
 			while True:
-				internal, i = cls.parseRangeInternal(string, i)
+				internal, i = cls.matchRangeInternal(string, i)
 				internals += internal
-		except ParseFailureException:
+		except MatchFailureException:
 			pass
 		return internals, i
 
 	@classmethod
-	def parseRangeInternal(cls, string, i):
-		firstChar, i = cls.parseInternalChar(string, i)
+	def matchRangeInternal(cls, string, i):
+		firstChar, i = cls.matchInternalChar(string, i)
 		try:
-			j = cls.parseStatic(string, i, "-")
-			lastChar, j = cls.parseInternalChar(string, j)
+			j = cls.matchStatic(string, i, "-")
+			lastChar, j = cls.matchInternalChar(string, j)
 
 			charRange = None
 			for allowableRange in allowableRanges:
 				if firstChar in allowableRange:
 					# first and last must be in the same character range
 					if lastChar not in allowableRange:
-						raise ParseFailureException("Char '" + lastChar + "' not allowed as end of range")
+						raise MatchFailureException("Char '" + lastChar + "' not allowed as end of range")
 
 					firstIndex = allowableRange.index(firstChar)
 					lastIndex = allowableRange.index(lastChar)
 
 					# and in order i.e. a < b
 					if firstIndex >= lastIndex:
-						raise ParseFailureException(
+						raise MatchFailureException(
 							"Disordered range ('" + firstChar + "' !< '" + lastChar + "')"
 						)
 
 					# OK
 					return allowableRange[firstIndex:lastIndex + 1], j
 
-			raise ParseFailureException("Char '" + firstChar + "' not allowed as start of a range")
-		except ParseFailureException:
+			raise MatchFailureException("Char '" + firstChar + "' not allowed as start of a range")
+		except MatchFailureException:
 			return firstChar, i
 
 	@classmethod
-	def parseInternalChar(cls, string, i):
+	def matchInternalChar(cls, string, i):
 
 		# e.g. if we see "\\t", return "\t"
 		for key in escapes.keys():
 			try:
-				return key, cls.parseStatic(string, i, escapes[key])
-			except ParseFailureException:
+				return key, cls.matchStatic(string, i, escapes[key])
+			except MatchFailureException:
 				pass
 
 		# special chars e.g. "\\-" returns "-"
 		for char in classSpecial:
 			try:
-				return char, cls.parseStatic(string, i, "\\" + char)
-			except ParseFailureException:
+				return char, cls.matchStatic(string, i, "\\" + char)
+			except MatchFailureException:
 				pass
 
 		# single non-special character, not contained
 		# inside square brackets
-		char, j = cls.parseAny(string, i)
+		char, j = cls.matchAny(string, i)
 		if char in classSpecial:
-			raise ParseFailureException
+			raise MatchFailureException
 
 		return char, j
 
@@ -395,7 +465,7 @@ class charclass(lego):
 
 		# look for ranges
 		currentRange = ""
-		for char in sorted(self.chars):
+		for char in sorted(self.chars, key=str):
 
 			# range is not empty: new char must fit after previous one
 			if len(currentRange) > 0:
@@ -428,105 +498,88 @@ class charclass(lego):
 		return output
 
 	# set operations
-
-	def negate(self):
-		'''Replace a charclass with its negation'''
+	def __invert__(self):
 		return charclass(self.chars, negateMe=not self.negated)
 
-	def union(self, other):
-		'''Find the classunion of charclasses, returning a charclass.'''
-
-		# two regular classes unify in the regular sense.
-		if not self.negated and not other.negated:
-			return charclass(self.chars.union(other.chars))
-
-		# classunioning a charclass and a negated one is a little more complex
-		# A OR ¬B = ¬(B - A)
-		if not self.negated and other.negated:
-			return charclass(other.chars.difference(self.chars), negateMe=True)
-
-		# ¬A OR B = ¬(A - B)
-		if self.negated and not other.negated:
-			return charclass(self.chars.difference(other.chars), negateMe=True)
+	def __or__(self, other):
+		'''
+			Find the union (alternation) of lego pieces.
+			For two charclasses there are some useful special case
+			operations we can carry out here. Otherwise just wrap
+			self in a multiplier and fire upwards
+		'''
+		if type(other) != charclass:
+			return mult(self, one) | other
 
 		# ¬A OR ¬B = ¬(A AND B)
-		if self.negated and other.negated:
-			return charclass(self.chars.intersection(other.chars), negateMe=True)
+		# ¬A OR B = ¬(A - B)
+		# A OR ¬B = ¬(B - A)
+		# A OR B
+		if self.negated:
+			if other.negated:
+				return ~charclass(self.chars & other.chars)
+			return ~charclass(self.chars - other.chars)
+		if other.negated:
+			return ~charclass(other.chars - self.chars)
+		return charclass(self.chars | other.chars)
 
 		raise Exception("What")
 
-	def difference(self, other):
+	def __sub__(self, other):
 		'''Subtract B from A'''
 
-		# A - B = A - B
-		if not self.negated and not other.negated:
-			return charclass(self.chars.difference(other.chars))
-
-		# A - ¬B = A AND B
-		if not self.negated and other.negated:
-			return charclass(self.chars.intersection(other.chars))
-
-		# ¬A - B = ¬(A OR B)
-		if self.negated and not other.negated:
-			return charclass(self.chars.union(other.chars), negateMe=True)
-
 		# ¬A - ¬B = B - A
-		if self.negated and other.negated:
-			return charclass(other.chars.difference(self.chars))
+		# ¬A - B = ¬(A OR B)
+		# A - ¬B = A AND B
+		# A - B
+		if self.negated:
+			if other.negated:
+				return charclass(other.chars - self.chars)
+			return ~charclass(self.chars | other.chars)
+		if other.negated:
+			return charclass(self.chars & other.chars)
+		return charclass(self.chars - other.chars)
 
-		raise Exception("What")
-
-	def intersection(self, other):
-		'''Find the classintersection of two charclasses, returning a charclass.'''
-
-		# two regular classes intersect in the regular sense.
-		if not self.negated and not other.negated:
-			return charclass(self.chars.intersection(other.chars))
-
-		# other combinations are more complex
-		# A AND ¬B = A - B
-		if not self.negated and other.negated:
-			return charclass(self.chars.difference(other.chars))
-
-		# ¬A AND B = B - A
-		if self.negated and not other.negated:
-			return charclass(other.chars.difference(self.chars))
+	def __and__(self, other):
+		'''Find the intersection of two charclasses, returning a charclass.'''
+		if type(other) != charclass:
+			return mult(self, one) & other
 
 		# ¬A AND ¬B = ¬(A OR B)
-		if self.negated and other.negated:
-			return charclass(self.chars.union(other.chars), negateMe=True)
-
-		raise Exception("What")
+		# ¬A AND B = B - A
+		# A AND ¬B = A - B
+		# A AND B
+		if self.negated:
+			if other.negated:
+				return ~charclass(self.chars | other.chars)
+			return charclass(other.chars - self.chars)
+		if other.negated:
+			return charclass(self.chars - other.chars)
+		return charclass(self.chars & other.chars)
 
 	def issubset(self, other):
 		'''Find out if A is a subset of B'''
 
-		# A < B
-		if not self.negated and not other.negated:
-			return self.chars.issubset(other.chars)
-
-		# A < ¬B if A n B = 0
-		elif not self.negated and other.negated:
-			return self.chars.isdisjoint(other.chars)
-
-		# ¬A < B is impossible
-		elif self.negated and not other.negated:
-			return False
-
 		# ¬A < ¬B if B < A
-		elif self.negated and other.negated:
-			return other.chars.issubset(self.chars)
-
-		raise Exception("Whaaa")
+		# ¬A < B is impossible
+		# A < ¬B if A n B = 0
+		# A < B
+		if self.negated:
+			if other.negated:
+				return other.chars.issubset(self.chars)
+			return False
+		if other.negated:
+			return self.chars.isdisjoint(other.chars)
+		return self.chars.issubset(other.chars)
 
 # some useful constants
 w = charclass("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz")
 d = charclass("0123456789")
 s = charclass("\t\n\v\f\r ")
-W = charclass("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz", negateMe=True)
-D = charclass("0123456789", negateMe=True)
-S = charclass("\t\n\v\f\r ", negateMe=True)
-dot = charclass(negateMe=True)
+W = ~charclass("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz")
+D = ~charclass("0123456789")
+S = ~charclass("\t\n\v\f\r ")
+dot = ~charclass()
 
 shorthand = {
 	w : "\\w", d : "\\d", s : "\\s",
@@ -543,9 +596,13 @@ class multiplier(lego):
 		stand for infinity in the value of max.
 	'''
 	def __init__(self, min, max):
+		# More useful than "min" and "max" in many situations
+		# are "mandatory" and "optional".
 		if min is None:
+			# infinite mandatory, infinite optional (this is odd)
+			mandatory = None
 			if max is None:
-				pass
+				optional = None
 			else:
 				raise Exception("max must match or exceed min")
 		else:
@@ -553,16 +610,20 @@ class multiplier(lego):
 				raise Exception("min must be an integer")
 			if min < 0:
 				raise Exception("min must be >= 0")
+			mandatory = min
 			if max is None:
-				pass
+				optional = None
 			else:
 				if type(max) != int:
 					raise Exception("max must be None or an integer")
 				if max < min or min is None:
 					raise Exception("max '" + str(max) + "' must match or exceed min '" + str(min) + "'")
+				optional = max - min
 
 		self.__dict__['min'] = min
 		self.__dict__['max'] = max
+		self.__dict__['mandatory'] = mandatory
+		self.__dict__['optional'] = optional
 
 	def __eq__(self, other):
 		return type(self) == type(other) \
@@ -578,7 +639,7 @@ class multiplier(lego):
 	def regex(self):
 		if self.max == 0 \
 		or self.min is None:
-			raise Exception("No regex available for " + str(self))
+			raise NoRegexException("No regex available for " + str(self))
 		if self in symbolic.keys():
 			return symbolic[self]
 		if self.max is None:
@@ -591,31 +652,31 @@ class multiplier(lego):
 	def match(cls, string, i):
 		# {2,3}
 		try:
-			j = cls.parseStatic(string, i, "{")
-			min, j = cls.parseInteger(string, j)
-			j = cls.parseStatic(string, j, ",")
-			max, j = cls.parseInteger(string, j)
-			j = cls.parseStatic(string, j, "}")
+			j = cls.matchStatic(string, i, "{")
+			min, j = cls.matchInteger(string, j)
+			j = cls.matchStatic(string, j, ",")
+			max, j = cls.matchInteger(string, j)
+			j = cls.matchStatic(string, j, "}")
 			return multiplier(min, max), j
-		except ParseFailureException:
+		except MatchFailureException:
 			pass
 
 		# {2,}
 		try:
-			j = cls.parseStatic(string, i, "{")
-			min, j = cls.parseInteger(string, j)
-			j = cls.parseStatic(string, j, ",}")
+			j = cls.matchStatic(string, i, "{")
+			min, j = cls.matchInteger(string, j)
+			j = cls.matchStatic(string, j, ",}")
 			return multiplier(min, None), j
-		except ParseFailureException:
+		except MatchFailureException:
 			pass
 
 		# {2}
 		try:
-			j = cls.parseStatic(string, i, "{")
-			min, j = cls.parseInteger(string, j)
-			j = cls.parseStatic(string, j, "}")
+			j = cls.matchStatic(string, i, "{")
+			min, j = cls.matchInteger(string, j)
+			j = cls.matchStatic(string, j, "}")
 			return multiplier(min, min), j
-		except ParseFailureException:
+		except MatchFailureException:
 			pass
 
 		# "?"/"*"/"+"/""
@@ -623,27 +684,27 @@ class multiplier(lego):
 		# that forces "" to be done last
 		for key in sorted(symbolic, key=lambda key: -len(symbolic[key])):
 			try:
-				return key, cls.parseStatic(string, i, symbolic[key])
-			except ParseFailureException:
+				return key, cls.matchStatic(string, i, symbolic[key])
+			except MatchFailureException:
 				pass
 
-		raise ParseFailureException
+		raise MatchFailureException
 
 	@classmethod
-	def parseInteger(cls, string, i):
+	def matchInteger(cls, string, i):
 		try:
-			return 0, cls.parseStatic(string, i, "0")
-		except ParseFailureException:
+			return 0, cls.matchStatic(string, i, "0")
+		except MatchFailureException:
 			pass
 
-		digit, i = cls.parseAny(string, i, "123456789")
+		digit, i = cls.matchAny(string, i, "123456789")
 		integer = int(digit)
 		try:
 			while True:
-				digit, i = cls.parseAny(string, i, "0123456789")
+				digit, i = cls.matchAny(string, i, "0123456789")
 				integer *= 10
 				integer += int(digit)
-		except ParseFailureException:
+		except MatchFailureException:
 			return integer, i
 
 	def __mul__(self, other):
@@ -670,20 +731,6 @@ class multiplier(lego):
 			max = self.max + other.max
 		return multiplier(min, max)
 
-	def getMO(self):
-		'''
-			More useful than "min" and "max" in many situations
-			are "mandatory" and "optional"
-		'''
-		if self.min is None:
-			# infinite mandatory, infinite optional (this is odd)
-			if self.max is None:
-				return None, None
-			raise Exception("wha")
-		if self.max is None:
-			return self.min, None
-		return self.min, self.max - self.min
-
 	def __sub__(self, other):
 		'''
 			Subtract another multiplier from this one.
@@ -691,34 +738,28 @@ class multiplier(lego):
 			Caution: multipliers are not totally ordered.
 			This operation is not meaningful for all pairs of multipliers.
 		'''
-		# get that info from self
-		selfMandatory, selfOptional = self.getMO()
-
-		# get that info from other
-		otherMandatory, otherOptional = other.getMO()
-
 		# subtract other from self
-		if otherMandatory is None:
-			if selfMandatory is None:
+		if other.mandatory is None:
+			if self.mandatory is None:
 				newMandatory = 0 # None minus None
 			else:
 				raise Exception("Can't subtract " + str(other) + " from " + str(self))
 		else:
-			if selfMandatory is None:
+			if self.mandatory is None:
 				newMandatory = None
 			else:
-				newMandatory = selfMandatory - otherMandatory
+				newMandatory = self.mandatory - other.mandatory
 
-		if otherOptional is None:
-			if selfOptional is None:
+		if other.optional is None:
+			if self.optional is None:
 				newOptional = 0 # None minus None
 			else:
 				raise Exception("Can't subtract " + str(other) + " from " + str(self))
 		else:
-			if selfOptional is None:
+			if self.optional is None:
 				newOptional = None
 			else:
-				newOptional = selfOptional - otherOptional
+				newOptional = self.optional - other.optional
 
 		# turn info back into min/max
 		if newMandatory is None:
@@ -739,30 +780,27 @@ class multiplier(lego):
 			Find the shared part of two multipliers.
 			This is a bit of a nightmare as well
 		'''
-		selfMandatory , selfOptional  = self.getMO()
-		otherMandatory, otherOptional = other.getMO()
-
-		if selfMandatory is None:
-			if otherMandatory is None:
+		if self.mandatory is None:
+			if other.mandatory is None:
 				commonMandatory = None
 			else:
-				commonMandatory = otherMandatory
+				commonMandatory = other.mandatory
 		else:
-			if otherMandatory is None:
-				commonMandatory = selfMandatory
+			if other.mandatory is None:
+				commonMandatory = self.mandatory
 			else:
-				commonMandatory = min(selfMandatory, otherMandatory)
+				commonMandatory = min(self.mandatory, other.mandatory)
 
-		if selfOptional is None:
-			if otherOptional is None:
+		if self.optional is None:
+			if other.optional is None:
 				commonOptional = None
 			else:
-				commonOptional = otherOptional
+				commonOptional = other.optional
 		else:
-			if otherOptional is None:
-				commonOptional = selfOptional
+			if other.optional is None:
+				commonOptional = self.optional
 			else:
-				commonOptional = min(selfOptional, otherOptional)
+				commonOptional = min(self.optional, other.optional)
 
 		# turn info back into min/max
 		if commonMandatory is None:
@@ -796,12 +834,6 @@ class NoCommonMultiplicandException(Exception):
 	'''
 		This happens when you try to intersect or subtract two mults which
 		don't have a common multiplicand.
-	'''
-
-class NoCommonPrefixException(Exception):
-	'''
-		This happens when you call pattern.commonprefix() on a pattern whose
-		concs don't have a common prefix.
 	'''
 
 class mult(lego):
@@ -849,6 +881,14 @@ class mult(lego):
 		'''Concatenation'''
 		return conc(self) + other
 
+	def __or__(self, other):
+		'''Alternation'''
+		return conc(self) | other
+
+	def __and__(self, other):
+		'''Intersection'''
+		return conc(self) & other
+
 	def __sub__(self, other):
 		'''
 			Subtract another mult from this one and return the result.
@@ -862,6 +902,9 @@ class mult(lego):
 
 	def __and__(self, other):
 		'''Find the shared part of two mults.'''
+		if type(other) != mult:
+			return conc(self) & other
+
 		if other.multiplicand != self.multiplicand:
 			raise NoCommonMultiplicandException("Can't find intersection of " + str(other) + " with " + str(self))
 
@@ -872,6 +915,33 @@ class mult(lego):
 			Return a lego piece with the same matching power but
 			potentially reduced complexity.
 		'''
+		# If our multiplicand is a pattern containing an empty conc()
+		# we can pull that "optional" bit out into our own multiplier
+		# instead.
+		# e.g. (A|B|C|)D -> (A|B|C)?D
+		# e.g. (A|B|C|){2} -> (A|B|C){0,2}
+		if type(self.multiplicand) == pattern \
+		and emptystring in self.multiplicand.concs:
+			return mult(
+				pattern(
+					*self.multiplicand.concs.difference({emptystring})
+				),
+				self.multiplier * qm,
+			).reduce()
+
+		# If our multiplier is zero, the logical reduction is to an
+		# empty class, which matches nothing.
+		if self.multiplier == zero:
+			return charclass().reduce()
+
+		# If our multiplicand is an empty pattern, which *can never match*,
+		# then we are lost, UNLESS it's possible to match it zero times.
+		if self.multiplicand == nothing:
+			if self.multiplier.min == 0:
+				return emptystring.reduce()
+			else:
+				return charclass().reduce()
+
 		# no point multiplying in the singular
 		if self.multiplier == one:
 			return self.multiplicand.reduce()
@@ -885,21 +955,6 @@ class mult(lego):
 			reducedMultiplicand = pattern(reducedMultiplicand)
 		if reducedMultiplicand != self.multiplicand:
 			return mult(reducedMultiplicand, self.multiplier).reduce()
-
-		# If our multiplicand is a pattern containing an empty conc()
-		# (and at least one other conc), we can pull that "optional"
-		# bit out into our own multiplier instead.
-		# e.g. (A|B|C|)D -> (A|B|C)?D
-		# e.g. (A|B|C|){2} -> (A|B|C){0,2}
-		if type(self.multiplicand) == pattern \
-		and emptystring in self.multiplicand.concs \
-		and len(self.multiplicand.concs) > 1:
-			return mult(
-				pattern(
-					*self.multiplicand.concs.difference({emptystring})
-				),
-				self.multiplier * qm,
-			).reduce()
 
 		# If our multiplicand is a pattern containing a single conc
 		# containing a single mult, we can separate that out a lot
@@ -940,13 +995,20 @@ class mult(lego):
 
 		return output
 
+	def fsm(self, alphabet):
+		'''
+			Turn the present conc into a finite state machine, as imported
+			from the fsm module.
+		'''
+		return self.multiplicand.fsm(alphabet) * (self.multiplier.min, self.multiplier.max)
+
 	@classmethod
 	def match(cls, string, i):
 		try:
-			j = cls.parseStatic(string, i, "(")
+			j = cls.matchStatic(string, i, "(")
 			multiplicand, j = pattern.match(string, j)
-			j = cls.parseStatic(string, j, ")")
-		except ParseFailureException:
+			j = cls.matchStatic(string, j, ")")
+		except MatchFailureException:
 			multiplicand, j = charclass.match(string, i)
 
 		x, j = multiplier.match(string, j)
@@ -957,7 +1019,7 @@ class conc(lego):
 		A conc (short for "concatenation") is a tuple of mults i.e. an unbroken
 		string of mults occurring one after the other.
 		e.g. abcde[^fg]*h{4}[a-z]+(subpattern)(subpattern2)
-		To express the empty string, use an empty conc, conc(()).
+		To express the empty string, use an empty conc, conc().
 	'''
 
 	def __init__(self, *mults):
@@ -992,47 +1054,21 @@ class conc(lego):
 			afterwards if possible.
 		'''
 
-		# TODO: this would be so sweet
-		# return conc(*(self.mults + other.mults)).reduce()
-
 		# other must be a conc too
 		if type(other) in {charclass, pattern}:
 			other = mult(other, one)
-		if type(other) is mult:
+		if type(other) == mult:
 			other = conc(other)
 
-		# conc versus conc
-		if len(self.mults) == 0:
-			if len(other.mults) == 0:
-				result = emptystring
-			else:
-				result = other
-		else:
-			if len(other.mults) == 0:
-				result = self
-			else:
-				multsA = list(self.mults)
-				multsB = list(other.mults)
+		return conc(*(self.mults + other.mults)).reduce()
 
-				# see if we can combine the last mult in self with
-				# the first mult in other
-				lastMultA  = multsA.pop()
-				firstMultB = multsB.pop(0)
+	def __or__(self, other):
+		'''Alternation.'''
+		return pattern(self) | other
 
-				# if the multiplicands in each mult are identical, then
-				# we can just add the multiplicands
-				if lastMultA.multiplicand == firstMultB.multiplicand:
-					multC = mult(lastMultA.multiplicand, lastMultA.multiplier + firstMultB.multiplier)
-					multsC = [multC]
-				else:
-					multsC = [lastMultA, firstMultB]
-
-				# now multsC is a list just like multsA and newB
-
-				# concatenate the lists
-				result = conc(*(multsA + multsC + multsB))
-
-		return result.reduce()
+	def __and__(self, other):
+		'''Intersection.'''
+		return pattern(self) & other
 
 	def reduce(self):
 		'''
@@ -1044,13 +1080,22 @@ class conc(lego):
 			possible in reduce() calls
 		'''
 
+		# If we contain a mult with a multiplicand of charclass()
+		# and a nonzero mandatory multiplier, then this can never
+		# return anything.
+		for m in self.mults:
+			if m.multiplicand == charclass() \
+			and (m.multiplier.min is None or m.multiplier.min > 0):
+				return charclass().reduce()
+			
+
 		# no point concatenating one thing (note: concatenating nothing is
 		# entirely valid)
 		if len(self.mults) == 1:
 			return self.mults[0].reduce()
 
 		# Try recursively reducing our internals
-		reducedMults = [x.reduce() for x in self.mults]
+		reducedMults = [m.reduce() for m in self.mults]
 		# "bulk up" smaller lego pieces to concs if need be
 		reducedMults = [pattern(x) if type(x) == conc else x for x in reducedMults]
 		reducedMults = [mult(x, one) if type(x) in {charclass, pattern} else x for x in reducedMults]
@@ -1071,14 +1116,34 @@ class conc(lego):
 					newMults = self.mults[:i] + (squished,) + self.mults[i+2:]
 					return conc(*newMults).reduce()
 
-		# TODO:
-		# Conc contains a *singleton* mult containing a pattern with only
+		# Conc contains (among other things) a *singleton* mult containing a pattern with only
 		# one internal conc? Flatten out.
-		# e.g. "a(a(ab|a*c))" -> "aa(ab|a*c)"
-		# BUT NOT "a(a(ab|a*c)){2,}"
-		# AND NOT "a(a(ab|a*c)|y)"
+		# e.g. "a(d(ab|a*c))" -> "ad(ab|a*c)"
+		# BUT NOT "a(d(ab|a*c)){2,}"
+		# AND NOT "a(d(ab|a*c)|y)"
+		for i in range(len(self.mults)):
+			m = self.mults[i]
+			if m.multiplier == one \
+			and type(m.multiplicand) == pattern \
+			and len(m.multiplicand.concs) == 1:
+				single = [c for c in m.multiplicand.concs][0]
+				newMults = self.mults[:i] + single.mults + self.mults[i+1:]
+				return conc(*newMults).reduce()
 
 		return self
+
+	def fsm(self, alphabet):
+		'''
+			Turn the present conc into a finite state machine, as imported
+			from the fsm module.
+		'''
+		from fsm import fsm, epsilon
+
+		# start with a component accepting only the empty string
+		fsm1 = epsilon(alphabet)
+		for m in self.mults:
+			fsm1 += m.fsm(alphabet)
+		return fsm1
 
 	def regex(self):
 		'''Return a string representation of regex which this conc
@@ -1092,11 +1157,23 @@ class conc(lego):
 			while True:
 				x, i = mult.match(string, i)
 				mults.append(x)
-		except ParseFailureException:
+		except MatchFailureException:
 			pass
 		return conc(*mults), i
 
 emptystring = conc()
+
+class NoMultPrefixException(Exception):
+	'''
+		This happens if you call pattern._multprefix() on a pattern whose concs
+		have no common multiplier at the front.
+	'''
+
+class NoMultSuffixException(Exception):
+	'''
+		This happens if you call pattern._multsuffix() on a pattern whose concs
+		have no common multiplier at the end.
+	'''
 
 class pattern(lego):
 	'''
@@ -1113,8 +1190,6 @@ class pattern(lego):
 		This new subpattern again consists of two concs: "ghi" and "jkl".
 	'''
 	def __init__(self, *concs):
-		if len(concs) < 1:
-			raise Exception("Can't take alternation of nothing")
 		for x in concs:
 			if type(x) != conc:
 				raise Exception("Can't put a " + str(type(x)) + " in a pattern")
@@ -1139,12 +1214,72 @@ class pattern(lego):
 		return mult(self, multiplier)
 
 	def __add__(self, other):
-		'''Concatenation function. Turn self into an equivalent conc'''
-		return self._concsuffix() + other
+		'''Concatenation function. Turn self into an equivalent mult'''
+		return mult(self, one) + other
+
+	def alphabet(self):
+		'''
+			Return a set of all unique characters used in this pattern.
+			In theory this could be a static property, self.alphabet, not
+			a function, self.alphabet(), but in the vast majority of cases
+			this will never be queried so it's a waste of computation to
+			calculate it every time a pattern is instantiated.
+		'''
+		alphabet = set()
+		for c in self.concs:
+			for m in c.mults:
+				if type(m.multiplicand) is charclass:
+					alphabet.update(m.multiplicand.chars)
+				else:
+					alphabet.update(m.multiplicand.alphabet())
+		return alphabet
+
+	def __and__(self, other):
+		'''
+			Intersection function. Return a lego piece that can match any string
+			that both self and other can match. Fairly elementary results relating
+			to regular languages and finite state machines show that this is
+			possible, but implementation is a BEAST
+		'''
+		
+		# other must be pattern
+		if type(other) == mult:
+			other = conc(other)
+		if type(other) == conc:
+			other = pattern(conc)
+
+		alphabet = self.alphabet() | other.alphabet()
+	
+		# We need to add an extra character in the alphabet which can stand for
+		# "everything else". For example, if the regex is "abc.", then at the moment
+		# our alphabet is {"a", "b", "c"}. But "." could match anything else not yet
+		# specified. This extra letter stands for that.
+		alphabet.add(None)
+
+		# Which means that we can build finite state machines sharing that alphabet
+		combinedFsm = self.fsm(alphabet) & other.fsm(alphabet)
+		return combinedFsm.pattern()
+
+	def __or__(self, other):
+		'''Magical function for alternating between many possibilities'''
+
+		# other must be a pattern too
+		if type(other) == charclass:
+			other = mult(other, one)
+		if type(other) == mult:
+			other = conc(other)
+		if type(other) == conc:
+			other = pattern(other)
+
+		return pattern(*(self.concs | other.concs)).reduce()
+
 
 	def regex(self):
 		'''Return the string representation of the regex which this pattern
 		represents.'''
+
+		if len(self.concs) < 1:
+			raise NoRegexException("Can't print an empty pattern.")
 
 		# take the alternation of the input collection of regular expressions.
 		# i.e. jam "|" between each element
@@ -1155,12 +1290,22 @@ class pattern(lego):
 	def reduce(self):
 		'''Return a possibly-simplified self'''
 
+		# If one of our internal concs contains a mult containing a charclass()
+		# and a nonzero mandatory multiplier, that conc can never match anything
+		# So remove it.
+		for c in self.concs:
+			for m in c.mults:
+				if m.multiplicand == charclass() \
+				and (m.multiplier.min is None or m.multiplier.min > 0):
+					newConcs = self.concs - {c}
+					return pattern(*newConcs).reduce()
+
 		# no point alternating among one possibility
 		if len(self.concs) == 1:
 			return [e for e in self.concs][0].reduce()
 
 		# Try recursively reducing our internals first.
-		reducedConcs = [x.reduce() for x in self.concs]
+		reducedConcs = [c.reduce() for c in self.concs]
 		# "bulk up" smaller lego pieces to concs if need be
 		reducedConcs = [mult(x, one) if type(x) in {charclass, pattern} else x for x in reducedConcs]
 		reducedConcs = [conc(x) if type(x) == mult else x for x in reducedConcs]
@@ -1196,11 +1341,11 @@ class pattern(lego):
 			if len(x.mults) == 1 \
 			and type(x.mults[0].multiplicand) == charclass:
 				key = x.mults[0].multiplier
-				if key not in merged:
-					merged[key] = x.mults[0].multiplicand
-				else:
-					merged[key] = merged[key].union(x.mults[0].multiplicand)
+				if key in merged:
+					merged[key] |= x.mults[0].multiplicand
 					isChanged = True
+				else:
+					merged[key] = x.mults[0].multiplicand
 			else:
 				rest.append(x)
 		if isChanged == True:
@@ -1208,40 +1353,29 @@ class pattern(lego):
 				rest.append(conc(mult(merged[key], key)))
 			return pattern(*rest).reduce()
 
-#		# If the present pattern's concs all have a common prefix, split
-#		# that out. This increases the depth of the object
-#		# but it is still arguably simpler/ripe for further reduction
-#
-#		# Stage 1: Check the first mult in each conc to see if they have anything
-#		# in common.
-#			try:
-#				common = self.commonprefix()
-#			except NoCommonPrefixException:
-#				pass
-#
-#			leftovers = [x - common for x in firstMults]
-#
-#			# Success! The first mults have a common part.
-#			# Slash that common part from all of the mults and, if appropriate,
-#			# try again
-#			continueFlag = True
-#			newMults.append(common)
-#			for j in range(len(leftovers)):
-#				if leftovers[j].multiplier == zero:
-#					multListList[j].pop(0)
-#				else:
-#					# partial success, stop now
-#					multListList[j][0] = leftovers[j]
-#					continueFlag = False
-#
-#			if continueFlag is False:
-#				break
-#
-#		# now what is left of multListList is going to form the first mult
-#		# in the new conc
-#		concList = [conc(*multList) for multList in multListList]
+		# If the present pattern's concs all have a common prefix, split
+		# that out. This increases the depth of the object
+		# but it is still arguably simpler/ripe for further reduction
+		concPrefix, leftovers = self._concprefix()
+		if concPrefix != emptystring:
+			mults = concPrefix.mults + (mult(leftovers, one),)
+			return conc(*mults).reduce()
+
+		# Same but for prefixes.
+		leftovers, concSuffix = self._concsuffix()
+		if concSuffix != emptystring:
+			mults = (mult(leftovers, one),) + concSuffix.mults
+			return conc(*mults).reduce()
 
 		return self
+
+	@classmethod
+	def parse(cls, string):
+		'''Parse a full string and return a pattern object. Fail if the whole string wasn't parsed'''
+		result, i = cls.match(string, 0)
+		if i != len(string):
+			raise MatchFailureException("Could not parse '" + string + "' beyond index " + str(i))
+		return result
 
 	@classmethod
 	def match(cls, string, i):
@@ -1254,208 +1388,586 @@ class pattern(lego):
 		# the rest
 		try:
 			while True:
-				i = cls.parseStatic(string, i, "|")
+				i = cls.matchStatic(string, i, "|")
 				x, i = conc.match(string, i)
 				concs.append(x)
-		except ParseFailureException:
+		except MatchFailureException:
 			pass
 
 		return pattern(*concs), i
 
-	def _concprefix(self):
+	def _multprefix(self):
 		'''
-			"ZA|ZB|ZC"   -> "Z(A|B|C)"
-
-			Outputs: a conc with exactly equivalent matching capability to the
-			present pattern.
-			The output conc's leading internal mults will form the common prefix,
-			if there was one. After that, the last mult will contain a pattern,
-			itself containing all the concs which are left over once the
-			common prefix has been truncated from the front of each conc. In the
-			event that nothing is left of an input conc after this truncation,
-			the corresponding output conc will be empty.
-
-			conc
-				mult
-					common suffix to concs 1, 2, etc.
-				mult
-					common suffix to concs 1, 2, etc.
-				etc.
-				mult
-					pattern
-						conc: non-shared tail from conc 1 (possibly empty)
-						conc: non-shared tail from conc 2 (possibly empty)
-						etc.
-
-			Usually the multiplier on that last mult will be (1, 1). But if
-			any of its internal concs are empty, they'll be stripped out and
-			the multiplier will be 0, 1 instead
-			"ZA|ZB|ZC|Z" -> "Z(A|B|C|)" -> "Z(A|B|C)?"
-
-			If the prefix encompasses the whole deal, there will be no first
-			element
-			"CZ|CZ" -> "CZ()" -> "CZ"
-
-			If no common prefix mult can be found, an exception is thrown.
-			This operates recursively.
+			"ZA|ZB|ZC" -> "Z", "A|B|C"
+			Find a common mult prefix of all the concs in the current pattern.
 		'''
-
-		# Try to find just one mult to put into that commonprefix.
-		# Check the first mult in each conc to see if they have anything in common.
 		commonMult = None
-		for x in self.concs:
+		for c in self.concs:
 
 			# No common prefix here
-			if len(x.mults) == 0:
-				return [], self
+			if len(c.mults) == 0:
+				raise NoMultPrefixException
 
 			if commonMult is None:
-				commonMult = x.mults[0]
+				commonMult = c.mults[0]
 			else:
 				try:
-					commonMult &= x.mults[0]
+					commonMult &= c.mults[0]
 				except NoCommonMultiplicandException:
-					return [], self
+					raise NoMultPrefixException
 
-		# If we're here then a common mult was found.
-		prefix = [commonMult]
+			# Can occur for e.g. "Z*AB|ZC". Multiplicand is shared,
+			# but intersection of multipliers is zero
+			if commonMult.multiplier == zero:
+				raise NoMultPrefixException
 
-		# Now construct a new pattern from the leftovers.
+		# Can occur if self is nothing
+		if commonMult is None:
+			raise NoMultPrefixException
 
-		# First, subtract common from the front to give a remainder
-		recurseFlag = True
-		concList = []
-		for x in self.concs:
-			newMult1 = x.mults[0] - commonMult
+		leftovers = []
+		for c in self.concs:
+		
+			newMult1 = c.mults[0] - commonMult
+
 			if newMult1.multiplier == zero:
 				# omit that mult entirely since it has been factored out
-				newConc = conc(*x.mults[1:])
+				leftovers.append(conc(*c.mults[1:]))
+	
 			else:
-				# partial success, end now
-				recurseFlag = False
-				newConc = conc(newMult1, *x.mults[1:])
-			concList.append(newConc)
+				leftovers.append(conc(newMult1, *c.mults[1:]))
+		
+		# return the remainder as well
+		leftovers = pattern(*leftovers)
 
-		# rebuild
-		leftover = pattern(*concList)
+		return commonMult, leftovers
 
-		# So at the very least we could "return prefix, leftover"
-		# right now. But maybe leftover has more to give up.
+	def _multsuffix(self):
+		'''
+			"AZ|BZ|CZ" -> "A|B|C", "Z"
+			Find a common mult suffix of all the concs in the current pattern.
+		'''
+		commonMult = None
+		for c in self.concs:
 
-		if recurseFlag is True:
-			innerPrefix, leftover = leftover._concprefix()
-			prefix.extend(innerPrefix)
+			# No common prefix here
+			if len(c.mults) == 0:
+				raise NoMultSuffixException
 
-		return prefix, leftover
+			if commonMult is None:
+				commonMult = c.mults[-1]
+			else:
+				try:
+					commonMult &= c.mults[-1]
+				except NoCommonMultiplicandException:
+					raise NoMultSuffixException
+
+			# Can occur for e.g. "ABZ*|CZ". Multiplicand is shared,
+			# but intersection of multipliers is zero
+			if commonMult.multiplier == zero:
+				raise NoMultSuffixException
+		
+		# Can occur if self is nothing
+		if commonMult is None:
+			raise NoMultSuffixException
+
+		leftovers = []
+		for c in self.concs:
+		
+			newMult1 = c.mults[-1] - commonMult
+
+			if newMult1.multiplier == zero:
+				# omit that mult entirely since it has been factored out
+				leftovers.append(conc(*c.mults[:-1]))
+	
+			else:
+				leftovers.append(conc(*(c.mults[:-1] + (newMult1,))))
+		
+		# return the remainder as well
+		leftovers = pattern(*leftovers)
+
+		return leftovers, commonMult
+
+	def _concprefix(self):
+		'''
+			Find the longest conc which acts as prefix to every conc in this pattern.
+			This could be the empty string. Return the common prefix along with all
+			the leftovers after truncating that common prefix from each conc.
+			"ZA|ZB|ZC" -> "Z", "(A|B|C)"
+			"ZA|ZB|ZC|Z" -> "Z", "(A|B|C|)"
+			"CZ|CZ" -> "CZ", "()"
+		'''
+
+		# Try to find just one mult to put into that common prefix.
+		# Check the first mult in each conc to see if they have anything in common.
+		prefix = []
+		leftovers = self
+		while True:
+			try:
+				commonMult, leftovers = leftovers._multprefix()
+				prefix.append(commonMult)
+			except NoMultPrefixException:
+				return conc(*prefix), leftovers
 
 	def _concsuffix(self):
 		'''
-			"AZ|BZ|CZ"   -> "(A|B|C)Z"
-
-			Input: a collection of concs, such as those given by pattern.concs,
-			to be alternated between.
-
-			conc 1
-			conc 2
-			etc.
-
-			Outputs: a conc with exactly equivalent matching capability.
-			The output conc's trailing internal mults will form the common suffix,
-			if there was one. Before that, the first mult will contain a pattern,
-			itself containing all the concs which are left over once the
-			common suffix has been truncated from the end of each conc. In the
-			event that nothing is left of an input conc after this truncation,
-			the output conc will be empty.
-			
-			conc
-				mult
-					pattern
-						conc: non-shared initial from conc 1 (possibly empty)
-						conc: non-shared initial from conc 2 (possibly empty)
-						etc.
-				mult
-					common suffix to concs 1, 2, etc.
-				mult
-					common suffix to concs 1, 2, etc.
-				etc.
-
-			Usually the multiplier on that first mult will be (1, 1). But if
-			any of its internal concs are empty, they'll be stripped out and
-			the multiplier will be 0, 1 instead
-			"AZ|BZ|CZ|Z" -> "(A|B|C)?Z"
-
-			If the suffix encompasses the whole deal, there will be no first
-			element
-			"CZ|CZ" -> "()CZ" -> "CZ"
+			As _concprefix() but for suffixes. Note reversed, but still logical, order
+			of arguments.
+			"AAZY|BBZY|CCZY"   -> "(AA|BB|CC)", "ZY"
+			"CZ|CZ" -> "()", "CZ"
 		'''
 
-		# need to get those immutable objects out where we can mute them.
-		multListList = [
-			[
-				copy.deepcopy(y) for y in x.mults
-			] for x in self.concs
-		]
-
-		# Stage 1: Check the final mult in each conc to see if they have anything
-		# in common.
-		newMults = list()
-		while min(len(multList) for multList in multListList) > 0:
-
-			# compare the mults at last position in the list.
-			finalMults = [multList[-1] for multList in multListList]
-
+		# Try to find just one mult to put into that common prefix.
+		# Check the first mult in each conc to see if they have anything in common.
+		suffix = []
+		leftovers = self
+		while True:
 			try:
-				common = mult(finalMults[0].multiplicand, inf)
-				for x in finalMults:
-					common &= x
+				leftovers, commonMult = leftovers._multsuffix()
+				suffix.insert(0, commonMult)
+			except NoMultSuffixException:
+				return leftovers, conc(*suffix)
 
-			except NoCommonMultiplicandException:
-				# Failure: the final mults have nothing in common. No truncation can
-				# be achieved today
-				break
+	def fsm(self, alphabet):
+		'''
+			This is the big kahuna of this module.
+			Turn the present pattern into a finite state machine, as imported
+			from the fsm module.
+		'''
+		from fsm import null
 
-			leftovers = [x - common for x in finalMults]
+		fsm1 = null(alphabet)
+		for c in self.concs:
+			fsm1 |= c.fsm(alphabet)
+		return fsm1
 
-			# Success! The final mults have a common part.
-			# Slash that common part from all of the mults and, if appropriate,
-			# try again
-			continueFlag = True
-			newMults.insert(0, common)
-			for j in range(len(leftovers)):
-				if leftovers[j].multiplier == zero:
-					multListList[j].pop()
-				else:
-					# partial success, stop now
-					multListList[j][-1] = leftovers[j]
-					continueFlag = False
-
-			if continueFlag is False:
-				break
-
-		# now what is left of multListList is going to form the first mult
-		# in the new conc
-		concList = [conc(*multList) for multList in multListList]
-
-		# question mark...
-		if emptystring in concList:
-			isqm = True
-			concList.remove(emptystring)
-		else:
-			isqm = False
-
-		# If there is nothing left, don't bother inserting it.
-		# You'll get a "can't alternate nothing" error from the pattern
-		# constructor anyway.
-		if len(concList) > 0:
-			if isqm:
-				newMults.insert(0, mult(pattern(*concList), qm))
-			else:
-				newMults.insert(0, mult(pattern(*concList), one))
-
-		return conc(*newMults)
+nothing = pattern()
 
 # unit tests
 if __name__ == '__main__':
+
+	# Odd bug with ([bc]*c)?[ab]*
+	int5A = mult(charclass("bc"), star).fsm({"a", "b", "c", None})
+	assert int5A.accepts("")
+	int5B = mult(charclass("c"), one).fsm({"a", "b", "c", None})
+	assert int5B.accepts("c")
+	int5C = int5A + int5B
+	assert (int5A + int5B).accepts("c")
+
+	# Empty mult suppression
+	# TODO: work out if it's better to use charclass() or pattern() as "nothing"
+	assert conc(
+		mult(charclass(), one), # this mult can never actually match anything
+		mult(charclass("0"), one),
+		mult(charclass("0123456789"), one),
+	).reduce() == charclass()
+
+	# Empty conc suppression in patterns.
+	assert pattern(
+		conc(
+			mult(charclass(), one), # this mult can never actually match anything
+			mult(charclass("0"), one),
+			mult(charclass("0123456789"), one),
+		) # so neither can this conc
+	).reduce() == nothing
+
+	# Empty pattern suppression in mults
+	assert mult(nothing, qm).reduce() == emptystring
+
+	# empty pattern behaviour
+	try:
+		nothing._multprefix()
+		assert(False)
+	except NoMultPrefixException:
+		pass
+	try:
+		nothing._multsuffix()
+		assert(False)
+	except NoMultSuffixException:
+		pass
+	assert nothing._concprefix() == (emptystring, nothing)
+	assert nothing._concsuffix() == (nothing, emptystring)
+	assert nothing.reduce() == nothing
+
+	# pattern.fsm()
+
+	# "a[^a]"
+	anota = pattern(
+		conc(
+			mult(charclass("a"), one),
+			mult(~charclass("a"), one),
+		)
+	).fsm("ab")
+	assert not anota.accepts("a")
+	assert not anota.accepts("b")
+	assert not anota.accepts("aa")
+	assert anota.accepts("ab")
+	assert not anota.accepts("ba")
+	assert not anota.accepts("bb")
+	
+	# "0\\d"
+	zeroD = pattern(
+		conc(
+			mult(charclass("0"), one),
+			mult(charclass("123456789"), one)
+		)
+	).fsm(d.chars)
+	assert zeroD.accepts("01")
+	assert not zeroD.accepts("10")
+
+	# "\\d{2}"
+	d2 = pattern(
+		conc(
+			mult(
+				d, multiplier(2, 2)
+			)
+		)
+	).fsm(d.chars)
+	assert not d2.accepts("")
+	assert not d2.accepts("1")
+	assert d2.accepts("11")
+	assert not d2.accepts("111")
+
+	# abc|def(ghi|jkl)
+	conventional = pattern(
+		conc(
+			mult(charclass("a"), one),
+			mult(charclass("b"), one),
+			mult(charclass("c"), one),
+		),
+		conc(
+			mult(charclass("d"), one),
+			mult(charclass("e"), one),
+			mult(charclass("f"), one),
+			mult(
+				pattern(
+					conc(
+						mult(charclass("g"), one),
+						mult(charclass("h"), one),
+						mult(charclass("i"), one),
+					),
+					conc(
+						mult(charclass("j"), one),
+						mult(charclass("k"), one),
+						mult(charclass("l"), one),
+					),
+				), one
+			),
+		),
+	).fsm(w.chars)
+	assert not conventional.accepts("a")
+	assert not conventional.accepts("ab")
+	assert conventional.accepts("abc")
+	assert not conventional.accepts("abcj")
+	assert conventional.accepts("defghi")
+	assert conventional.accepts("defjkl")
+
+	# A subtlety in mult reduction.
+	# ([$%\^]|){1} should become ([$%\^])? then [$%\^]?,
+	# ([$%\^]|){1} should NOT become ([$%\^]|) (the pattern alone)
+	assert mult(
+		pattern(
+			conc(),
+			conc(
+				mult(charclass("$%^"), one)
+			)
+		), one
+	).reduce() == mult(charclass("$%^"), qm)
+
+	# nested pattern reduction in a conc
+	# a(d(ab|a*c)) -> ad(ab|a*c)
+	assert conc(
+		mult(charclass("a"), one),
+		mult(
+			pattern(
+				# must contain only one conc. Otherwise, we have e.g. "a(zz|d(ab|a*c))"
+				conc(
+					# can contain anything
+					mult(charclass("d"), one),
+					mult(
+						pattern(
+							conc(
+								mult(charclass("a"), one),
+								mult(charclass("b"), one),
+							),
+							conc(
+								mult(charclass("a"), star),
+								mult(charclass("c"), one),
+							),
+						), one
+					),
+				),
+			), one # must be one. Otherwise, we have e.g. "a(d(ab|a*c)){2}"
+		)
+	).reduce() == conc(
+		mult(charclass("a"), one),
+		mult(charclass("d"), one),
+		mult(
+			pattern(
+				conc(
+					mult(charclass("a"), one),
+					mult(charclass("b"), one),
+				),
+				conc(
+					mult(charclass("a"), star),
+					mult(charclass("c"), one),
+				),
+			), one
+		),
+	)
+
+	# pattern._multprefix()
+
+	# aa, aa -> a, (a|a)
+	assert pattern(
+		conc(
+			mult(charclass("a"), one),
+			mult(charclass("a"), one),
+		),
+		conc(
+			mult(charclass("a"), one),
+			mult(charclass("a"), one),
+		),
+	)._multprefix() == (
+		mult(charclass("a"), one),
+		pattern(
+			conc(
+				mult(charclass("a"), one)
+			),
+		),
+	)
+
+	# abc, aa -> a, (a|bc)
+	assert pattern(
+		conc(
+			mult(charclass("a"), one),
+			mult(charclass("b"), one),
+			mult(charclass("c"), one),
+		),
+		conc(
+			mult(charclass("a"), one),
+			mult(charclass("a"), one),
+		),
+	)._multprefix() == (
+		mult(charclass("a"), one),
+		pattern(
+			conc(
+				mult(charclass("a"), one),
+			),
+			conc(
+				mult(charclass("b"), one),
+				mult(charclass("c"), one),
+			),
+		)
+	)
+
+	# a, bc -> exception
+	try:
+		pattern(
+			conc(
+				mult(charclass("a"), one),
+			),
+			conc(
+				mult(charclass("b"), one),
+				mult(charclass("c"), one),
+			),
+		)._multprefix()
+		assert False
+	except NoMultPrefixException:
+		pass
+
+	# cf{1,2}, cf -> c, (f|f?)
+	assert pattern(
+		conc(
+			mult(charclass("c"), one),
+			mult(charclass("f"), multiplier(1, 2)),
+		),
+		conc(
+			mult(charclass("c"), one),
+			mult(charclass("f"), one),
+		),
+	)._multprefix() == (
+		mult(charclass("c"), one),
+		pattern(
+			conc(
+				mult(charclass("f"), multiplier(1, 2)),
+			),
+			conc(
+				mult(charclass("f"), one),
+			),
+		),
+	)
+
+	# pattern._concprefix() tests
+
+	# aa, aa -> aa, ()
+	assert pattern(
+		conc(
+			mult(charclass("a"), one),
+			mult(charclass("a"), one),
+		),
+		conc(
+			mult(charclass("a"), one),
+			mult(charclass("a"), one),
+		),
+	)._concprefix() == (
+		conc(
+			mult(charclass("a"), one),
+			mult(charclass("a"), one),
+		),
+		pattern(emptystring)
+	)
+
+	# abc, aa -> a, (a|bc)
+	assert pattern(
+		conc(
+			mult(charclass("a"), one),
+			mult(charclass("b"), one),
+			mult(charclass("c"), one),
+		),
+		conc(
+			mult(charclass("a"), one),
+			mult(charclass("a"), one),
+		),
+	)._concprefix() == (
+		conc(
+			mult(charclass("a"), one),
+		),
+		pattern(
+			conc(
+				mult(charclass("a"), one),
+			),
+			conc(
+				mult(charclass("b"), one),
+				mult(charclass("c"), one),
+			),
+		)
+	)
+
+	# a, bc -> emptystring, (a|bc)
+	assert pattern(
+		conc(
+			mult(charclass("a"), one),
+		),
+		conc(
+			mult(charclass("b"), one),
+			mult(charclass("c"), one),
+		),
+	)._concprefix() == (
+		emptystring,
+		pattern(
+			conc(
+				mult(charclass("a"), one),
+			),
+			conc(
+				mult(charclass("b"), one),
+				mult(charclass("c"), one),
+			),
+		)
+	)
+
+	# cf{1,2}, cf -> cf, (f?|)
+	assert pattern(
+		conc(
+			mult(charclass("c"), one),
+			mult(charclass("f"), multiplier(1, 2)),
+		),
+		conc(
+			mult(charclass("c"), one),
+			mult(charclass("f"), one),
+		),
+	)._concprefix() == (
+		conc(
+			mult(charclass("c"), one),
+			mult(charclass("f"), one),
+		),
+		pattern(
+			emptystring,
+			conc(
+				mult(charclass("f"), qm),
+			),
+		),
+	)
+
+	# ZA|ZB|ZC -> Z, A|B|C
+	assert pattern(
+		conc(
+			mult(charclass("Z"), one),
+			mult(charclass("A"), one),
+		),
+		conc(
+			mult(charclass("Z"), one),
+			mult(charclass("B"), one),
+		),
+		conc(
+			mult(charclass("Z"), one),
+			mult(charclass("C"), one),
+		),
+	)._concprefix() == (
+		conc(mult(charclass("Z"), one)),
+		pattern(
+			conc(mult(charclass("A"), one)),
+			conc(mult(charclass("B"), one)),
+			conc(mult(charclass("C"), one)),
+		)
+	)
+
+	# Z+A|ZB|ZZC -> Z*, A|B|ZC
+	assert pattern(
+		conc(
+			mult(charclass("Z"), plus),
+			mult(charclass("A"), one),
+		),
+		conc(
+			mult(charclass("Z"), one),
+			mult(charclass("B"), one),
+		),
+		conc(
+			mult(charclass("Z"), one),
+			mult(charclass("Z"), one),
+			mult(charclass("C"), one),
+		),
+	)._concprefix() == (
+		conc(mult(charclass("Z"), one)),
+		pattern(
+			conc(
+				mult(charclass("Z"), star),
+				mult(charclass("A"), one),
+			),
+			conc(
+				mult(charclass("B"), one),
+			),
+			conc(
+				mult(charclass("Z"), one),
+				mult(charclass("C"), one),
+			),
+		),
+	)
+
+	# a{2}b|a+c -> a, (ab|a*c)
+	assert pattern(
+		conc(
+			mult(charclass("a"), multiplier(2, 2)),
+			mult(charclass("b"), one),
+		),
+		conc(
+			mult(charclass("a"), plus),
+			mult(charclass("c"), one),
+		)
+	)._concprefix() == (
+		conc(mult(charclass("a"), one)),
+		pattern(
+			conc(
+				mult(charclass("a"), one),
+				mult(charclass("b"), one),
+			),
+			conc(
+				mult(charclass("a"), star),
+				mult(charclass("c"), one),
+			),
+		),
+	)
+
 	# make sure recursion problem in reduce()
 	# has gone away
 	emptystring + mult(
@@ -1468,8 +1980,8 @@ if __name__ == '__main__':
 
 	# charclass equality
 	assert charclass("a") == charclass("a")
-	assert charclass("a", negateMe=True) == charclass("a", negateMe=True)
-	assert charclass("a", negateMe=True) != charclass("a")
+	assert ~charclass("a") == ~charclass("a")
+	assert ~charclass("a") != charclass("a")
 	assert charclass("ab") == charclass("ba")
 
 	# charclass.regex()
@@ -1497,76 +2009,74 @@ if __name__ == '__main__':
 	assert W.regex() == "\\W"
 	assert D.regex() == "\\D"
 	assert S.regex() == "\\S"
-	assert charclass(negateMe=True).regex() == "."
-	assert charclass("", negateMe=True).regex() == "."
-	assert charclass("a", negateMe=True).regex() == "[^a]"
-	assert charclass("{", negateMe=True).regex() == "[^{]"
-	assert charclass("\t", negateMe=True).regex() == "[^\\t]"
-	assert charclass("^", negateMe=True).regex() == "[^\\^]"
+	assert dot.regex() == "."
+	assert (~charclass("")).regex() == "."
+	assert (~charclass("a")).regex() == "[^a]"
+	assert (~charclass("{")).regex() == "[^{]"
+	assert (~charclass("\t")).regex() == "[^\\t]"
+	assert (~charclass("^")).regex() == "[^\\^]"
 
 	# charclass parsing
 	assert charclass.match("a", 0) == (charclass("a"), 1)
 	assert charclass.match("aa", 1) == (charclass("a"), 2)
 	assert charclass.match("a$", 1) == (charclass("$"), 2)
-	assert charclass.match(".", 0) == (charclass(negateMe=True), 1)
+	assert charclass.match(".", 0) == (dot, 1)
 	try:
 		charclass.match("[", 0)
 		assert False
-	except ParseFailureException:
+	except MatchFailureException:
 		pass
 	try:
 		charclass.match("a", 1)
 		assert False
-	except ParseFailureException:
+	except MatchFailureException:
 		pass
 
 	# charclass set operations
+	
+	# charclass negation
+	assert ~~charclass("a") == charclass("a")
+	assert charclass("a") == ~~charclass("a")
 
-	# negate()
-	# ¬[ab] = [^ab]
-	assert charclass("ab").negate() == charclass("ab", negateMe=True)
-	# ¬[^ab] = [ab]
-	assert charclass("ab", negateMe=True).negate() == charclass("ab")
-
-	# union()
+	# charclass union
 	# [ab] u [bc] = [abc]
-	assert charclass("ab").union(charclass("bc")) == charclass("abc")
+	assert charclass("ab") | charclass("bc") == charclass("abc")
 	# [ab] u [^bc] = [^c]
-	assert charclass("ab").union(charclass("bc", negateMe=True)) == charclass("c", negateMe=True)
+	assert charclass("ab") | ~charclass("bc") == ~charclass("c")
 	# [^a] u [bc] = [^a]
-	assert charclass("ab", negateMe=True).union(charclass("bc")) == charclass("a", negateMe=True)
+	assert ~charclass("ab") | charclass("bc") == ~charclass("a")
 	# [^ab] u [^bc] = [^b]
-	assert charclass("ab", negateMe=True).union(charclass("bc", negateMe=True)) == charclass("b", negateMe=True)
+	assert ~charclass("ab") | ~charclass("bc") == ~charclass("b")
 
-	# difference()
+	# charclass subtraction
 	# [ab] - [bc] = [a]
-	assert charclass("ab").difference(charclass("bc")) == charclass("a")
+	assert charclass("ab") - charclass("bc") == charclass("a")
 	# [ab] - [^bc] = [b]
-	assert charclass("ab").difference(charclass("bc", negateMe=True)) == charclass("b")
+	assert charclass("ab") - ~charclass("bc") == charclass("b")
 	# [^ab] - [bc] = [^abc]
-	assert charclass("ab", negateMe=True).difference(charclass("bc")) == charclass("abc", negateMe=True)
+	assert ~charclass("ab") - charclass("bc") == ~charclass("abc")
 	# [^ab] - [^bc] = [c]
-	assert charclass("ab", negateMe=True).difference(charclass("bc", negateMe=True)) == charclass("c")
+	assert ~charclass("ab") - ~charclass("bc") == charclass("c")
 
-	# intersection()
+	# charclass intersection
 	# [ab] n [bc] = [b]
-	assert charclass("ab").intersection(charclass("bc")) == charclass("b")
+	assert charclass("ab") & charclass("bc") == charclass("b")
 	# [ab] n [^bc] = [a]
-	assert charclass("ab").intersection(charclass("bc", negateMe=True)) == charclass("a")
+	assert charclass("ab") & ~charclass("bc") == charclass("a")
 	# [^ab] n [bc] = [c]
-	assert charclass("ab", negateMe=True).intersection(charclass("bc")) == charclass("c")
+	assert ~charclass("ab") & charclass("bc") == charclass("c")
 	# [^ab] n [^bc] = [^abc]
-	assert charclass("ab", negateMe=True).intersection(charclass("bc", negateMe=True)) == charclass("abc", negateMe=True)
+	assert ~charclass("ab") & ~charclass("bc") == ~charclass("abc")
 
 	# issubset()
 	# [a] < [ab] = True
 	assert charclass("a").issubset(charclass("ab"))
 	# [c] < [^ab] = True
-	assert charclass("c").issubset(charclass("ab", negateMe=True))
+	assert charclass("c").issubset(~charclass("ab"))
 	# [^c] < [ab] = False
-	assert not charclass("c", negateMe=True).issubset(charclass("ab"))
+	assert not (~charclass("c")).issubset(charclass("ab"))
 	# [^ab] < [^a] = True
-	assert charclass("ab", negateMe=True).issubset(charclass("a", negateMe=True))
+	assert (~charclass("ab")).issubset(~charclass("a"))
 
 	# mult equality
 	assert mult(charclass("a"), one) == mult(charclass("a"), one)
@@ -1604,7 +2114,7 @@ if __name__ == '__main__':
 		13
 	)
 	assert mult.match("abcde[^fg]*", 5) == (
-		mult(charclass("fg", negateMe=True), star),
+		mult(~charclass("fg"), star),
 		11
 	)
 	assert mult.match("abcde[^fg]*h{5}[a-z]+", 11) == (
@@ -1622,6 +2132,7 @@ if __name__ == '__main__':
 	assert mult(charclass("a"), qm).reduce() == mult(charclass("a"), qm)
 	# mult -> charclass
 	assert mult(charclass("a"), one).reduce() == charclass("a")
+	assert mult(charclass("a"), zero).reduce() == charclass()
 
 	# mult contains a pattern containing an empty conc? Pull the empty
 	# part out where it's external
@@ -1638,13 +2149,13 @@ if __name__ == '__main__':
 		), multiplier(0, 2)
 	)
 
-	# but don't do this if emptystring is the only thing inside the pattern.
-	# that would be bad
+	# This happens even if emptystring is the only thing left inside the mult
+	assert mult(nothing, inf).reduce() == charclass()
 	assert mult(
 		pattern(
 			emptystring
 		), multiplier(2, 2)
-	).reduce() == mult(pattern(emptystring), multiplier(2, 2))
+	).reduce() == emptystring
 
 	# mult contains a pattern containing a single conc containing a single mult?
 	# that can be reduced greatly
@@ -1700,7 +2211,7 @@ if __name__ == '__main__':
 		mult(charclass("c"), one),
 		mult(charclass("d"), one),
 		mult(charclass("e"), one),
-		mult(charclass("fg", negateMe=True), star),
+		mult(~charclass("fg"), star),
 		mult(charclass("h"), multiplier(5, 5)),
 		mult(charclass("abcdefghijklmnopqrstuvwxyz"), plus),
 	).regex() == "abcde[^fg]*h{5}[a-z]+"
@@ -1713,7 +2224,7 @@ if __name__ == '__main__':
 			mult(charclass("c"), one),
 			mult(charclass("d"), one),
 			mult(charclass("e"), one),
-			mult(charclass("fg", negateMe=True), star),
+			mult(~charclass("fg"), star),
 			mult(charclass("h"), multiplier(5, 5)),
 			mult(charclass("abcdefghijklmnopqrstuvwxyz"), plus),
 		), 21
@@ -1730,9 +2241,9 @@ if __name__ == '__main__':
 			mult(charclass("a"), one),
 			mult(charclass("b"), one),
 			mult(charclass("c"), one),
-			mult(charclass(negateMe=True), one),
-			mult(charclass(negateMe=True), one),
-			mult(charclass(negateMe=True), one),
+			mult(dot, one),
+			mult(dot, one),
+			mult(dot, one),
 		),
 		6
 	)
@@ -1946,32 +2457,8 @@ if __name__ == '__main__':
 		)
 	)
 
-#	assert pattern(
-#		conc(
-#			mult(charclass("a"), multiplier(1, 1)),
-#			mult(charclass("a"), multiplier(1, 1))
-#		),
-#		conc(
-#			mult(charclass("a"), multiplier(1, 1)),
-#			mult(charclass("b"), multiplier(1, 1)),
-#			mult(charclass("c"), multiplier(1, 1))
-#		)
-#	).commonprefix() == mult(charclass("a"), multiplier(1, 1))
-#
-#	assert pattern(
-#		conc(
-#			mult(charclass("a"), multiplier(2, 2)),
-#			mult(charclass("b"), one),
-#		),
-#		conc(
-#			mult(charclass("a"), plus),
-#			mult(charclass("c"), one),
-#		)
-#	).commonprefix() == mult(charclass("a"), one)
-
 	# common prefix reduction of pattern
 	# a{2}b|a+c -> a{2}(ab|a*c)
-	# TODO: FIX THIS.
 	assert pattern(
 		conc(
 			mult(charclass("a"), multiplier(2, 2)),
@@ -2087,37 +2574,42 @@ if __name__ == '__main__':
 		), multiplier(2, 3)
 	)
 
-	# multiplier & ("intersection") operator tests
+	# multiplier "intersection" operator tests
 	assert zero & zero == zero
 	assert zero & qm   == zero
 	assert zero & one  == zero
 	assert zero & star == zero
 	assert zero & plus == zero
 	assert zero & inf  == zero
+
 	assert qm   & zero == zero
 	assert qm   & qm   == qm
 	assert qm   & one  == zero
 	assert qm   & star == qm
 	assert qm   & plus == qm
 	assert qm   & inf  == qm
+
 	assert one  & zero == zero
 	assert one  & qm   == zero
 	assert one  & one  == one
 	assert one  & star == zero
 	assert one  & plus == one
 	assert one  & inf  == one
+
 	assert star & zero == zero
 	assert star & qm   == qm
 	assert star & one  == zero
 	assert star & star == star
 	assert star & plus == star
 	assert star & inf  == star
+
 	assert plus & zero == zero
 	assert plus & qm   == qm
 	assert plus & one  == one
 	assert plus & star == star
 	assert plus & plus == plus
 	assert plus & inf  == plus
+
 	assert inf  & zero == zero
 	assert inf  & qm   == qm
 	assert inf  & one  == one
@@ -2179,7 +2671,7 @@ if __name__ == '__main__':
 
 	# pattern._concsuffix() tests
 
-	# a | bc -> (a|bc)
+	# a | bc -> (a|bc), emptystring
 	assert pattern(
 		conc(
 			mult(charclass("a"), one),
@@ -2188,21 +2680,20 @@ if __name__ == '__main__':
 			mult(charclass("b"), one),
 			mult(charclass("c"), one),
 		),
-	)._concsuffix() == conc(
-		mult(
-			pattern(
-				conc(
-					mult(charclass("a"), one),
-				),
-				conc(
-					mult(charclass("b"), one),
-					mult(charclass("c"), one),
-				),
-			), one
+	)._concsuffix() == (
+		pattern(
+			conc(
+				mult(charclass("a"), one),
+			),
+			conc(
+				mult(charclass("b"), one),
+				mult(charclass("c"), one),
+			),
 		),
+		emptystring
 	)
 
-	# aa, bca -> (a|bc)a
+	# aa, bca -> (a|bc), a
 	assert pattern(
 		conc(
 			mult(charclass("a"), one),
@@ -2213,22 +2704,20 @@ if __name__ == '__main__':
 			mult(charclass("c"), one),
 			mult(charclass("a"), one),
 		),
-	)._concsuffix() == conc(
-		mult(
-			pattern(
-				conc(
-					mult(charclass("a"), one),
-				),
-				conc(
-					mult(charclass("b"), one),
-					mult(charclass("c"), one),
-				),
-			), one,
+	)._concsuffix() == (
+		pattern(
+			conc(
+				mult(charclass("a"), one),
+			),
+			conc(
+				mult(charclass("b"), one),
+				mult(charclass("c"), one),
+			),
 		),
-		mult(charclass("a"), one),
+		conc(mult(charclass("a"), one)),
 	)
 
-	# xyza | abca | a -> (xyz|abc|)a -> (xyz|abc)?a
+	# xyza | abca | a -> (xyz|abc|), a
 	assert pattern(
 		conc(
 			mult(charclass("x"), one),
@@ -2245,25 +2734,24 @@ if __name__ == '__main__':
 		conc(
 			mult(charclass("a"), one),
 		),
-	)._concsuffix() == conc(
-		mult(
-			pattern(
-				conc(
-					mult(charclass("x"), one),
-					mult(charclass("y"), one),
-					mult(charclass("z"), one),
-				),
-				conc(
-					mult(charclass("a"), one),
-					mult(charclass("b"), one),
-					mult(charclass("c"), one),
-				),
-			), qm
+	)._concsuffix() == (
+		pattern(
+			emptystring,
+			conc(
+				mult(charclass("x"), one),
+				mult(charclass("y"), one),
+				mult(charclass("z"), one),
+			),
+			conc(
+				mult(charclass("a"), one),
+				mult(charclass("b"), one),
+				mult(charclass("c"), one),
+			),
 		),
-		mult(charclass("a"), one),
+		conc(mult(charclass("a"), one)),
 	)
 
-	# f{2,3}c, fc -> (f{1,2}|)fc -> (f{1,2})?fc
+	# f{2,3}c, fc -> (f{1,2}|), fc
 	assert pattern(
 		conc(
 			mult(charclass("f"), multiplier(2, 3)),
@@ -2273,19 +2761,20 @@ if __name__ == '__main__':
 			mult(charclass("f"), one),
 			mult(charclass("c"), one),
 		),
-	)._concsuffix() == conc(
-		mult(
-			pattern(
-				conc(
-					mult(charclass("f"), multiplier(1, 2)),
-				),
-			), qm
+	)._concsuffix() == (
+		pattern(
+			emptystring,
+			conc(
+				mult(charclass("f"), multiplier(1, 2)),
+			),
 		),
-		mult(charclass("f"), one),
-		mult(charclass("c"), one),
+		conc(
+			mult(charclass("f"), one),
+			mult(charclass("c"), one),
+		)
 	)
 
-	# e | axe -> "(|ax)e" -> "(ax)?e"
+	# e | axe -> "(|ax)", e
 	assert pattern(
 		conc(
 			mult(charclass("e"), one),
@@ -2295,19 +2784,18 @@ if __name__ == '__main__':
 			mult(charclass("x"), one),
 			mult(charclass("e"), one),
 		),
-	)._concsuffix() == conc(
-		mult(
-			pattern(
-				conc(
-					mult(charclass("a"), one),
-					mult(charclass("x"), one),
-				),
-			), qm
+	)._concsuffix() == (
+		pattern(
+			emptystring,
+			conc(
+				mult(charclass("a"), one),
+				mult(charclass("x"), one),
+			),
 		),
-		mult(charclass("e"), one),
+		conc(mult(charclass("e"), one))
 	)
 
-	# aa | aa -> ()aa -> aa
+	# aa | aa -> (), aa
 	assert pattern(
 		conc(
 			mult(charclass("a"), one),
@@ -2317,108 +2805,13 @@ if __name__ == '__main__':
 			mult(charclass("a"), one),
 			mult(charclass("a"), one),
 		),
-	)._concsuffix() == conc(
-		mult(charclass("a"), one),
-		mult(charclass("a"), one),
+	)._concsuffix() == (
+		pattern(emptystring),
+		conc(
+			mult(charclass("a"), one),
+			mult(charclass("a"), one),
+		)
 	)
-
-#	# _concprefix() tests
-#
-#	# aa, aa -> aa() -> aa
-#	print(pattern(
-#		conc(
-#			mult(charclass("a"), one),
-#			mult(charclass("a"), one),
-#		),
-#		conc(
-#			mult(charclass("a"), one),
-#			mult(charclass("a"), one),
-#		),
-#	)._concprefix())
-#	assert pattern(
-#		conc(
-#			mult(charclass("a"), one),
-#			mult(charclass("a"), one),
-#		),
-#		conc(
-#			mult(charclass("a"), one),
-#			mult(charclass("a"), one),
-#		),
-#	)._concprefix() == conc(
-#		mult(charclass("a"), one),
-#		mult(charclass("a"), one),
-#	)
-#
-#	# abc, aa -> a(a|bc)
-#	assert pattern(
-#		conc(
-#			mult(charclass("a"), one),
-#			mult(charclass("b"), one),
-#			mult(charclass("c"), one),
-#		),
-#		conc(
-#			mult(charclass("a"), one),
-#			mult(charclass("a"), one),
-#		),
-#	)._concprefix() == conc(
-#		mult(charclass("a"), one),
-#		mult(
-#			pattern(
-#				conc(
-#					mult(charclass("a"), one),
-#				),
-#				conc(
-#					mult(charclass("b"), one),
-#					mult(charclass("c"), one),
-#				),
-#			), one,
-#		),
-#	)
-#
-#	# a, bc -> (a|bc)
-#	assert pattern(
-#		conc(
-#			mult(charclass("a"), one),
-#		),
-#		conc(
-#			mult(charclass("b"), one),
-#			mult(charclass("c"), one),
-#		),
-#	)._concprefix() == conc(
-#		mult(
-#			pattern(
-#				conc(
-#					mult(charclass("a"), one),
-#				),
-#				conc(
-#					mult(charclass("b"), one),
-#					mult(charclass("c"), one),
-#				),
-#			), one
-#		),
-#	)
-#
-#	# cf{1,2}, cf -> cf(f?|) -> cf(f?)?
-#	assert pattern(
-#		conc(
-#			mult(charclass("c"), one),
-#			mult(charclass("f"), multiplier(1, 2)),
-#		),
-#		conc(
-#			mult(charclass("c"), one),
-#			mult(charclass("f"), one),
-#		),
-#	)._concprefix() == conc(
-#		mult(charclass("c"), one),
-#		mult(charclass("f"), one),
-#		mult(
-#			pattern(
-#				conc(
-#					mult(charclass("f"), qm)
-#				)
-#			), qm
-#		),
-#	)
 
 	# concatenation tests (__add__())
 
