@@ -147,7 +147,7 @@ class lego:
 
 	def __and__(self, other):
 		'''
-			Intersection function. Return a lego piece that can match any string
+			Intersection method. Return a lego piece that can match any string
 			that both self and other can match. Fairly elementary results relating
 			to regular languages and finite state machines show that this is
 			possible, but implementation is a BEAST in most cases. Here, we convert
@@ -161,7 +161,7 @@ class lego:
 		'''
 			Return a set of all unique characters used in this lego piece.
 			In theory this could be a static property, self.alphabet, not
-			a function, self.alphabet(), but in the vast majority of cases
+			a method, self.alphabet(), but in the vast majority of cases
 			this will never be queried so it's a waste of computation to
 			calculate it every time a lego piece is instantiated.
 		'''

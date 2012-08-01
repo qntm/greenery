@@ -577,7 +577,7 @@ class fsm:
 				del self.lefts[self.right]
 				
 				for left in self.lefts:
-					# This looks a little overengineered
+					# TODO: This looks a little overengineered
 					transition = self.lefts[left] + loop
 					del self.lefts[left]
 					self.__addTransition(left, transition)
