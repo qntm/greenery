@@ -1,4 +1,4 @@
-# Copyright (C) 2010 by Sam Hughes
+# Copyright (C) 2012 by Sam Hughes
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -36,6 +36,7 @@ class fsm:
 		This class also has some pretty powerful methods which allow FSMs to
 		be concatenated, alternated between, multiplied, looped (Kleene star
 		closure), intersected, and simplified.
+		The majority of these methods are available using operator overloads.
 	'''
 	def __setattr__(self, name, value):
 		'''Immutability prevents some potential problems.'''
@@ -44,7 +45,7 @@ class fsm:
 	def __init__(self, alphabet, states, initialState, finalStates, map):
 		'''Initialise the hard way due to immutability.'''
 		self.__dict__["alphabet"    ] = alphabet
-		self.__dict__["states"      ] = states
+		self.__dict__["states"      ] = set(states)
 		self.__dict__["initialState"] = initialState
 		self.__dict__["finalStates" ] = set(finalStates)
 		self.__dict__["map"         ] = map
@@ -76,7 +77,8 @@ class fsm:
 			functionally equivalent: that is, they have the same
 			finality and the same transition function.
 			Equivalent states appear quite commonly in automatically-
-			generated FSMs.
+			generated FSMs, where it's equally common to merge()
+			them once discovered.
 			This could be broadened to 3 or more states quite simply...
 		'''
 		if (state1 in self.finalStates) != (state2 in self.finalStates):
@@ -102,7 +104,7 @@ class fsm:
 			the second state with references to the first. Return a new
 			FSM with the merger carried out.
 			You should check that equivalent(state1, state2) returns True
-			before doing this. Nothing is actually stopping you otherwise
+			before doing this. Nothing is actually stopping you though
 		'''
 
 		# this is counterproductive
@@ -110,13 +112,13 @@ class fsm:
 			return self
 
 		# states could contain duplicates in theory -_-
-		states = [x for x in self.states if x != state2]
+		states = [s for s in self.states if s != state2]
 
 		# yes, the initial state could be a dupe
 		initialState = state1 if self.initialState == state2 else self.initialState
 
 		# finalStates could also contain dupes
-		finalStates = [state1 if x == state2 else x for x in self.finalStates]
+		finalStates = [state1 if s == state2 else s for s in self.finalStates]
 
 		# map
 		map = {}
@@ -177,13 +179,13 @@ class fsm:
 			return self
 
 		# states
-		states = [x for x in self.states if x != state1] + [state2]
+		states = [s for s in self.states if s != state1] + [state2]
 
 		# initial state
 		initialState = state2 if self.initialState == state1 else self.initialState
 
 		# finalStates could also contain dupes
-		finalStates = [x for x in self.finalStates if x != state1]
+		finalStates = [s for s in self.finalStates if s != state1]
 		if state1 in self.finalStates:
 			finalStates.append(state2)
 
@@ -212,11 +214,12 @@ class fsm:
 
 	def renumber(self):
 		'''
-			Automatically-generated FSMs often have really ODD
+			Automatically-generated FSMs often have really strange
 			states, like frozensets or tuples. These are hard to
 			read in a printout. So, replace whatever states we currently
 			have with numbers beginning at zero. NICE
 		'''
+		# TODO: make it so state 0 is the initial state
 		new = self
 		states = list(self.states)
 		for i in range(len(states)):
@@ -268,6 +271,7 @@ class fsm:
 			For example, if self accepts "0*" and other accepts "1+(0|1)",
 			will return a finite state machine accepting "0*1+(0|1)".
 			Accomplished by effectively following non-deterministically.
+			Call using "fsm3 = fsm1 + fsm2"
 		'''
 		# alphabets must be equal
 		if other.alphabet != self.alphabet:
@@ -367,7 +371,12 @@ class fsm:
 		return _crawl(self.alphabet, newInitialState, isFinal, getNext)
 
 	def __mul__(self, multiplier):
-		'''Given an FSM and a multiplier, return the multiplied FSM.'''
+		'''
+			Given an FSM and a multiplier, return the multiplied FSM.
+			The minimum has to be an integer, but the maximum may be None
+			to stand for infinity.
+			Call using "fsm2 = fsm1 * (0, 1)"
+		'''
 		min, max = multiplier
 
 		# worked example: (min, max) = (5, 7) or (5, None)
@@ -400,12 +409,7 @@ class fsm:
 			Alternation.
 			Return a finite state machine which accepts any sequence of symbols
 			that is accepted by either self or other.
-
-			The "superstates"/"statesets" used to make the new FSM has states of the
-			form "(
-				state in self that you would be in right now
-				state in other that you would be in right now,
-			)"
+			Call using "fsm3 = fsm1 | fsm2"
 		'''
 
 		# alphabets must be equal
@@ -427,12 +431,7 @@ class fsm:
 			return currentState[0] in self.finalStates \
 			or currentState[1] in other.finalStates
 
-		return _crawl(
-			self.alphabet,
-			newInitialState,
-			isFinal,
-			getNext
-		)
+		return _crawl(self.alphabet, newInitialState, isFinal, getNext)
 
 	def __and__(self, other):
 		'''
@@ -440,8 +439,7 @@ class fsm:
 			Take FSMs and AND them together. That is, return an FSM which
 			accepts any sequence of symbols that is accepted by all of the original
 			FSMs.
-			
-			The superstate is (state in self, state in other).
+			Call using "fsm3 = fsm1 & fsm2"
 		'''
 
 		# alphabets must be equal
@@ -463,26 +461,21 @@ class fsm:
 			return currentState[0] in self.finalStates \
 			and currentState[1] in other.finalStates
 
-		return _crawl(
-			self.alphabet,
-			newInitialState,
-			isFinal,
-			getNext
-		)
+		return _crawl(self.alphabet, newInitialState, isFinal, getNext)
 
 	def pattern(self):
 		'''
 			This is the big kahuna of this module.
 			Turn the present FSM into a regular expression pattern object, as imported
 			from the lego module.
-			
+
 			This is accomplished by considering the FSM as a set of "equations"
 			which relate state-sets to other state-sets using transitions.
 			We start at a state-set composed of all the possible final
-			states... then we find all the possible routes to that final
-			state-set.
+			states, then we find all the possible routes to that final
+			state-set, using substitution.
 		'''
-		from lego import nothing, charclass, emptystring, NoRegexException, star
+		from lego import nothing, charclass, emptystring, star
 
 		class equation:
 			'''
@@ -555,10 +548,13 @@ class fsm:
 						continue
 
 					# "None" is considered to be a stand-in for "every symbol
-					# not explicitly named in the rest of our alphabet"
-					# That is, [^abcd...z] or similar
+					# not explicitly named in the rest of our alphabet".
+					# That is, [^abcd...z] or similar. "None" should never actually
+					# be used as a character in a charclass and throws an exception
+					# when you try.
 					if symbol is None:
 						self.__addTransition(left, ~charclass(fsm.alphabet - {None}))
+
 					else:
 						self.__addTransition(left, charclass({symbol}))
 
@@ -569,9 +565,6 @@ class fsm:
 			def __addTransition(self, left, element):
 				if left not in self.lefts:
 					self.lefts[left] = nothing
-
-				# Can't put a pattern in a set of what are basically alternate
-				# possibilities.
 				self.lefts[left] |= element
 
 			# remove the self-transition from an equation
@@ -579,11 +572,12 @@ class fsm:
 			def applyLoops(self):
 				if self.right not in self.lefts:
 					return
-				
+
 				loop = self.lefts[self.right] * star
 				del self.lefts[self.right]
 				
 				for left in self.lefts:
+					# This looks a little overengineered
 					transition = self.lefts[left] + loop
 					del self.lefts[left]
 					self.__addTransition(left, transition)
@@ -599,7 +593,7 @@ class fsm:
 				# Now how about dynamic routes here
 				for otherLeft in other.lefts:
 
-					# self-transition? skip
+					# self-transition?
 					if otherLeft == other.right:
 						raise Exception("Did you forget applyLoops()?")
 
@@ -622,7 +616,10 @@ class fsm:
 				string += "\n"
 				return string
 
-		# iterate over a growing list, generating equations
+		# Now that we have the equations down, here is how we actually
+		# run this thing.
+
+		# Iterate over a growing list, generating equations
 		equations = [equation(self.finalStates, self)]
 		i = 0;
 		while i < len(equations):
@@ -643,15 +640,15 @@ class fsm:
 			for j in reversed(range(i)):
 				equations[j].eliminate(equations[i])
 
-		# by this point all back-substitutions have been performed and the final
+		# By this point all back-substitutions have been performed and the final
 		# element in equations[] should be ready to convert into a regex.
 		# Only "None" (static transitions to final states) should be left after
 		# the back-substitution is completed.
 		try:
 			return equations[0].lefts[None]
 
-		# If no such transition exists, or it is empty, then an exception arises
-		# since there are no static strings leading to the final state-set.
+		# If no such transition exists, or it is empty, then an exception arises,
+		# as there are no static strings leading to the final state-set.
 		# That means there's no pattern. So:
 		except KeyError:
 			return nothing
@@ -688,26 +685,13 @@ def epsilon(alphabet):
 		},
 	)
 
-def acceptall(alphabet):
-	'''
-		Return an FSM matching every possible string,
-		including the empty string.
-	'''
-	return fsm(
-		alphabet     = alphabet,
-		states       = {0},
-		initialState = 0,
-		finalStates  = {0},
-		map          = {
-			0: dict([(symbol, 0) for symbol in alphabet]),
-		},
-	)
-
 def _crawl(alphabet, initialState, isFinal, getNext):
 	'''
 		Given the above conditions and instructions, crawl a new
 		unknown FSM, mapping its states, final states and
 		transitions. Return the new one.
+		This is a pretty powerful procedure which could potentially go on
+		forever if you supply an evil version of getNext()
 	'''
 
 	states = [initialState] # will convert to set later
@@ -735,14 +719,12 @@ def _crawl(alphabet, initialState, isFinal, getNext):
 
 		i += 1
 
-	states = set(states)
-
 	result = fsm(alphabet, states, initialState, finalStates, map)
 	result = result.automerge()
 	result = result.renumber()
 	return result
 
-# unit tests
+# Unit tests.
 if __name__ == "__main__":
 
 	# Odd bug with fsm.__add__(), exposed by "[bc]*c"
@@ -1095,8 +1077,5 @@ if __name__ == "__main__":
 	assert starred.accepts("aaba")
 	assert not starred.accepts("aabb")
 	assert starred.accepts("abababa")
-
-	assert acceptall({"a", "b"}).pattern().regex() == "[ab]*"
-	assert acceptall({"a", "b", None}).pattern().regex() == ".*"
 
 	print("OK")

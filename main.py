@@ -1,4 +1,4 @@
-# Copyright (C) 2010 by Sam Hughes
+# Copyright (C) 2012 by Sam Hughes
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,7 +22,6 @@
 
 import sys
 from lego import charclass, multiplier, mult, conc, pattern, NoRegexException
-from fsm import acceptall
 
 def doit(*strings):
 
@@ -40,23 +39,26 @@ if len(strings) > 0:
 
 # no strings supplied? run unit tests
 else:
-	assert doit("[bc]*[ab]*", "[ab]*[bc]*") == "([ab]*a|[bc]*c)?b*"
 	try:
 		doit("a", "b")
 		assert(False)
 	except NoRegexException:
 		pass
 	assert doit("a.b") == "a.b" # not "a[ab]b"
-	assert doit("\\d{2}", "0.") == "0\\d"
-	assert doit("abc...", "...def") == "abcdef"
 	assert doit("a*", "b*") == ""
 	assert doit("\\d{4}") == "\\d{4}"
 	assert doit("\\d", ".") == "\\d"
+	assert doit("\\d{2}", "0.") == "0\\d"
 	assert doit("\\d{2}", "19.*") == "19"
 	assert doit("\\d{3}", "19.*") == "19\\d"
-	assert doit("\\d{4}-\\d{2}-\\d{2}", "19.*") == "19\\d\\d-\\d\\d-\\d\\d"
-	assert doit("\\W*", "[a-g0-8$%\\^]+", "[^d]{2,8}") == "[$%\\^]{2,8}"
+	assert doit("abc...", "...def") == "abcdef"
 	assert doit("[ab]*a?b*|[ab]*b?a*") == "[ab]*"
-	assert doit("(aa|bb*aa)a*|((ab|bb*ab)|(aa|bb*aa)a*b)((ab|bb*ab)|(aa|bb*aa)a*b)*(aa|bb*aa)a*|((ab|bb*ab)|(aa|bb*aa)a*b)((ab|bb*ab)|(aa|bb*aa)a*b)*") == "[ab]*a[ab]"
+	assert doit("[bc]*[ab]*", "[ab]*[bc]*") == "([ab]*a|[bc]*c)?b*"
+	assert doit("\\W*", "[a-g0-8$%\\^]+", "[^d]{2,8}") == "[$%\\^]{2,8}"
+	assert doit("\\d{4}-\\d{2}-\\d{2}", "19.*") == "19\\d\\d-\\d\\d-\\d\\d"
 	assert doit("[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]") == "[0-9A-Fa-f]{5}"
+	assert doit(
+		"(aa|bb*aa)a*|((ab|bb*ab)|(aa|bb*aa)a*b)((ab|bb*ab)|(aa|bb*aa)a*b)*" + \
+		"(aa|bb*aa)a*|((ab|bb*ab)|(aa|bb*aa)a*b)((ab|bb*ab)|(aa|bb*aa)a*b)*"
+	) == "[ab]*a[ab]"
 	print("OK")

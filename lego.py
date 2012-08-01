@@ -1,4 +1,4 @@
-# Copyright (C) 2010 by Sam Hughes
+# Copyright (C) 2012 by Sam Hughes
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -34,51 +34,25 @@
 	charclass object.
 	* A charclass is a set of chars, such as "a", "[a-z]", "\\d", ".", with a
 	possible "negated" flag as in "[^a]".
+	* Since these can be combined together freely they are, in the absence of a
+	better metaphor, collectively referred to as lego pieces.
 
-	We also include methods for parsing a string into a pattern object, serialising
-	a pattern object out as a string (or "regular expression", if you will), and
-	for concatenating or alternating between arbitrary "pieces of lego", using
-	overloaded operators.
-	
-	If the FSM module is available, call pattern.fsm() on any pattern to return
-	a finite state machine capable of accepting strings described by the pattern.
+	We also include methods for parsing a string into a pattern object,
+	serialising a pattern object out as a string (or "regular expression", if you
+	will), and for concatenating or alternating between arbitrary "pieces of
+	lego", using overloaded operators.
+
+	If the FSM module is available, call lego.fsm() on any lego piece to return
+	a finite state machine capable of accepting strings described by that piece.
 
 	Most important are the reduce() methods present in charclass, mult, conc and
 	pattern. While there is no such thing as a canonical form for a given regex
-	pattern, these procedures will drastically simplify a regex structure for
-	readability.
+	pattern, these procedures can drastically simplify a regex structure for
+	readability. They're also pretty easy to extend.
 '''
 
 # http://qntm.org/lego
 # http://qntm.org/greenery
-
-escapes = {
-	"\t" : "\\t", # tab
-	"\n" : "\\n", # line feed
-	"\v" : "\\v", # vertical tab
-	"\f" : "\\f", # form feed
-	"\r" : "\\r", # carriage return
-}
-
-# these are the characters carrying special meanings when they appear "outdoors"
-# within a regular expression. To be interpreted literally, they must be
-# escaped with a backslash.
-allSpecial = set("\\[]|().?*+{}")
-
-# these are the characters carrying special meanings when they appear INSIDE a
-# character class (delimited by square brackets) within a regular expression.
-# To be interpreted literally, they must be escaped with a backslash.
-# Notice how much smaller this class is than the one above; note also that the
-# hyphen does NOT appear above.
-classSpecial = set("\\[]^-")
-
-# these are the character ranges which can be used inside square brackets e.g.
-# "[a-z]", "[F-J]". These ranges should be disjoint.
-allowableRanges = {
-	"ABCDEFGHIJKLMNOPQRSTUVWXYZ",
-	"abcdefghijklmnopqrstuvwxyz",
-	"0123456789",
-}
 
 class MatchFailureException(Exception):
 	'''Thrown when parsing fails. Almost always caught and almost never fatal'''
@@ -87,7 +61,8 @@ class MatchFailureException(Exception):
 class lego:
 	'''
 		Parent class for all lego pieces.
-		All lego pieces have some things in common.
+		All lego pieces have some things in common. This parent class mainly
+		hosts documentation though.
 	'''
 
 	def __setattr__(self, name, value):
@@ -96,6 +71,101 @@ class lego:
 			I didn't have this.
 		'''
 		raise Exception("Can't set " + str(self) + " attribute " + str(name) + " to " + str(value))
+
+	def fsm(self, alphabet):
+		'''
+			Return the present lego piece in the form of a finite state machine,
+			as imported from the fsm module.
+		'''
+		pass
+
+	def __repr__(self):
+		'''
+			Actually return a string approximating the instantiation line
+			for the present lego piece. This is different from regex()
+			in that it provides a lot more information for debug purposes.
+			This gets called when you do str(lego).
+		'''
+		pass
+
+	def regex(self):
+		'''
+			Render the present lego piece in the form of a regular expression.
+			Some lego pieces may be created which cannot be rendered in this way.
+			In particular: an empty charclass, a pattern containing no concs,
+			a multiplier of zero.
+		'''
+		pass
+
+	def match(cls, string, i):
+		'''
+			Start at index i in the supplied string and try to match one of the
+			present class. Elementary recursive descent parsing with very little
+			need for flair. The opposite of regex(), above. (In most cases.)
+			Throws a MatchFailureException in the event of failure.
+		'''
+		pass
+
+	def reduce(self):
+		'''
+			The most important and algorithmically complex method. Takes the current
+			lego piece and simplifies it in every way possible, returning a simpler
+			lego piece which is quite probably not of the same class as the original.
+			Approaches vary by the class of the present lego piece.
+
+			It is critically important to (1) always call reduce() on whatever you're
+			returning before you return it and therefore (2) always return something
+			STRICTLY SIMPLER than the current object. Otherwise, infinite loops become
+			possible in reduce() calls.
+		'''
+		pass
+
+	def __add__(self, other):
+		'''
+			Concatenate any two lego pieces, regardless of differing classes. Because
+			reduce() (above) is always called afterwards, the result is as simplified
+			as possible.
+			Call using "a = b + c"
+		'''
+		pass
+
+	def __mul__(self, multiplier):
+		'''
+			Equivalent to repeated concatenation. Multiplier consists of a minimum
+			and a maximum; maximum may be infinite (for Kleene star closure).
+			Call using "a = b * qm"
+		'''
+		pass
+
+	def __or__(self, other):
+		'''
+			Alternate between any two lego pieces, regardless of differing classes.
+			Again, reduce() is called afterwards, usually with excellent results.
+			Call using "a = b | c"
+		'''
+		pass
+
+	def __and__(self, other):
+		'''
+			Intersection function. Return a lego piece that can match any string
+			that both self and other can match. Fairly elementary results relating
+			to regular languages and finite state machines show that this is
+			possible, but implementation is a BEAST in most cases. Here, we convert
+			both lego pieces to FSMs (see fsm(), above) for the intersection, then
+			back to lego afterwards.
+			Call using "a = b & c"
+		'''
+		pass
+
+	def alphabet(self):
+		'''
+			Return a set of all unique characters used in this lego piece.
+			In theory this could be a static property, self.alphabet, not
+			a function, self.alphabet(), but in the vast majority of cases
+			this will never be queried so it's a waste of computation to
+			calculate it every time a lego piece is instantiated.
+		'''
+		pass
 
 	@classmethod
 	def matchStatic(cls, string, i, static):
@@ -135,11 +205,6 @@ class charclass(lego):
 		explicitly listed inside the frozenset. e.g. [^a]. This is very handy
 		if the full alphabet is extremely large, but also requires dedicated
 		combination functions.
-
-		Important note: while symbols are characters in almost every example and
-		in unit tests, a symbol can be any hashable object.
-		However, it's only practical to print a charclass
-		out if its symbols are all individual characters.
 	'''
 
 	def __init__(self, chars=set(), negateMe=False):
@@ -164,8 +229,6 @@ class charclass(lego):
 		return mult(self, multiplier)
 
 	def regex(self):
-		'''Render this charclass in string format'''
-
 		# e.g. \w
 		if self in shorthand.keys():
 			return shorthand[self]
@@ -260,7 +323,6 @@ class charclass(lego):
 		return output
 
 	def fsm(self, alphabet):
-		'''Turn self into a finite state machine'''
 		from fsm import fsm
 		# 0 is initial, 1 is final, 2 is oblivion
 
@@ -293,8 +355,7 @@ class charclass(lego):
 		if self.negated is True:
 			string += "~"
 		string += "charclass("
-		for char in sorted(self.chars, key=str):
-			string += (str(char))
+		string += "".join(str(char) for char in sorted(self.chars, key=str))
 		string += ")"
 		return string
 
@@ -303,14 +364,13 @@ class charclass(lego):
 		return self
 
 	def __add__(self, other):
-		'''Concatenation function'''
 		return mult(self, one) + other
+
+	def alphabet(self):
+		return self.chars
 
 	@classmethod
 	def match(cls, string, i):
-		'''Parse and return a new charclass object starting at the supplied
-		index in the supplied string, or throw an exception on failure'''
-
 		# wildcard ".", "\\w", "\\d", etc.
 		for key in shorthand.keys():
 			try:
@@ -499,15 +559,13 @@ class charclass(lego):
 
 	# set operations
 	def __invert__(self):
+		'''
+			Negate the current charclass. e.g. [ab] becomes [^ab]. Call
+			using "charclass2 = ~charclass1"
+		'''
 		return charclass(self.chars, negateMe=not self.negated)
 
 	def __or__(self, other):
-		'''
-			Find the union (alternation) of lego pieces.
-			For two charclasses there are some useful special case
-			operations we can carry out here. Otherwise just wrap
-			self in a multiplier and fire upwards
-		'''
 		if type(other) != charclass:
 			return mult(self, one) | other
 
@@ -541,7 +599,6 @@ class charclass(lego):
 		return charclass(self.chars - other.chars)
 
 	def __and__(self, other):
-		'''Find the intersection of two charclasses, returning a charclass.'''
 		if type(other) != charclass:
 			return mult(self, one) & other
 
@@ -576,9 +633,9 @@ class charclass(lego):
 w = charclass("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz")
 d = charclass("0123456789")
 s = charclass("\t\n\v\f\r ")
-W = ~charclass("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz")
-D = ~charclass("0123456789")
-S = ~charclass("\t\n\v\f\r ")
+W = ~w
+D = ~d
+S = ~s
 dot = ~charclass()
 
 shorthand = {
@@ -587,6 +644,8 @@ shorthand = {
 	dot : ".",
 }
 
+# TODO: some kind of "bound" class which is like an "integer or None"
+# with some basic arithmetic operations, to replace min and max.
 class multiplier(lego):
 	'''
 		A min and a max. The vast majority of characters in regular
@@ -594,6 +653,10 @@ class multiplier(lego):
 		equivalent to a min of 1 and a max of 1, but many more have explicit
 		multipliers like "*" (min = 0, max = infinity) and so on. We use None to
 		stand for infinity in the value of max.
+		Although it seems odd and can lead to some confusing edge cases, we do
+		also permit a min of None (iff max is None too), as well as allowing a
+		max of 0 (iff min is 0 too). This allows the multipliers "inf" and "zero"
+		to exist, which actually are quite useful in their own special way.
 	'''
 	def __init__(self, min, max):
 		# More useful than "min" and "max" in many situations
@@ -720,7 +783,7 @@ class multiplier(lego):
 		return multiplier(min, max)
 
 	def __add__(self, other):
-		'''Add another multiplier to this one'''
+		'''Add two multipliers together'''
 		if self.min is None or other.min is None:
 			min = None
 		else:
@@ -816,20 +879,6 @@ class multiplier(lego):
 
 		return multiplier(newMin, newMax)
 
-zero = multiplier(0, 0) # has some occasional uses
-qm   = multiplier(0, 1)
-one  = multiplier(1, 1)
-star = multiplier(0, None)
-plus = multiplier(1, None)
-inf  = multiplier(None, None) # has some very occasional uses
-
-symbolic = {
-	qm   : "?",
-	one  : "" ,
-	star : "*",
-	plus : "+",
-}
-
 class NoCommonMultiplicandException(Exception):
 	'''
 		This happens when you try to intersect or subtract two mults which
@@ -848,14 +897,14 @@ class mult(lego):
 		e.g. a, b{2}, c?, d*, [efg]{2,5}, f{2,}, (anysubpattern)+, .*, and so on
 	'''
 
-	def __init__(self, multiplicand, x):
-		if type(multiplicand) not in {charclass, pattern}:
-			raise Exception("Wrong type '" + str(type(multiplicand)) + "' for multiplicand")
-		if type(x) != multiplier:
-			raise Exception("Wrong type '" + str(type(x)) + "' for multiplier")
+	def __init__(self, cand, ier):
+		if type(cand) not in {charclass, pattern}:
+			raise Exception("Wrong type '" + str(type(cand)) + "' for multiplicand")
+		if type(ier) != multiplier:
+			raise Exception("Wrong type '" + str(type(ier)) + "' for multiplier")
 
-		self.__dict__["multiplicand"] = multiplicand
-		self.__dict__["multiplier"]   = x
+		self.__dict__["multiplicand"] = cand
+		self.__dict__["multiplier"]   = ier
 
 	def __eq__(self, other):
 		return type(self) == type(other) and \
@@ -878,16 +927,10 @@ class mult(lego):
 		return mult(self.multiplicand, self.multiplier * multiplier)
 
 	def __add__(self, other):
-		'''Concatenation'''
 		return conc(self) + other
 
 	def __or__(self, other):
-		'''Alternation'''
 		return conc(self) | other
-
-	def __and__(self, other):
-		'''Intersection'''
-		return conc(self) & other
 
 	def __sub__(self, other):
 		'''
@@ -901,7 +944,7 @@ class mult(lego):
 		return mult(self.multiplicand, self.multiplier - other.multiplier)
 
 	def __and__(self, other):
-		'''Find the shared part of two mults.'''
+		# TODO: is there a bug here?
 		if type(other) != mult:
 			return conc(self) & other
 
@@ -910,11 +953,10 @@ class mult(lego):
 
 		return mult(self.multiplicand, self.multiplier & other.multiplier)
 
+	def alphabet(self):
+		return self.multiplicand.alphabet()
+
 	def reduce(self):
-		'''
-			Return a lego piece with the same matching power but
-			potentially reduced complexity.
-		'''
 		# If our multiplicand is a pattern containing an empty conc()
 		# we can pull that "optional" bit out into our own multiplier
 		# instead.
@@ -946,7 +988,7 @@ class mult(lego):
 		if self.multiplier == one:
 			return self.multiplicand.reduce()
 	
-		# Try recursively reducing our internals
+		# Try recursively reducing our internal
 		reducedMultiplicand = self.multiplicand.reduce()
 		# "bulk up" smaller lego pieces to pattern if need be
 		if type(reducedMultiplicand) == mult:
@@ -961,7 +1003,7 @@ class mult(lego):
 		# e.g. ([ab])* -> [ab]*
 		if type(self.multiplicand) == pattern \
 		and len(self.multiplicand.concs) == 1:
-			singleton = [x for x in self.multiplicand.concs][0]
+			singleton = [c for c in self.multiplicand.concs][0]
 			if len(singleton.mults) == 1:
 				return mult(
 					singleton.mults[0].multiplicand,
@@ -971,8 +1013,6 @@ class mult(lego):
 		return self
 
 	def regex(self):
-		'''Return a string representation of the mult represented here.'''
-
 		output = ""
 
 		# recurse into subpattern
@@ -982,13 +1022,12 @@ class mult(lego):
 		else: 
 			output += self.multiplicand.regex()
 
-		# try this with "a?b*c+d{1}e{1,2}f{3,}g{,5}h{8,8}"
 		suffix = self.multiplier.regex()
 
 		# Pick whatever is shorter/more comprehensible.
 		# e.g. "aa" beats "a{2}", "ababab" beats "(ab){3}"
-		if self.multiplier.min == self.multiplier.max and \
-		len(output) * self.multiplier.min <= len(output) + len(suffix):
+		if self.multiplier.min == self.multiplier.max \
+		and len(output) * self.multiplier.min <= len(output) + len(suffix):
 			output += str(output) * (self.multiplier.min - 1) # because it has one already
 		else:
 			output += suffix
@@ -996,23 +1035,19 @@ class mult(lego):
 		return output
 
 	def fsm(self, alphabet):
-		'''
-			Turn the present conc into a finite state machine, as imported
-			from the fsm module.
-		'''
 		return self.multiplicand.fsm(alphabet) * (self.multiplier.min, self.multiplier.max)
 
 	@classmethod
 	def match(cls, string, i):
 		try:
 			j = cls.matchStatic(string, i, "(")
-			multiplicand, j = pattern.match(string, j)
+			cand, j = pattern.match(string, j)
 			j = cls.matchStatic(string, j, ")")
 		except MatchFailureException:
-			multiplicand, j = charclass.match(string, i)
+			cand, j = charclass.match(string, i)
 
-		x, j = multiplier.match(string, j)
-		return mult(multiplicand, x), j
+		ier, j = multiplier.match(string, j)
+		return mult(cand, ier), j
 
 class conc(lego):
 	'''
@@ -1023,9 +1058,9 @@ class conc(lego):
 	'''
 
 	def __init__(self, *mults):
-		for x in mults:
-			if type(x) is not mult:
-				raise Exception(str(x) + " is not a mult")
+		for m in mults:
+			if type(m) is not mult:
+				raise Exception(str(m) + " is not a mult")
 		self.__dict__["mults"] = tuple(mults)
 
 	def __eq__(self, other):
@@ -1037,7 +1072,7 @@ class conc(lego):
 
 	def __repr__(self):
 		string = "conc("
-		string += ", ".join(str(x) for x in self.mults)
+		string += ", ".join(str(m) for m in self.mults)
 		string += ")"
 		return string
 
@@ -1048,12 +1083,6 @@ class conc(lego):
 		return pattern(self) * multiplier
 
 	def __add__(self, other):
-		'''
-			Magical function for the concatenation of any two pieces of lego. All
-			calls are redirected into the specific (conc, conc) case and then reduced
-			afterwards if possible.
-		'''
-
 		# other must be a conc too
 		if type(other) in {charclass, pattern}:
 			other = mult(other, one)
@@ -1063,31 +1092,19 @@ class conc(lego):
 		return conc(*(self.mults + other.mults)).reduce()
 
 	def __or__(self, other):
-		'''Alternation.'''
 		return pattern(self) | other
 
 	def __and__(self, other):
-		'''Intersection.'''
 		return pattern(self) & other
 
 	def reduce(self):
-		'''
-			Return a possibly-simpler lego piece.
-			It is critically important to (1) always call reduce()
-			on whatever you're returning before you return it and
-			therefore (2) always return something STRICTLY SIMPLER
-			than the current object. Otherwise infinite loops become
-			possible in reduce() calls
-		'''
-
-		# If we contain a mult with a multiplicand of charclass()
+		# If we contain a mult with a multiplicand of charclass() (empty)
 		# and a nonzero mandatory multiplier, then this can never
 		# return anything.
 		for m in self.mults:
 			if m.multiplicand == charclass() \
 			and (m.multiplier.min is None or m.multiplier.min > 0):
 				return charclass().reduce()
-			
 
 		# no point concatenating one thing (note: concatenating nothing is
 		# entirely valid)
@@ -1105,7 +1122,7 @@ class conc(lego):
 
 		# multiple mults with identical multiplicands in a row?
 		# squish those together
-		# e.g. ab?b?c -> ab{1,2}c
+		# e.g. ab?b?c -> ab{0,2}c
 		if len(self.mults) > 1:
 			for i in range(len(self.mults)-1):
 				if self.mults[i].multiplicand == self.mults[i+1].multiplicand:
@@ -1116,8 +1133,8 @@ class conc(lego):
 					newMults = self.mults[:i] + (squished,) + self.mults[i+2:]
 					return conc(*newMults).reduce()
 
-		# Conc contains (among other things) a *singleton* mult containing a pattern with only
-		# one internal conc? Flatten out.
+		# Conc contains (among other things) a *singleton* mult containing a pattern
+		# with only one internal conc? Flatten out.
 		# e.g. "a(d(ab|a*c))" -> "ad(ab|a*c)"
 		# BUT NOT "a(d(ab|a*c)){2,}"
 		# AND NOT "a(d(ab|a*c)|y)"
@@ -1133,10 +1150,6 @@ class conc(lego):
 		return self
 
 	def fsm(self, alphabet):
-		'''
-			Turn the present conc into a finite state machine, as imported
-			from the fsm module.
-		'''
 		from fsm import fsm, epsilon
 
 		# start with a component accepting only the empty string
@@ -1145,9 +1158,10 @@ class conc(lego):
 			fsm1 += m.fsm(alphabet)
 		return fsm1
 
+	def alphabet(self):
+		return set().union(*[m.alphabet() for m in self.mults])
+
 	def regex(self):
-		'''Return a string representation of regex which this conc
-		represents.'''
 		return "".join(mult.regex() for mult in self.mults)
 
 	@classmethod
@@ -1155,13 +1169,11 @@ class conc(lego):
 		mults = list()
 		try:
 			while True:
-				x, i = mult.match(string, i)
-				mults.append(x)
+				m, i = mult.match(string, i)
+				mults.append(m)
 		except MatchFailureException:
 			pass
 		return conc(*mults), i
-
-emptystring = conc()
 
 class NoMultPrefixException(Exception):
 	'''
@@ -1181,7 +1193,9 @@ class pattern(lego):
 		set of concs. The simplest pattern contains a single conc, but it
 		is also possible for a pattern to contain multiple alternate possibilities.
 		When written out as a regex, these would separated by pipes. A pattern
-		containing no possibilities should be impossible.
+		containing no possibilities is possible and represents a regular expression
+		matching no strings whatsoever (there is no conventional string form for
+		this).
 		
 		e.g. "abc|def(ghi|jkl)" is an alt containing two concs: "abc" and
 		"def(ghi|jkl)". The latter is a conc containing four mults: "d", "e", "f"
@@ -1190,9 +1204,9 @@ class pattern(lego):
 		This new subpattern again consists of two concs: "ghi" and "jkl".
 	'''
 	def __init__(self, *concs):
-		for x in concs:
-			if type(x) != conc:
-				raise Exception("Can't put a " + str(type(x)) + " in a pattern")
+		for c in concs:
+			if type(c) != conc:
+				raise Exception("Can't put a " + str(type(c)) + " in a pattern")
 		self.__dict__["concs"] = frozenset(concs)
 
 	def __eq__(self, other):
@@ -1204,7 +1218,7 @@ class pattern(lego):
 
 	def __repr__(self):
 		string = "pattern("
-		string += ", ".join(str(x) for x in self.concs)
+		string += ", ".join(str(c) for c in self.concs)
 		string += ")"
 		return string
 
@@ -1214,34 +1228,12 @@ class pattern(lego):
 		return mult(self, multiplier)
 
 	def __add__(self, other):
-		'''Concatenation function. Turn self into an equivalent mult'''
 		return mult(self, one) + other
 
 	def alphabet(self):
-		'''
-			Return a set of all unique characters used in this pattern.
-			In theory this could be a static property, self.alphabet, not
-			a function, self.alphabet(), but in the vast majority of cases
-			this will never be queried so it's a waste of computation to
-			calculate it every time a pattern is instantiated.
-		'''
-		alphabet = set()
-		for c in self.concs:
-			for m in c.mults:
-				if type(m.multiplicand) is charclass:
-					alphabet.update(m.multiplicand.chars)
-				else:
-					alphabet.update(m.multiplicand.alphabet())
-		return alphabet
+		return set().union(*[c.alphabet() for c in self.concs])
 
 	def __and__(self, other):
-		'''
-			Intersection function. Return a lego piece that can match any string
-			that both self and other can match. Fairly elementary results relating
-			to regular languages and finite state machines show that this is
-			possible, but implementation is a BEAST
-		'''
-		
 		# other must be pattern
 		if type(other) == mult:
 			other = conc(other)
@@ -1253,7 +1245,7 @@ class pattern(lego):
 		# We need to add an extra character in the alphabet which can stand for
 		# "everything else". For example, if the regex is "abc.", then at the moment
 		# our alphabet is {"a", "b", "c"}. But "." could match anything else not yet
-		# specified. This extra letter stands for that.
+		# specified. This extra letter stands for that ("[^abc]" in this case).
 		alphabet.add(None)
 
 		# Which means that we can build finite state machines sharing that alphabet
@@ -1261,8 +1253,6 @@ class pattern(lego):
 		return combinedFsm.pattern()
 
 	def __or__(self, other):
-		'''Magical function for alternating between many possibilities'''
-
 		# other must be a pattern too
 		if type(other) == charclass:
 			other = mult(other, one)
@@ -1273,11 +1263,7 @@ class pattern(lego):
 
 		return pattern(*(self.concs | other.concs)).reduce()
 
-
 	def regex(self):
-		'''Return the string representation of the regex which this pattern
-		represents.'''
-
 		if len(self.concs) < 1:
 			raise NoRegexException("Can't print an empty pattern.")
 
@@ -1288,8 +1274,6 @@ class pattern(lego):
 		return "|".join(sorted(conc.regex() for conc in self.concs))
 
 	def reduce(self):
-		'''Return a possibly-simplified self'''
-
 		# If one of our internal concs contains a mult containing a charclass()
 		# and a nonzero mandatory multiplier, that conc can never match anything
 		# So remove it.
@@ -1337,17 +1321,17 @@ class pattern(lego):
 		isChanged = False
 		merged = {} # key is multiplier, value is all merged charclasses at that multiplier
 		rest = []
-		for x in self.concs:
-			if len(x.mults) == 1 \
-			and type(x.mults[0].multiplicand) == charclass:
-				key = x.mults[0].multiplier
+		for c in self.concs:
+			if len(c.mults) == 1 \
+			and type(c.mults[0].multiplicand) == charclass:
+				key = c.mults[0].multiplier
 				if key in merged:
-					merged[key] |= x.mults[0].multiplicand
+					merged[key] |= c.mults[0].multiplicand
 					isChanged = True
 				else:
-					merged[key] = x.mults[0].multiplicand
+					merged[key] = c.mults[0].multiplicand
 			else:
-				rest.append(x)
+				rest.append(c)
 		if isChanged == True:
 			for key in merged:
 				rest.append(conc(mult(merged[key], key)))
@@ -1382,15 +1366,15 @@ class pattern(lego):
 		concs = list()
 
 		# first one
-		x, i = conc.match(string, i)
-		concs.append(x)
+		c, i = conc.match(string, i)
+		concs.append(c)
 
 		# the rest
 		try:
 			while True:
 				i = cls.matchStatic(string, i, "|")
-				x, i = conc.match(string, i)
-				concs.append(x)
+				c, i = conc.match(string, i)
+				concs.append(c)
 		except MatchFailureException:
 			pass
 
@@ -1529,11 +1513,6 @@ class pattern(lego):
 				return leftovers, conc(*suffix)
 
 	def fsm(self, alphabet):
-		'''
-			This is the big kahuna of this module.
-			Turn the present pattern into a finite state machine, as imported
-			from the fsm module.
-		'''
 		from fsm import null
 
 		fsm1 = null(alphabet)
@@ -1541,9 +1520,64 @@ class pattern(lego):
 			fsm1 |= c.fsm(alphabet)
 		return fsm1
 
+# Special and useful values go here.
+
+# Characters which users may escape in a regex instead of inserting them
+# literally. In ASCII order:
+escapes = {
+	"\t" : "\\t", # tab
+	"\n" : "\\n", # line feed
+	"\v" : "\\v", # vertical tab
+	"\f" : "\\f", # form feed
+	"\r" : "\\r", # carriage return
+}
+
+# These are the characters carrying special meanings when they appear "outdoors"
+# within a regular expression. To be interpreted literally, they must be
+# escaped with a backslash.
+allSpecial = set("\\[]|().?*+{}")
+
+# These are the characters carrying special meanings when they appear INSIDE a
+# character class (delimited by square brackets) within a regular expression.
+# To be interpreted literally, they must be escaped with a backslash.
+# Notice how much smaller this class is than the one above; note also that the
+# hyphen and caret do NOT appear above.
+classSpecial = set("\\[]^-")
+
+# these are the character ranges which can be used inside square brackets e.g.
+# "[a-z]", "[F-J]". These ranges should be disjoint.
+allowableRanges = {
+	"ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+	"abcdefghijklmnopqrstuvwxyz",
+	"0123456789",
+}
+
+# Preset multipliers. These get used ALL THE TIME in unit tests
+zero = multiplier(0, 0) # has some occasional uses
+qm   = multiplier(0, 1)
+one  = multiplier(1, 1)
+star = multiplier(0, None)
+plus = multiplier(1, None)
+inf  = multiplier(None, None) # has some very occasional uses
+
+# Symbol lookup table for preset multipliers.
+symbolic = {
+	qm   : "?",
+	one  : "" ,
+	star : "*",
+	plus : "+",
+}
+
+# A very special conc expressing the empty string, ""!
+emptystring = conc()
+
+# An even more special pattern expressing "no possibilities at all"!
+# This regex can never match anything. It's debatable when to use this
+# and when to use an empty charclass(), which has the same properties.
+# I use pattern() because it's easier to add to, I guess?
 nothing = pattern()
 
-# unit tests
+# Unit tests.
 if __name__ == '__main__':
 
 	# Odd bug with ([bc]*c)?[ab]*
@@ -1555,7 +1589,6 @@ if __name__ == '__main__':
 	assert (int5A + int5B).accepts("c")
 
 	# Empty mult suppression
-	# TODO: work out if it's better to use charclass() or pattern() as "nothing"
 	assert conc(
 		mult(charclass(), one), # this mult can never actually match anything
 		mult(charclass("0"), one),
