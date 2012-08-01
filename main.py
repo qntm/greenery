@@ -21,7 +21,7 @@
 # http://qntm.org/greenery
 
 import sys
-from lego import charclass, multiplier, mult, conc, pattern, NoRegexException
+from lego import pattern, NoRegexException
 
 def doit(*strings):
 
