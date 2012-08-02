@@ -54,6 +54,9 @@
 # http://qntm.org/lego
 # http://qntm.org/greenery
 
+# TODO: use charclass() instead of pattern() to represent "nothing". The empty
+# character class can actually be printed as "[]", unlike the empty pattern.
+
 class MatchFailureException(Exception):
 	'''Thrown when parsing fails. Almost always caught and almost never fatal'''
 	pass
