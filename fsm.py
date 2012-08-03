@@ -21,9 +21,6 @@
 # http://qntm.org/fsm
 # http://qntm.org/greenery
 
-class BadFsmException(Exception):
-	pass
-
 class fsm:
 	'''
 		A Finite State Machine or FSM has an alphabet and a set of states. At any
@@ -52,17 +49,17 @@ class fsm:
 
 		# Validation. Thanks to immutability, this only needs to be carried out once.
 		if self.initial not in self.states:
-			raise BadFsmException("Initial state " + str(self.initial) + " not in " + str(self.states))
+			raise Exception("Initial state " + str(self.initial) + " not in " + str(self.states))
 		if not self.finals.issubset(self.states):
-			raise BadFsmException("Final states " + str(self.finals) + " not in " + str(self.states))
+			raise Exception("Final states " + str(self.finals) + " not in " + str(self.states))
 		for state in self.states:
 			if state not in self.map.keys():
-				raise BadFsmException("State " + str(state) + " not in " + str(self.map.keys()))
+				raise Exception("State " + str(state) + " not in " + str(self.map.keys()))
 			for symbol in self.alphabet:
 				if symbol not in self.map[state]:
-					raise BadFsmException("Symbol " + str(symbol) + " not in " + str(self.map[state]))
+					raise Exception("Symbol " + str(symbol) + " not in " + str(self.map[state]))
 				if self.map[state][symbol] not in self.states:
-					raise BadFsmException("State " + str(self.map[state][symbol]) + " not in " + str(self.states))
+					raise Exception("State " + str(self.map[state][symbol]) + " not in " + str(self.states))
 
 	def accepts(self, input):
 		'''This is actually only used for unit testing purposes'''
@@ -119,9 +116,9 @@ class fsm:
 
 		# Do it until it hurts
 		new = self
-		keepMerging = True
-		while(keepMerging):
-			keepMerging, new = trymerge(new)
+		again = True
+		while(again):
+			again, new = trymerge(new)
 
 		return new
 
@@ -215,24 +212,24 @@ class fsm:
 		# We start at the start of self. If this starting state happens to be
 		# final in self, we also start at the start of other.
 		if self.initial in self.finals:
-			newInitial = frozenset([
+			initial = frozenset([
 				(0, self.initial),
 				(1, other.initial),
 			])
 		else:
-			newInitial = frozenset([(0, self.initial)])
+			initial = frozenset([(0, self.initial)])
 
-		def isFinal(currentState):
-			for (fsmId, state) in currentState:
+		def final(state):
+			for (id, substate) in state:
 				# self
-				if fsmId == 0:
-					if state in self.finals:
+				if id == 0:
+					if substate in self.finals:
 						if other.initial in other.finals:
 							return True
 
 				# other
-				elif fsmId == 1:
-					if state in other.finals:
+				elif id == 1:
+					if substate in other.finals:
 						return True
 
 				else:
@@ -242,24 +239,24 @@ class fsm:
 
 		# dedicated function accepts a "superset" and returns the next "superset"
 		# obtained by following this transition in the new FSM
-		def getNext(currentState, symbol):
+		def follow(current, symbol):
 
-			nextStates = []
+			next = []
 
-			for (fsmId, state) in currentState:
-				if fsmId == 0:
-					nextStates.append((0, self.map[state][symbol]))
+			for (id, state) in current:
+				if id == 0:
+					next.append((0, self.map[state][symbol]))
 					# final of self? merge with other initial
 					if self.map[state][symbol] in self.finals:
-						nextStates.append((1, other.initial))
-				elif fsmId == 1:
-					nextStates.append((1, other.map[state][symbol]))
+						next.append((1, other.initial))
+				elif id == 1:
+					next.append((1, other.map[state][symbol]))
 				else:
 					raise Exception("Whaat")
 
-			return frozenset(nextStates)
+			return frozenset(next)
 
-		return _crawl(self.alphabet, newInitial, isFinal, getNext)
+		return _crawl(self.alphabet, initial, final, follow)
 
 	def star(self):
 		'''
@@ -273,37 +270,37 @@ class fsm:
 			state and which dives into the FSM and from which all exits return.
 		'''
 
-		omegaState = 0
-		while omegaState in self.states:
-			omegaState += 1
+		omega = 0
+		while omega in self.states:
+			omega += 1
 
-		newInitial = frozenset([omegaState])
+		initial = frozenset([omega])
 
-		def getNext(currentState, symbol):
+		def follow(current, symbol):
 
-			nextState = []
+			next = []
 
-			for state in currentState:
+			for state in current:
 
-				# the special new starting "omegaState" behaves exactly like the
+				# the special new starting "omega" state behaves exactly like the
 				# original starting state did
-				if state == omegaState:
+				if state == omega:
 					state = self.initial
 
-				nextAState = self.map[state][symbol]
-				nextState.append(nextAState)
+				substate = self.map[state][symbol]
+				next.append(substate)
 
 				# loop back to beginning
-				if nextAState in self.finals:
-					nextState.append(omegaState)
+				if substate in self.finals:
+					next.append(omega)
 
-			return frozenset(nextState)
+			return frozenset(next)
 
-		# final if currentState contains omegaState
-		def isFinal(currentState):
-			return omegaState in currentState
+		# final if state contains omega
+		def final(state):
+			return omega in state
 
-		return _crawl(self.alphabet, newInitial, isFinal, getNext)
+		return _crawl(self.alphabet, initial, final, follow)
 
 	def __mul__(self, multiplier):
 		'''
@@ -351,22 +348,22 @@ class fsm:
 		if other.alphabet != self.alphabet:
 			raise Exception("Alphabet " + str(other.alphabet) + " must be " + str(self.alphabet))
 
-		newInitial = (self.initial, other.initial)
+		initial = (self.initial, other.initial)
 
 		# dedicated function accepts a "superset" and returns the next "superset"
 		# obtained by following this transition in the new FSM
-		def getNext(currentState, symbol):
+		def follow(current, symbol):
 			return (
-				self.map[currentState[0]][symbol],
-				other.map[currentState[1]][symbol]
+				self.map[current[0]][symbol],
+				other.map[current[1]][symbol]
 			)
 
-		# currentState is final if *any* of its internal states are final
-		def isFinal(currentState):
-			return currentState[0] in self.finals \
-			or currentState[1] in other.finals
+		# state is final if *any* of its internal states are final
+		def final(state):
+			return state[0] in self.finals \
+			or state[1] in other.finals
 
-		return _crawl(self.alphabet, newInitial, isFinal, getNext)
+		return _crawl(self.alphabet, initial, final, follow)
 
 	def __and__(self, other):
 		'''
@@ -381,22 +378,22 @@ class fsm:
 		if other.alphabet != self.alphabet:
 			raise Exception("Alphabet " + str(other.alphabet) + " must be " + str(self.alphabet))
 
-		newInitial = (self.initial, other.initial)
+		initial = (self.initial, other.initial)
 
 		# dedicated function accepts a "superset" and returns the next "superset"
 		# obtained by following this transition in the new FSM
-		def getNext(currentState, symbol):
+		def follow(current, symbol):
 			return (
-				self.map[currentState[0]][symbol],
-				other.map[currentState[1]][symbol],
+				self.map[current[0]][symbol],
+				other.map[current[1]][symbol],
 			)
 
-		# currentState is final if *all* of its internal states are final
-		def isFinal(currentState):
-			return currentState[0] in self.finals \
-			and currentState[1] in other.finals
+		# state is final if *all* of its substates are final
+		def final(state):
+			return state[0] in self.finals \
+			and state[1] in other.finals
 
-		return _crawl(self.alphabet, newInitial, isFinal, getNext)
+		return _crawl(self.alphabet, initial, final, follow)
 
 	def lego(self):
 		'''
@@ -461,8 +458,8 @@ class fsm:
 
 			def __init__(self, right, fsm):
 
-				# the equation needs to know what it represents
-				# this is for elimination purposes
+				# The equation needs to know what it represents.
+				# This is for elimination purposes.
 				self.right = right
 
 				# A simple dictionary of (state-set, transition symbol) indicating
@@ -489,22 +486,22 @@ class fsm:
 					# be used as a character in a charclass and throws an exception
 					# when you try.
 					if symbol == otherchars:
-						self.__addTransition(left, ~charclass(fsm.alphabet - {otherchars}))
+						self.addtransition(left, ~charclass(fsm.alphabet - {otherchars}))
 
 					else:
-						self.__addTransition(left, charclass({symbol}))
+						self.addtransition(left, charclass({symbol}))
 
 				# initial alone can be reached via an empty string ;)
 				if fsm.initial in right:
-					self.__addTransition(outside, emptystring)
+					self.addtransition(outside, emptystring)
 
-			def __addTransition(self, left, element):
+			def addtransition(self, left, element):
 				if left in self.lefts:
 					self.lefts[left] |= element
 				else:
 					self.lefts[left] = element
 
-			def applyLoops(self):
+			def applyloops(self):
 				'''
 					Remove the self-transition from an equation
 					e.g. "A0 | B1 | C2 = A" becomes "B10* | C10* = A"
@@ -529,18 +526,19 @@ class fsm:
 					return
 
 				# Now how about dynamic routes here
-				for otherLeft in other.lefts:
+				for left in other.lefts:
 
 					# If other still has self-transitions, that's a mistake.
-					if otherLeft == other.right:
-						raise Exception("Did you forget applyLoops()?")
+					if left == other.right:
+						raise Exception("Did you forget applyloops()?")
 
-					# any transition from otherLeft to otherRight, coupled with
-					# the universal transition from otherRight to *here*, counts as
-					# as transition from otherLeft to here.
-					otherTransition = other.lefts[otherLeft] + self.lefts[other.right]
-
-					self.__addTransition(otherLeft, otherTransition)
+					# any transition from left to other.right, coupled with
+					# the universal transition from other.right to *here*, counts as
+					# as transition from left to here.
+					self.addtransition(
+						left,
+						other.lefts[left] + self.lefts[other.right]
+					)
 
 				del self.lefts[other.right]
 
@@ -575,7 +573,7 @@ class fsm:
 		# Next, we start at the end of our list, and substitute backwards
 		# to show all possible routes.
 		for i in reversed(range(len(equations))):
-			equations[i].applyLoops()
+			equations[i].applyloops()
 			for j in reversed(range(i)):
 				equations[j].substitute(equations[i])
 
@@ -624,13 +622,13 @@ def epsilon(alphabet):
 		},
 	)
 
-def _crawl(alphabet, initial, isFinal, getNext):
+def _crawl(alphabet, initial, final, follow):
 	'''
 		Given the above conditions and instructions, crawl a new
 		unknown FSM, mapping its states, final states and
 		transitions. Return the new one.
 		This is a pretty powerful procedure which could potentially go on
-		forever if you supply an evil version of getNext()
+		forever if you supply an evil version of follow()
 	'''
 
 	states = [initial]
@@ -643,19 +641,19 @@ def _crawl(alphabet, initial, isFinal, getNext):
 		state = states[i]
 
 		# add to finals
-		if isFinal(state):
+		if final(state):
 			finals.add(i)
 
 		# compute map for this state
 		map[i] = {}
 		for symbol in sorted(alphabet, key=str):
-			nextState = getNext(state, symbol)
+			next = follow(state, symbol)
 
 			try:
-				j = states.index(nextState)
+				j = states.index(next)
 			except ValueError:
 				j = len(states)
-				states.append(nextState)
+				states.append(next)
 
 			map[i][symbol] = j
 
@@ -744,68 +742,8 @@ if __name__ == "__main__":
 		}
 	).lego()) == "0[01]"
 
-	# Check FSM validation problems.
-
-	# initial is not a state
-	try:
-		fsm(
-			alphabet = set(),
-			states   = {0},
-			initial  = 1,
-			finals   = set(),
-			map      = {
-				0: {}
-			},
-		)
-		assert False
-	except BadFsmException as e:
-		pass
-	
-	# finals aren't valid
-	try:
-		fsm(
-			alphabet = set(),
-			states   = {0},
-			initial  = 0,
-			finals   = {1},
-			map      = {
-				0: {}
-			},
-		)
-		assert False
-	except BadFsmException as e:
-		pass
-
-	# map keys != states
-	try:
-		fsm(
-			alphabet = set(),
-			states   = {0},
-			initial  = 0,
-			finals   = set(),
-			map      = {},
-		)
-		assert False
-	except BadFsmException as e:
-		pass
-	
-	# map key keys != alphabet
-	try:
-		fsm(
-			alphabet = {"a"},
-			states   = {0},
-			initial  = 0,
-			finals   = set(),
-			map      = {
-				0: {}
-			},
-		)
-		assert False
-	except BadFsmException as e:
-		pass
-
 	# Equivalence testing.
-	mergeMe = fsm(
+	mergeme = fsm(
 		alphabet = {"0", "1"},
 		states   = {1, 2, 3, 4, "oblivion"},
 		initial  = 1,
@@ -818,33 +756,33 @@ if __name__ == "__main__":
 			"oblivion" : {"0" : "oblivion", "1" : "oblivion"},
 		},
 	)
-	assert mergeMe.equivalent(1, 1)
-	assert not mergeMe.equivalent(1, 2)
-	assert not mergeMe.equivalent(1, 3)
-	assert not mergeMe.equivalent(1, 4)
-	assert not mergeMe.equivalent(1, "oblivion")
-	assert mergeMe.equivalent(2, 2)
-	assert mergeMe.equivalent(2, 3) # the important one
-	assert not mergeMe.equivalent(2, 4)
-	assert not mergeMe.equivalent(2, "oblivion")
-	assert mergeMe.equivalent(3, 3)
-	assert not mergeMe.equivalent(3, 4)
-	assert not mergeMe.equivalent(3, "oblivion")
-	assert mergeMe.equivalent(4, 4)
-	assert not mergeMe.equivalent(4, "oblivion")
-	assert mergeMe.equivalent("oblivion", "oblivion")
-	mergeMe = mergeMe.replace(3, 2)
-	assert not 3 in mergeMe.states
-	assert mergeMe.map[2]["0"] == 2 # formerly 3
-	assert mergeMe.equivalent(1, 2)
-	mergeMe = mergeMe.replace(2, 1)
-	assert not 2 in mergeMe.states
-	assert mergeMe.map[1]["0"] == 1 # formerly 2
+	assert mergeme.equivalent(1, 1)
+	assert not mergeme.equivalent(1, 2)
+	assert not mergeme.equivalent(1, 3)
+	assert not mergeme.equivalent(1, 4)
+	assert not mergeme.equivalent(1, "oblivion")
+	assert mergeme.equivalent(2, 2)
+	assert mergeme.equivalent(2, 3) # the important one
+	assert not mergeme.equivalent(2, 4)
+	assert not mergeme.equivalent(2, "oblivion")
+	assert mergeme.equivalent(3, 3)
+	assert not mergeme.equivalent(3, 4)
+	assert not mergeme.equivalent(3, "oblivion")
+	assert mergeme.equivalent(4, 4)
+	assert not mergeme.equivalent(4, "oblivion")
+	assert mergeme.equivalent("oblivion", "oblivion")
+	mergeme = mergeme.replace(3, 2)
+	assert not 3 in mergeme.states
+	assert mergeme.map[2]["0"] == 2 # formerly 3
+	assert mergeme.equivalent(1, 2)
+	mergeme = mergeme.replace(2, 1)
+	assert not 2 in mergeme.states
+	assert mergeme.map[1]["0"] == 1 # formerly 2
 
 	# Slightly more advanced equivalence testing
 	# (0|1)0*
 	# States 2 and 3 are "equivalent" since they can be merged
-	mergeMe2 = fsm(
+	mergeme2 = fsm(
 		alphabet = {"0", "1"},
 		states   = {1, 2, 3, 4},
 		initial  = 1,
@@ -856,22 +794,22 @@ if __name__ == "__main__":
 			4 : {"0" : 4, "1" : 4},
 		},
 	)
-	assert mergeMe2.equivalent(1, 1)
-	assert not mergeMe2.equivalent(1, 2)
-	assert not mergeMe2.equivalent(1, 3)
-	assert not mergeMe2.equivalent(1, 4)
-	assert mergeMe2.equivalent(2, 2)
-	assert mergeMe2.equivalent(2, 3) # the important one
-	assert not mergeMe2.equivalent(2, 4)
-	assert mergeMe2.equivalent(3, 3)
-	assert not mergeMe2.equivalent(3, 4)
-	assert mergeMe2.equivalent(4, 4)
-	mergeMe2 = mergeMe2.automerge()
-	assert not (2 in mergeMe2.states and 3 in mergeMe2.states)
-	assert mergeMe2.map[1]["0"] == mergeMe2.map[1]["1"] # formerly 2 and 3
+	assert mergeme2.equivalent(1, 1)
+	assert not mergeme2.equivalent(1, 2)
+	assert not mergeme2.equivalent(1, 3)
+	assert not mergeme2.equivalent(1, 4)
+	assert mergeme2.equivalent(2, 2)
+	assert mergeme2.equivalent(2, 3) # the important one
+	assert not mergeme2.equivalent(2, 4)
+	assert mergeme2.equivalent(3, 3)
+	assert not mergeme2.equivalent(3, 4)
+	assert mergeme2.equivalent(4, 4)
+	mergeme2 = mergeme2.automerge()
+	assert not (2 in mergeme2.states and 3 in mergeme2.states)
+	assert mergeme2.map[1]["0"] == mergeme2.map[1]["1"] # formerly 2 and 3
 
 	# replace() test
-	replaceMe = fsm(
+	replaceme = fsm(
 		alphabet = {"0", "1"},
 		states   = {0, 1, 2},
 		initial  = 0,
@@ -882,13 +820,13 @@ if __name__ == "__main__":
 			2 : {"0" : 2, "1" : 0},
 		},
 	)
-	replaceMe = replaceMe.replace(0, None)
-	assert set(replaceMe.states) == {None, 1, 2}
-	assert replaceMe.initial == None
-	assert replaceMe.finals == {None}
-	assert 0 not in replaceMe.map
-	assert replaceMe.map[None]["0"] == None
-	assert replaceMe.map[2]["1"] == None
+	replaceme = replaceme.replace(0, None)
+	assert set(replaceme.states) == {None, 1, 2}
+	assert replaceme.initial == None
+	assert replaceme.finals == {None}
+	assert 0 not in replaceme.map
+	assert replaceme.map[None]["0"] == None
+	assert replaceme.map[2]["1"] == None
 
 	# built-ins testing
 	assert not null("a").accepts("a")
