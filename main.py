@@ -21,15 +21,15 @@
 # http://qntm.org/greenery
 
 import sys
-from lego import pattern, NoRegexException
+from lego import parse
 
 def doit(*strings):
 
-	p = pattern.parse(".*")
+	p = parse(".*")
 	for s in strings:
-		p &= pattern.parse(s)
+		p &= parse(s)
 
-	return p.regex()
+	return str(p)
 
 # AND DO IT
 strings = sys.argv[1:]
@@ -39,13 +39,9 @@ if len(strings) > 0:
 
 # no strings supplied? run unit tests
 else:
-	try:
-		doit("a", "b")
-		assert(False)
-	except NoRegexException:
-		pass
-	assert doit("a.b") == "a.b" # not "a[ab]b"
 	assert doit("a*", "b*") == ""
+	assert doit("a", "b") == "[]"
+	assert doit("a.b") == "a.b" # not "a[ab]b"
 	assert doit("\\d{4}") == "\\d{4}"
 	assert doit("\\d", ".") == "\\d"
 	assert doit("\\d{2}", "0.") == "0\\d"

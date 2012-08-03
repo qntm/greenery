@@ -153,11 +153,20 @@ class fsm:
 		)
 
 	def __repr__(self):
-		'''This routine gets called whenever you print() a FSM'''
+		string = "fsm("
+		string += "alphabet = " + repr(self.alphabet)
+		string += ", states = " + repr(self.states)
+		string += ", initial = " + repr(self.initial)
+		string += ", finals = " + repr(self.finals)
+		string += ", map = " + repr(self.map)
+		string += ")"
+		return string
+	
+	def __str__(self):
 		rows = []
 
 		# top row
-		row = ["", "name", "isFinal"]
+		row = ["", "name", "final?"]
 		row.extend(str(symbol) for symbol in sorted(self.alphabet, key=str))
 		rows.append(row)
 
@@ -389,10 +398,10 @@ class fsm:
 
 		return _crawl(self.alphabet, newInitial, isFinal, getNext)
 
-	def pattern(self):
+	def lego(self):
 		'''
 			This is the big kahuna of this module.
-			Turn the present FSM into a regular expression pattern object, as imported
+			Turn the present FSM into a regular expression object, as imported
 			from the lego module.
 
 			This is accomplished by considering the FSM as a set of "equations"
@@ -454,7 +463,7 @@ class fsm:
 
 				# the equation needs to know what it represents
 				# this is for elimination purposes
-				self.right = frozenset(right)
+				self.right = right
 
 				# A simple dictionary of (state-set, transition symbol) indicating
 				# transitions leading FROM the other state-set TO the present state-set
@@ -469,10 +478,12 @@ class fsm:
 
 					# find every possible way to reach the current state set
 					# using this symbol
-					left = set()
-					for state in right:
-						left.update([prev for prev in fsm.map if fsm.map[prev][symbol] == state])
-					left = frozenset(left)
+					left = frozenset([
+						prev
+						for prev in fsm.map
+						for state in right
+						if fsm.map[prev][symbol] == state
+					])
 
 					# "otherchars" should never actually
 					# be used as a character in a charclass and throws an exception
@@ -493,9 +504,11 @@ class fsm:
 				else:
 					self.lefts[left] = element
 
-			# remove the self-transition from an equation
-			# e.g. "A0 | B1 | C2 = A" becomes "B10* | C10* = A"
 			def applyLoops(self):
+				'''
+					Remove the self-transition from an equation
+					e.g. "A0 | B1 | C2 = A" becomes "B10* | C10* = A"
+				'''
 				if self.right not in self.lefts:
 					return
 
@@ -505,9 +518,11 @@ class fsm:
 				for left in self.lefts:
 					self.lefts[left] = self.lefts[left] + loop
 
-			# take the equation of some other state-set and substitute it into
-			# this equation, cancelling out any references to the other.
-			def eliminate(self, other):
+			def substitute(self, other):
+				'''
+					Take the equation of some other state-set and substitute it into
+					this equation, cancelling out any references to the other.
+				'''
 
 				# No transition from other to self? Then no substitution is required.
 				if other.right not in self.lefts:
@@ -516,7 +531,7 @@ class fsm:
 				# Now how about dynamic routes here
 				for otherLeft in other.lefts:
 
-					# self-transition?
+					# If other still has self-transitions, that's a mistake.
 					if otherLeft == other.right:
 						raise Exception("Did you forget applyLoops()?")
 
@@ -529,38 +544,40 @@ class fsm:
 
 				del self.lefts[other.right]
 
-			def __repr__(self):
+			def __str__(self):
 				string = ""
 				string += "lefts:\n"
 				for left in self.lefts:
-					string += " " + str(left) + ": " + str(self.lefts[left]) + "\n"
-				string += "right: " + str(self.right) + "\n"
+					string += " " + repr(left) + ": " + repr(self.lefts[left]) + "\n"
+				string += "right: " + repr(self.right) + "\n"
 				string += "\n"
 				return string
 
-		# Now that we have the equations down, here is how we actually
+		# Now that we have equations down, here is how we actually
 		# run this thing.
 
-		# Iterate over a growing list, generating equations
-		equations = [equation(self.finals, self)]
+		# This first equation is the critical one. We solve for
+		# this.
+		equations = [equation(frozenset(self.finals), self)]
+
+		# Iterate over a growing list, generating further equations.
 		i = 0;
 		while i < len(equations):
 
 			# record newly-found state-sets for future reference (no dupes)
 			for right in equations[i].lefts:
-
 				if right != outside \
 				and right not in [e.right for e in equations]:
 					equations.append(equation(right, self))
 
 			i += 1
 
-		# Next, we start at the end of our list, and fill backwards
+		# Next, we start at the end of our list, and substitute backwards
 		# to show all possible routes.
 		for i in reversed(range(len(equations))):
 			equations[i].applyLoops()
 			for j in reversed(range(i)):
-				equations[j].eliminate(equations[i])
+				equations[j].substitute(equations[i])
 
 		# By this point all back-substitutions have been performed and the final
 		# element in equations[] should be ready to convert into a regex.
@@ -651,6 +668,33 @@ def _crawl(alphabet, initial, isFinal, getNext):
 
 # Unit tests.
 if __name__ == "__main__":
+	# Buggggs.
+	abstar = fsm(
+		{'a', None, 'b'},
+		{0, 1},
+		0,
+		{0},
+		{
+			0: {'a': 0, None: 1, 'b': 0},
+			1: {'a': 1, None: 1, 'b': 1}
+		}
+	)
+	assert str(abstar.lego()) == "[ab]*"
+
+	adotb = fsm(
+		{'a', None, 'b'},
+		{0, 1, 2, 3, 4},
+		0,
+		{4},
+		{
+			0: {'a': 2, None: 1, 'b': 1},
+			1: {'a': 1, None: 1, 'b': 1},
+			2: {'a': 3, None: 3, 'b': 3},
+			3: {'a': 1, None: 1, 'b': 4},
+			4: {'a': 1, None: 1, 'b': 1}
+		}
+	)
+	assert str(adotb.lego()) == "a.b"
 
 	from lego import otherchars
 
@@ -684,10 +728,10 @@ if __name__ == "__main__":
 	assert int5C.accepts("c")
 	# assert int5C.initial == 0
 
-	# fsm.pattern()
+	# fsm.lego()
 
 	# Catch a recursion error
-	assert fsm(
+	assert str(fsm(
 		alphabet = {"0", "1"},
 		states   = {0, 1, 2, 3},
 		initial  = 3,
@@ -698,7 +742,7 @@ if __name__ == "__main__":
 			2: {"0": 2, "1": 2},
 			3: {"0": 0, "1": 2},
 		}
-	).pattern().regex() == "0[01]"
+	).lego()) == "0[01]"
 
 	# Check FSM validation problems.
 

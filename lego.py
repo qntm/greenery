@@ -54,12 +54,17 @@
 # http://qntm.org/lego
 # http://qntm.org/greenery
 
-# TODO: use charclass() instead of pattern() to represent "nothing". The empty
-# character class can actually be printed as "[]", unlike the empty pattern.
-
 class MatchFailureException(Exception):
 	'''Thrown when parsing fails. Almost always caught and almost never fatal'''
 	pass
+
+def parse(string):
+	'''Parse a full string and return a lego piece. Fail if the whole string wasn't parsed'''
+	p, i = pattern.match(string, 0)
+	if i != len(string):
+		raise MatchFailureException("Could not parse '" + string + "' beyond index " + str(i))
+	
+	return p.reduce()
 
 class lego:
 	'''
@@ -84,14 +89,12 @@ class lego:
 
 	def __repr__(self):
 		'''
-			Actually return a string approximating the instantiation line
-			for the present lego piece. This is different from regex()
-			in that it provides a lot more information for debug purposes.
-			This gets called when you do str(lego).
+			Return a string approximating the instantiation line
+			for the present lego piece.
 		'''
 		pass
 
-	def regex(self):
+	def __str__(self):
 		'''
 			Render the present lego piece in the form of a regular expression.
 			Some lego pieces may be created which cannot be rendered in this way.
@@ -104,7 +107,7 @@ class lego:
 		'''
 			Start at index i in the supplied string and try to match one of the
 			present class. Elementary recursive descent parsing with very little
-			need for flair. The opposite of regex(), above. (In most cases.)
+			need for flair. The opposite of __str__(), above. (In most cases.)
 			Throws a MatchFailureException in the event of failure.
 		'''
 		pass
@@ -137,6 +140,7 @@ class lego:
 			Equivalent to repeated concatenation. Multiplier consists of a minimum
 			and a maximum; maximum may be infinite (for Kleene star closure).
 			Call using "a = b * qm"
+			Reduce() is always called afterwards.
 		'''
 		pass
 
@@ -153,7 +157,7 @@ class lego:
 			Intersection function. Return a lego piece that can match any string
 			that both self and other can match. Fairly elementary results relating
 			to regular languages and finite state machines show that this is
-			possible, but implementation is a BEAST in most cases. Here, we convert
+			possible, but implementation is a BEAST in many cases. Here, we convert
 			both lego pieces to FSMs (see fsm(), above) for the intersection, then
 			back to lego afterwards.
 			Call using "a = b & c"
@@ -167,6 +171,14 @@ class lego:
 			a function, self.alphabet(), but in the vast majority of cases
 			this will never be queried so it's a waste of computation to
 			calculate it every time a lego piece is instantiated.
+		'''
+		pass
+
+	def empty(self):
+		'''
+			Return False if there exists a string which the present lego piece
+			can match. Return True if no such string exists. Examples of empty
+			lego pieces are charclass() and pattern()
 		'''
 		pass
 
@@ -194,8 +206,8 @@ class lego:
 
 class NoRegexException(Exception):
 	'''
-		This occurs if you try to regex() something which can't be printed, such
-		as an empty charclass, a zero or infinite multiplier, an empty pattern
+		This occurs if you try to str() something which can't be printed, such
+		as a zero or infinite multiplier, an empty pattern
 	'''
 	pass
 
@@ -218,9 +230,11 @@ class charclass(lego):
 		self.__dict__["negated"] = negateMe
 
 	def __eq__(self, other):
-		return type(other) == type(self) \
-		and self.chars == other.chars \
-		and self.negated == other.negated
+		try:
+			return self.chars == other.chars \
+			and self.negated == other.negated
+		except AttributeError:
+			return False
 
 	def __hash__(self):
 		return tuple.__hash__((self.chars, self.negated))
@@ -228,17 +242,13 @@ class charclass(lego):
 	def __mul__(self, multiplier):
 		# e.g. "a" * {0,1} = "a?"
 		if multiplier == one:
-			return self
-		return mult(self, multiplier)
+			return self.reduce()
+		return mult(self, multiplier).reduce()
 
-	def regex(self):
+	def __str__(self):
 		# e.g. \w
 		if self in shorthand.keys():
 			return shorthand[self]
-
-		# i.e. charclass()
-		if len(self.chars) < 1:
-			raise NoRegexException("Can't print an empty charclass")
 
 		# e.g. [^a]
 		if self.negated:
@@ -258,7 +268,7 @@ class charclass(lego):
 
 			return char
 
-		# multiple characters
+		# multiple characters (or possibly 0 characters)
 		return "[" + self.escape() + "]"
 
 	def escape(self):
@@ -356,9 +366,10 @@ class charclass(lego):
 		string = ""
 		if self.negated is True:
 			string += "~"
-		string += "charclass(\""
-		string += "".join(str(char) for char in sorted(self.chars, key=str))
-		string += "\")"
+		string += "charclass("
+		if len(self.chars) > 0:
+			string += "\"" + "".join(str(char) for char in sorted(self.chars, key=str)) + "\""
+		string += ")"
 		return string
 
 	def reduce(self):
@@ -366,10 +377,13 @@ class charclass(lego):
 		return self
 
 	def __add__(self, other):
-		return mult(self, one) + other
+		return (mult(self, one) + other).reduce()
 
 	def alphabet(self):
 		return self.chars
+
+	def empty(self):
+		return len(self.chars) == 0 and self.negated == False
 
 	@classmethod
 	def match(cls, string, i):
@@ -566,7 +580,7 @@ class charclass(lego):
 		return charclass(self.chars, negateMe=not self.negated)
 
 	def __or__(self, other):
-		if type(other) != charclass:
+		if not isinstance(other, charclass):
 			return mult(self, one) | other
 
 		# ¬A OR ¬B = ¬(A AND B)
@@ -583,23 +597,8 @@ class charclass(lego):
 
 		raise Exception("What")
 
-	def __sub__(self, other):
-		'''Subtract B from A'''
-
-		# ¬A - ¬B = B - A
-		# ¬A - B = ¬(A OR B)
-		# A - ¬B = A AND B
-		# A - B
-		if self.negated:
-			if other.negated:
-				return charclass(other.chars - self.chars)
-			return ~charclass(self.chars | other.chars)
-		if other.negated:
-			return charclass(self.chars & other.chars)
-		return charclass(self.chars - other.chars)
-
 	def __and__(self, other):
-		if type(other) != charclass:
+		if not isinstance(other, charclass):
 			return mult(self, one) & other
 
 		# ¬A AND ¬B = ¬(A OR B)
@@ -614,47 +613,52 @@ class charclass(lego):
 			return charclass(self.chars - other.chars)
 		return charclass(self.chars & other.chars)
 
-	def issubset(self, other):
-		'''Find out if A is a subset of B'''
+	def __sub__(self, other):
+		'''
+			Subtract B from A. Here, this is a set operation on two sets of
+			characters. For other lego pieces, __sub__ has different meanings.
+		'''
 
-		# ¬A < ¬B if B < A
-		# ¬A < B is impossible
-		# A < ¬B if A n B = 0
-		# A < B
+		# ¬A - ¬B = B - A
+		# ¬A - B = ¬(A OR B)
+		# A - ¬B = A AND B
+		# A - B
 		if self.negated:
 			if other.negated:
-				return other.chars.issubset(self.chars)
-			return False
+				return charclass(other.chars - self.chars)
+			return ~charclass(self.chars | other.chars)
 		if other.negated:
-			return self.chars.isdisjoint(other.chars)
-		return self.chars.issubset(other.chars)
+			return charclass(self.chars & other.chars)
+		return charclass(self.chars - other.chars)
 
 class bound:
 	'''An integer but sometimes also possibly infinite (None)'''
 	def __init__(self, v):
 		if v is not None:
-			if type(v) != int:
-				raise Exception("Value must be None or an integer")
 			if v < 0:
 				raise Exception("Value must be >= 0 or None")
 
 		self.__dict__['v'] = v
 
 	def __repr__(self):
-		return "bound(" + str(self.v) + ")"
+		if self == infinity:
+			return "infinity"
+		return repr(self.v)
 
-	def regex(self):
+	def __str__(self):
 		if self == infinity:
 			# This only happens for an unlimited upper bound
 			return ""
 		return str(self.v)
 
 	def __eq__(self, other):
-		return type(self) == type(other) \
-		and self.v == other.v
+		try:
+			return self.v == other.v
+		except AttributeError:
+			return False
 
 	def __hash__(self):
-		return self.v.__hash__()
+		return hash(self.v)
 
 	def __lt__(self, other):
 		if self == infinity:  
@@ -685,7 +689,6 @@ class bound:
 	def __sub__(self, other):
 		'''
 			Subtract another bound from this one.
-			This is a bit of a nightmare.
 			Caution: this operation is not meaningful for all bounds.
 		'''
 		if other == infinity:
@@ -699,10 +702,11 @@ class bound:
 			return self
 		return bound(self.v - other.v)
 
-	def __and__(self, other):
+	def common(self, other):
 		'''
-			Find the shared part of two bounds.
-			This is a bit of a nightmare as well
+			Find the minimum of two bounds. This is the largest bound which can
+			be legally subtracted from both of the originals.
+			This could return bound(0) very easily.
 		'''
 		if self == infinity:
 			return other
@@ -721,14 +725,16 @@ class multiplier(lego):
 		"zero" to exist, which actually are quite useful in their own special way.
 	'''
 	def __init__(self, min, max):
-		if type(min) != bound:
+		if not isinstance(min, bound):
 			min = bound(min)
 		if min == infinity:
 			raise Exception("Can't have an infinite lower bound")
-		if type(max) != bound:
+		if not isinstance(max, bound):
 			max = bound(max)
 		if max < min:
-			raise Exception("max '" + str(max) + "' must match or exceed min '" + str(min) + "'")
+			raise Exception(
+				"max '" + str(max) + "' must match or exceed min '" + str(min) + "'"
+			)
 
 		# More useful than "min" and "max" in many situations
 		# are "mandatory" and "optional".
@@ -741,26 +747,28 @@ class multiplier(lego):
 		self.__dict__['optional'] = optional
 
 	def __eq__(self, other):
-		return type(self) == type(other) \
-		and self.min == other.min \
-		and self.max == other.max
+		try:
+			return self.min == other.min \
+			and self.max == other.max
+		except AttributeError:
+			return False
 
 	def __hash__(self):
-		return tuple.__hash__((self.min, self.max))
+		return hash((self.min, self.max))
 
 	def __repr__(self):
-		return "multiplier(" + str(self.min.regex()) + ", " + str(self.max.regex()) + ")"
+		return "multiplier(" + repr(self.min) + ", " + repr(self.max) + ")"
 
-	def regex(self):
+	def __str__(self):
 		if self.max == bound(0):
-			raise NoRegexException("No regex available for " + str(self))
+			raise NoRegexException("No regex available for " + repr(self))
 		if self in symbolic.keys():
 			return symbolic[self]
 		if self.max == infinity:
-			return "{" + self.min.regex() + ",}"
+			return "{" + str(self.min) + ",}"
 		if self.min == self.max:
-			return "{" + self.min.regex() + "}"
-		return "{" + self.min.regex() + "," + self.max.regex() + "}"
+			return "{" + str(self.min) + "}"
+		return "{" + str(self.min) + "," + str(self.max) + "}"
 
 	@classmethod
 	def match(cls, string, i):
@@ -832,7 +840,6 @@ class multiplier(lego):
 	def __sub__(self, other):
 		'''
 			Subtract another multiplier from this one.
-			This is a bit of a nightmare.
 			Caution: multipliers are not totally ordered.
 			This operation is not meaningful for all pairs of multipliers.
 		'''
@@ -842,18 +849,30 @@ class multiplier(lego):
 
 	def __and__(self, other):
 		'''
-			Find the shared part of two multipliers.
-			This is a bit of a nightmare as well
+			Find the intersection of two multipliers: that is, a third multiplier
+			expressing the range covered by both of the originals. This is not
+			defined for all multipliers.
 		'''
-		mandatory = self.mandatory & other.mandatory
-		optional = self.optional & other.optional
+		a = max(self.min, other.min)
+		b = min(self.max, other.max)
+		return multiplier(a, b)
+
+	def common(self, other):
+		'''
+			Find the shared part of two multipliers. This is the largest multiplier
+			which can be safely subtracted from both the originals. This may
+			return the "zero" multiplier.
+		'''
+		mandatory = self.mandatory.common(other.mandatory)
+		optional = self.optional.common(other.optional)
 		return multiplier(mandatory, mandatory + optional)
 
-class NoCommonMultiplicandException(Exception):
+class NoCommonMultException(Exception):
 	'''
-		This happens when you try to intersect or subtract two mults which
-		don't have a common multiplicand.
+		This happens if you call mult.common() on two mults with no
+		common part.
 	'''
+	pass
 
 class mult(lego):
 	'''
@@ -867,39 +886,42 @@ class mult(lego):
 	'''
 
 	def __init__(self, cand, ier):
-		if type(cand) not in {charclass, pattern}:
+		if not isinstance(cand, charclass) \
+		and not isinstance(cand, pattern):
 			raise Exception("Wrong type '" + str(type(cand)) + "' for multiplicand")
-		if type(ier) != multiplier:
+		if not isinstance(ier, multiplier):
 			raise Exception("Wrong type '" + str(type(ier)) + "' for multiplier")
 
 		self.__dict__["multiplicand"] = cand
 		self.__dict__["multiplier"]   = ier
 
 	def __eq__(self, other):
-		return type(self) == type(other) \
-		and type(self.multiplicand) == type(other.multiplicand) \
-		and self.multiplicand == other.multiplicand \
-		and self.multiplier == other.multiplier
+		try:
+			return self.multiplicand == other.multiplicand \
+			and self.multiplier == other.multiplier
+		except AttributeError:
+			return False
 
 	def __hash__(self):
-		return tuple.__hash__((self.multiplicand, self.multiplier))
+		return hash((self.multiplicand, self.multiplier))
 
 	def __repr__(self):
 		string = "mult("
-		string += ", ".join([str(self.multiplicand), str(self.multiplier)])
+		string += repr(self.multiplicand)
+		string += ", " + repr(self.multiplier)
 		string += ")"
 		return string
 
 	def __mul__(self, multiplier):
 		if multiplier == one:
-			return self
-		return mult(self.multiplicand, self.multiplier * multiplier)
+			return self.reduce()
+		return mult(self.multiplicand, self.multiplier * multiplier).reduce()
 
 	def __add__(self, other):
-		return conc(self) + other
+		return conc(self) + other # conc.__add__() calls reduce()
 
 	def __or__(self, other):
-		return conc(self) | other
+		return conc(self) | other # conc.__or__() calls reduce()
 
 	def __sub__(self, other):
 		'''
@@ -908,22 +930,45 @@ class mult(lego):
 			e.g. a{4,5} - a{3} = a{1,2}
 		'''
 		if other.multiplicand != self.multiplicand:
-			raise NoCommonMultiplicandException("Can't subtract " + str(other) + " from " + str(self))
+			raise Exception("Can't subtract " + str(other) + " from " + str(self))
 
 		return mult(self.multiplicand, self.multiplier - other.multiplier)
 
+	def common(self, other):
+		'''
+			Return the common part of these two mults. This is the largest mult
+			which can be safely subtracted from both the originals. The multiplier
+			on this mult could be zero.
+			TODO: is this behaviour consistent?
+		'''
+		if self.multiplicand != other.multiplicand:
+			raise NoCommonMultException
+		return mult(self.multiplicand, self.multiplier.common(other.multiplier))
+
 	def __and__(self, other):
-		# TODO: is there a bug here?
-		if type(other) != mult:
-			return conc(self) & other
+		if isinstance(other, charclass):
+			other = mult(other, one)
 
-		if other.multiplicand != self.multiplicand:
-			raise NoCommonMultiplicandException("Can't find intersection of " + str(other) + " with " + str(self))
+		# If two mults are given which have a common multiplicand, the shortcut
+		# is just to take the intersection of the two multiplicands.
+		if hasattr(other, "multiplicand") \
+		and hasattr(other, "multiplier") \
+		and self.multiplicand == other.multiplicand:
+			return mult(self.multiplicand, self.multiplier & other.multiplier).reduce()
 
-		return mult(self.multiplicand, self.multiplier & other.multiplier)
+		# This situation is substantially more complicated if the multiplicand is,
+		# for example, a pattern. It's difficult to reason sensibly about this
+		# kind of thing.
+		return conc(self) & other
 
 	def alphabet(self):
 		return self.multiplicand.alphabet()
+	
+	def empty(self):
+		if self.multiplicand.empty() \
+		and self.multiplier.min > bound(0):
+			return True
+		return False
 
 	def reduce(self):
 		# If our multiplicand is a pattern containing an empty conc()
@@ -931,7 +976,7 @@ class mult(lego):
 		# instead.
 		# e.g. (A|B|C|)D -> (A|B|C)?D
 		# e.g. (A|B|C|){2} -> (A|B|C){0,2}
-		if type(self.multiplicand) == pattern \
+		if hasattr(self.multiplicand, "concs") \
 		and emptystring in self.multiplicand.concs:
 			return mult(
 				pattern(
@@ -940,15 +985,15 @@ class mult(lego):
 				self.multiplier * qm,
 			).reduce()
 
-		# If our multiplicand is an empty pattern or charclass, which
-		# *can never match*, then we are lost, UNLESS it's possible
-		# to match it zero times.
-		if self.multiplicand == nothing \
-		or self.multiplicand == charclass():
-			if self.multiplier.min == bound(0):
-				return emptystring.reduce()
-			else:
-				return nothing.reduce()
+		# If we have an empty multiplicand, we can only match it
+		# zero times
+		if self.multiplicand.empty() \
+		and self.multiplier.min == bound(0):
+			return emptystring.reduce()
+
+		# Can't match anything: reduce to nothing
+		if self.empty():
+			return nothing.reduce()
 
 		# Failing that, we have a positive multiplicand which we
 		# intend to match zero times. In this case the only possible
@@ -963,9 +1008,9 @@ class mult(lego):
 		# Try recursively reducing our internal
 		reducedMultiplicand = self.multiplicand.reduce()
 		# "bulk up" smaller lego pieces to pattern if need be
-		if type(reducedMultiplicand) == mult:
+		if isinstance(reducedMultiplicand, mult):
 			reducedMultiplicand = conc(reducedMultiplicand)
-		if type(reducedMultiplicand) == conc:
+		if isinstance(reducedMultiplicand, conc):
 			reducedMultiplicand = pattern(reducedMultiplicand)
 		if reducedMultiplicand != self.multiplicand:
 			return mult(reducedMultiplicand, self.multiplier).reduce()
@@ -973,7 +1018,7 @@ class mult(lego):
 		# If our multiplicand is a pattern containing a single conc
 		# containing a single mult, we can separate that out a lot
 		# e.g. ([ab])* -> [ab]*
-		if type(self.multiplicand) == pattern \
+		if hasattr(self.multiplicand, "concs") \
 		and len(self.multiplicand.concs) == 1:
 			singleton = [c for c in self.multiplicand.concs][0]
 			if len(singleton.mults) == 1:
@@ -984,17 +1029,17 @@ class mult(lego):
 
 		return self
 
-	def regex(self):
+	def __str__(self):
 		output = ""
 
 		# recurse into subpattern
-		if type(self.multiplicand) == pattern:
-			output += "(" + self.multiplicand.regex() + ")"
+		if isinstance(self.multiplicand, pattern):
+			output += "(" + str(self.multiplicand) + ")"
 
 		else: 
-			output += self.multiplicand.regex()
+			output += str(self.multiplicand)
 
-		suffix = self.multiplier.regex()
+		suffix = str(self.multiplier)
 
 		# Pick whatever is shorter/more comprehensible.
 		# e.g. "aa" beats "a{2}", "ababab" beats "(ab){3}"
@@ -1030,21 +1075,20 @@ class conc(lego):
 	'''
 
 	def __init__(self, *mults):
-		for m in mults:
-			if type(m) != mult:
-				raise Exception(str(m) + " is not a mult")
 		self.__dict__["mults"] = tuple(mults)
 
 	def __eq__(self, other):
-		return type(self) == type(other) \
-		and self.mults == other.mults
+		try:
+			return self.mults == other.mults
+		except AttributeError:
+			return False
 
 	def __hash__(self):
-		return tuple.__hash__(self.mults)
+		return hash(self.mults)
 
 	def __repr__(self):
 		string = "conc("
-		string += ", ".join(str(m) for m in self.mults)
+		string += ", ".join(repr(m) for m in self.mults)
 		string += ")"
 		return string
 
@@ -1056,9 +1100,9 @@ class conc(lego):
 
 	def __add__(self, other):
 		# other must be a conc too
-		if type(other) in {charclass, pattern}:
+		if isinstance(other, charclass) or isinstance(other, pattern):
 			other = mult(other, one)
-		if type(other) == mult:
+		if isinstance(other, mult):
 			other = conc(other)
 
 		return conc(*(self.mults + other.mults)).reduce()
@@ -1070,15 +1114,11 @@ class conc(lego):
 		return pattern(self) & other
 
 	def reduce(self):
-		# If we contain a mult with a multiplicand of charclass() (empty)
-		# and a nonzero mandatory multiplier, then this entire conc can
-		# never return anything.
-		for m in self.mults:
-			if (m.multiplicand == nothing or m.multiplicand == charclass()) \
-			and bound(0) < m.multiplier.min:
-				return nothing.reduce()
+		# Can't match anything
+		if self.empty():
+			return nothing.reduce()
 
-		# no point concatenating one thing (note: concatenating nothing is
+		# no point concatenating one thing (note: concatenating 0 things is
 		# entirely valid)
 		if len(self.mults) == 1:
 			return self.mults[0].reduce()
@@ -1086,8 +1126,14 @@ class conc(lego):
 		# Try recursively reducing our internals
 		reducedMults = [m.reduce() for m in self.mults]
 		# "bulk up" smaller lego pieces to concs if need be
-		reducedMults = [pattern(x) if type(x) == conc else x for x in reducedMults]
-		reducedMults = [mult(x, one) if type(x) in {charclass, pattern} else x for x in reducedMults]
+		reducedMults = [
+			pattern(x) if isinstance(x, conc) else x
+			for x in reducedMults
+		]
+		reducedMults = [
+			mult(x, one) if isinstance(x, charclass) or isinstance(x, pattern) else x
+			for x in reducedMults
+		]
 		reducedMults = tuple(reducedMults)
 		if reducedMults != self.mults:
 			return conc(*reducedMults).reduce()
@@ -1113,7 +1159,7 @@ class conc(lego):
 		for i in range(len(self.mults)):
 			m = self.mults[i]
 			if m.multiplier == one \
-			and type(m.multiplicand) == pattern \
+			and hasattr(m.multiplicand, "concs") \
 			and len(m.multiplicand.concs) == 1:
 				single = [c for c in m.multiplicand.concs][0]
 				newMults = self.mults[:i] + single.mults + self.mults[i+1:]
@@ -1133,8 +1179,14 @@ class conc(lego):
 	def alphabet(self):
 		return set().union(*[m.alphabet() for m in self.mults])
 
-	def regex(self):
-		return "".join(mult.regex() for mult in self.mults)
+	def empty(self):
+		for m in self.mults:
+			if m.empty():
+				return True
+		return False
+
+	def __str__(self):
+		return "".join(str(m) for m in self.mults)
 
 	@classmethod
 	def match(cls, string, i):
@@ -1147,23 +1199,83 @@ class conc(lego):
 			pass
 		return conc(*mults), i
 
+	def common(self, other):
+		'''
+			Return the common part of these two concs; that is, the largest mult
+			which can be safely truncated from the end of both.
+			Throw NoCommonConcException if such a thing can't be found.
+			Possibly this will be upgraded to return a common conc at some future
+			time. (Do this. Then remove NoCommonConcException entirely?)
+		'''
+		# TODO: unify behaviour of common() methods when no common thing is found
+		if len(self.mults) == 0 or len(other.mults) == 0:
+			raise NoCommonConcException
+
+		try:
+			common = self.mults[-1].common(other.mults[-1])
+
+		# Happens when multiplicands disagree
+		except NoCommonMultException:
+			raise NoCommonConcException
+
+		# Can occur for e.g. "ABZ*|CZ". Multiplicand is shared,
+		# but intersection of multipliers is zero
+		if common.multiplier == zero:
+			raise NoCommonConcException
+
+		return common
+
+	def __sub__(self, other):
+		'''
+			This is the opposite of concatenation. For example, if ABC + DEF = ABCDEF,
+			then logically ABCDEF - DEF = ABC.
+			At the moment "other" must be a mult. That may change in the future
+		'''
+		tail = self.mults[-1] - other
+		if tail.multiplier == zero:
+			# omit that mult entirely since it has been factored out
+			return conc(*self.mults[:-1])
+
+		return conc(*(self.mults[:-1] + (tail,)))
+
+	def behead(self, other):
+		'''
+			As with __sub__ but the other way around. For example, if
+			ABC + DEF = ABCDEF, then ABCDEF.behead(AB) = CDEF.
+			"Other" has to be a mult at the moment.
+		'''
+		head = self.mults[0] - other
+		if head.multiplier == zero:
+			# omit that mult entirely since it has been factored out
+			return conc(*self.mults[1:])
+
+		return conc(head, *self.mults[1:])
+
+
+class NoCommonConcException(Exception):
+	'''
+		This happens if you call conc.common() on another conc where they have
+		no common suffix.
+	'''
+
 class NoMultPrefixException(Exception):
 	'''
 		This happens if you call pattern._multprefix() on a pattern whose concs
 		have no common multiplier at the front.
 	'''
+	pass
 
 class NoMultSuffixException(Exception):
 	'''
 		This happens if you call pattern._multsuffix() on a pattern whose concs
 		have no common multiplier at the end.
 	'''
+	pass
 
 class pattern(lego):
 	'''
 		A pattern (also known as an "alt", short for "alternation") is a
-		set of concs. The simplest pattern contains a single conc, but it
-		is also possible for a pattern to contain multiple alternate possibilities.
+		set of concs. A pattern expresses multiple alternate possibilities.
 		When written out as a regex, these would separated by pipes. A pattern
 		containing no possibilities is possible and represents a regular expression
 		matching no strings whatsoever (there is no conventional string form for
@@ -1176,28 +1288,27 @@ class pattern(lego):
 		This new subpattern again consists of two concs: "ghi" and "jkl".
 	'''
 	def __init__(self, *concs):
-		for c in concs:
-			if type(c) != conc:
-				raise Exception("Can't put a " + str(type(c)) + " in a pattern")
 		self.__dict__["concs"] = frozenset(concs)
 
 	def __eq__(self, other):
-		return type(self) == type(other) \
-		and self.concs == other.concs
+		try:
+			return self.concs == other.concs
+		except AttributeError:
+			return False
 
 	def __hash__(self):
-		return frozenset.__hash__(self.concs)
+		return hash(self.concs)
 
 	def __repr__(self):
 		string = "pattern("
-		string += ", ".join(str(c) for c in self.concs)
+		string += ", ".join(repr(c) for c in self.concs)
 		string += ")"
 		return string
 
 	def __mul__(self, multiplier):
 		if multiplier == one:
 			return self
-		return mult(self, multiplier)
+		return mult(self, multiplier).reduce()
 
 	def __add__(self, other):
 		return mult(self, one) + other
@@ -1205,13 +1316,13 @@ class pattern(lego):
 	def alphabet(self):
 		return set().union(*[c.alphabet() for c in self.concs])
 
-	def __and__(self, other):
-		# other must be pattern
-		if type(other) == mult:
-			other = conc(other)
-		if type(other) == conc:
-			other = pattern(conc)
+	def empty(self):
+		for c in self.concs:
+			if not c.empty():
+				return False
+		return True
 
+	def __and__(self, other):
 		alphabet = self.alphabet() | other.alphabet()
 	
 		# We need to add an extra character in the alphabet which can stand for
@@ -1222,39 +1333,39 @@ class pattern(lego):
 
 		# Which means that we can build finite state machines sharing that alphabet
 		combinedFsm = self.fsm(alphabet) & other.fsm(alphabet)
-		return combinedFsm.pattern()
+		return combinedFsm.lego().reduce()
 
 	def __or__(self, other):
 		# other must be a pattern too
-		if type(other) == charclass:
+		if isinstance(other, charclass):
 			other = mult(other, one)
-		if type(other) == mult:
+		if isinstance(other, mult):
 			other = conc(other)
-		if type(other) == conc:
+		if isinstance(other, conc):
 			other = pattern(other)
 
 		return pattern(*(self.concs | other.concs)).reduce()
 
-	def regex(self):
+	def __str__(self):
 		if len(self.concs) < 1:
-			raise NoRegexException("Can't print an empty pattern.")
+			raise Exception("Can't print an empty pattern.")
 
 		# take the alternation of the input collection of regular expressions.
 		# i.e. jam "|" between each element
 
 		# 1+ elements.
-		return "|".join(sorted(conc.regex() for conc in self.concs))
+		return "|".join(sorted(str(c) for c in self.concs))
 
 	def reduce(self):
-		# If one of our internal concs contains a mult containing a charclass()
-		# and a nonzero mandatory multiplier, that conc can never match anything
-		# So remove it.
+		# If one of our internal concs is empty, remove it
 		for c in self.concs:
-			for m in c.mults:
-				if (m.multiplicand == nothing or m.multiplicand == charclass()) \
-				and m.multiplier.min > bound(0):
-					newConcs = self.concs - {c}
-					return pattern(*newConcs).reduce()
+			if c.empty():
+				newConcs = self.concs - {c}
+				return pattern(*newConcs).reduce()
+
+		# emptiness
+		if self.empty():
+			return nothing.reduce()
 
 		# no point alternating among one possibility
 		if len(self.concs) == 1:
@@ -1263,8 +1374,14 @@ class pattern(lego):
 		# Try recursively reducing our internals first.
 		reducedConcs = [c.reduce() for c in self.concs]
 		# "bulk up" smaller lego pieces to concs if need be
-		reducedConcs = [mult(x, one) if type(x) in {charclass, pattern} else x for x in reducedConcs]
-		reducedConcs = [conc(x) if type(x) == mult else x for x in reducedConcs]
+		reducedConcs = [
+			mult(x, one) if isinstance(x, charclass) or isinstance(x, pattern) else x
+			for x in reducedConcs
+		]
+		reducedConcs = [
+			conc(x) if isinstance(x, mult) else x
+			for x in reducedConcs
+		]
 		reducedConcs = frozenset(reducedConcs)
 		if reducedConcs != self.concs:
 			return pattern(*reducedConcs).reduce()
@@ -1295,7 +1412,7 @@ class pattern(lego):
 		rest = []
 		for c in self.concs:
 			if len(c.mults) == 1 \
-			and type(c.mults[0].multiplicand) == charclass:
+			and isinstance(c.mults[0].multiplicand, charclass):
 				key = c.mults[0].multiplier
 				if key in merged:
 					merged[key] |= c.mults[0].multiplicand
@@ -1326,14 +1443,6 @@ class pattern(lego):
 		return self
 
 	@classmethod
-	def parse(cls, string):
-		'''Parse a full string and return a pattern object. Fail if the whole string wasn't parsed'''
-		result, i = cls.match(string, 0)
-		if i != len(string):
-			raise MatchFailureException("Could not parse '" + string + "' beyond index " + str(i))
-		return result
-
-	@classmethod
 	def match(cls, string, i):
 		concs = list()
 
@@ -1342,20 +1451,37 @@ class pattern(lego):
 		concs.append(c)
 
 		# the rest
-		try:
-			while True:
+		while True:
+			try:
 				i = cls.matchStatic(string, i, "|")
 				c, i = conc.match(string, i)
 				concs.append(c)
-		except MatchFailureException:
-			pass
+			except MatchFailureException:
+				return pattern(*concs), i
 
-		return pattern(*concs), i
+	def __sub__(self, other):
+		'''
+			The opposite of concatenation. Remove a common suffix from the present
+			pattern; that is, from each of its constituent concs.
+			AZ|BZ|CZ - Z = A|B|C.
+		'''
+		return pattern(*[c - other for c in self.concs])
 
+	def behead(self, other):
+		'''
+			Like __sub__ but the other way around. Remove a common prefix from the
+			present pattern; that is, from each of its constituent concs.
+			ZA|ZB|ZC.behead(Z) = A|B|C
+		'''
+		return pattern(*[c.behead(other) for c in self.concs])
+
+	# TODO: reduce() leftovers after __sub__() or behead() calls?
 	def _multprefix(self):
 		'''
 			"ZA|ZB|ZC" -> "Z", "A|B|C"
 			Find a common mult prefix of all the concs in the current pattern.
+			Also return the trailing leftovers.
+			Raise NoMultPrefixException if such a thing can no longer be found.
 		'''
 		commonMult = None
 		for c in self.concs:
@@ -1368,40 +1494,27 @@ class pattern(lego):
 				commonMult = c.mults[0]
 			else:
 				try:
-					commonMult &= c.mults[0]
-				except NoCommonMultiplicandException:
+					commonMult = commonMult.common(c.mults[0])
+				except NoCommonMultException:
 					raise NoMultPrefixException
 
-			# Can occur for e.g. "Z*AB|ZC". Multiplicand is shared,
-			# but intersection of multipliers is zero
-			if commonMult.multiplier == zero:
-				raise NoMultPrefixException
+				# Can occur for e.g. "Z*AB|ZC". Multiplicand is shared,
+				# but intersection of multipliers is zero
+				if commonMult.multiplier == zero:
+					raise NoMultPrefixException
 
-		# Can occur if self is nothing
+		# Can occur if self is empty pattern
 		if commonMult is None:
 			raise NoMultPrefixException
 
-		leftovers = []
-		for c in self.concs:
-		
-			newMult1 = c.mults[0] - commonMult
-
-			if newMult1.multiplier == zero:
-				# omit that mult entirely since it has been factored out
-				leftovers.append(conc(*c.mults[1:]))
-	
-			else:
-				leftovers.append(conc(newMult1, *c.mults[1:]))
-		
-		# return the remainder as well
-		leftovers = pattern(*leftovers)
-
-		return commonMult, leftovers
+		return commonMult, self.behead(commonMult)
 
 	def _multsuffix(self):
 		'''
 			"AZ|BZ|CZ" -> "A|B|C", "Z"
 			Find a common mult suffix of all the concs in the current pattern.
+			Also return the leading leftovers.
+			Raise NoMultSuffixException if such a thing can no longer be found.
 		'''
 		commonMult = None
 		for c in self.concs:
@@ -1414,35 +1527,20 @@ class pattern(lego):
 				commonMult = c.mults[-1]
 			else:
 				try:
-					commonMult &= c.mults[-1]
-				except NoCommonMultiplicandException:
+					commonMult = commonMult.common(c.mults[-1])
+				except NoCommonMultException:
 					raise NoMultSuffixException
 
-			# Can occur for e.g. "ABZ*|CZ". Multiplicand is shared,
-			# but intersection of multipliers is zero
-			if commonMult.multiplier == zero:
-				raise NoMultSuffixException
-		
-		# Can occur if self is nothing
+				# Can occur for e.g. "ABZ*|CZ". Multiplicand is shared,
+				# but intersection of multipliers is zero
+				if commonMult.multiplier == zero:
+					raise NoMultSuffixException
+
+		# Can occur if self is empty pattern
 		if commonMult is None:
 			raise NoMultSuffixException
 
-		leftovers = []
-		for c in self.concs:
-		
-			newMult1 = c.mults[-1] - commonMult
-
-			if newMult1.multiplier == zero:
-				# omit that mult entirely since it has been factored out
-				leftovers.append(conc(*c.mults[:-1]))
-	
-			else:
-				leftovers.append(conc(*(c.mults[:-1] + (newMult1,))))
-		
-		# return the remainder as well
-		leftovers = pattern(*leftovers)
-
-		return leftovers, commonMult
+		return self - commonMult, commonMult
 
 	def _concprefix(self):
 		'''
@@ -1564,15 +1662,12 @@ symbolic = {
 # A very special conc expressing the empty string, ""!
 emptystring = conc()
 
-# An even more special pattern expressing "no possibilities at all"!
-# This regex can never match anything. It's debatable when to use this
-# and when to use an empty charclass(), which has the same properties.
-# I use pattern() because it's easier to add to, I guess?
-nothing = pattern()
+# This charclasses expresses "no possibilities at all"
+# and can never match anything.
+nothing = charclass()
 
 # Unit tests.
 if __name__ == '__main__':
-
 	# Odd bug with ([bc]*c)?[ab]*
 	int5A = mult(charclass("bc"), star).fsm({"a", "b", "c", otherchars})
 	assert int5A.accepts("")
@@ -1583,12 +1678,12 @@ if __name__ == '__main__':
 
 	# Empty mult suppression
 	assert conc(
-		mult(charclass(), one), # this mult can never actually match anything
+		mult(nothing, one), # this mult can never actually match anything
 		mult(charclass("0"), one),
 		mult(charclass("0123456789"), one),
 	).reduce() == nothing
 	assert conc(
-		mult(nothing, one), # this mult can never actually match anything
+		mult(pattern(), one), # this mult can never actually match anything
 		mult(charclass("0"), one),
 		mult(charclass("0123456789"), one),
 	).reduce() == nothing
@@ -1596,14 +1691,14 @@ if __name__ == '__main__':
 	# Empty conc suppression in patterns.
 	assert pattern(
 		conc(
-			mult(charclass(), one), # this mult can never actually match anything
+			mult(nothing, one), # this mult can never actually match anything
 			mult(charclass("0"), one),
 			mult(charclass("0123456789"), one),
 		) # so neither can this conc
 	).reduce() == nothing
 	assert pattern(
 		conc(
-			mult(nothing, one), # this mult can never actually match anything
+			mult(pattern(), one), # this mult can never actually match anything
 			mult(charclass("0"), one),
 			mult(charclass("0123456789"), one),
 		) # so neither can this conc
@@ -1611,21 +1706,22 @@ if __name__ == '__main__':
 
 	# Empty pattern suppression in mults
 	assert mult(nothing, qm).reduce() == emptystring
+	assert mult(pattern(), qm).reduce() == emptystring
 
 	# empty pattern behaviour
 	try:
-		nothing._multprefix()
+		pattern()._multprefix()
 		assert(False)
 	except NoMultPrefixException:
 		pass
 	try:
-		nothing._multsuffix()
+		pattern()._multsuffix()
 		assert(False)
 	except NoMultSuffixException:
 		pass
-	assert nothing._concprefix() == (emptystring, nothing)
-	assert nothing._concsuffix() == (nothing, emptystring)
-	assert nothing.reduce() == nothing
+	assert pattern()._concprefix() == (emptystring, pattern())
+	assert pattern()._concsuffix() == (pattern(), emptystring)
+	assert pattern().reduce() == charclass()
 
 	# pattern.fsm()
 
@@ -2022,37 +2118,38 @@ if __name__ == '__main__':
 	assert ~charclass("a") != charclass("a")
 	assert charclass("ab") == charclass("ba")
 
-	# charclass.regex()
-	assert w.regex() == "\\w"
-	assert d.regex() == "\\d"
-	assert s.regex() == "\\s"
-	assert charclass("a").regex() == "a"
-	assert charclass("{").regex() == "\\{"
-	assert charclass("\t").regex() == "\\t"
-	assert charclass("ab").regex() == "[ab]"
-	assert charclass("a{").regex() == "[a{]"
-	assert charclass("a\t").regex() == "[\\ta]"
-	assert charclass("a-").regex() == "[\\-a]"
-	assert charclass("a[").regex() == "[\\[a]"
-	assert charclass("a]").regex() == "[\\]a]"
-	assert charclass("ab").regex() == "[ab]"
-	assert charclass("abc").regex() == "[abc]"
-	assert charclass("abcd").regex() == "[a-d]"
-	assert charclass("abcdfghi").regex() == "[a-df-i]"
-	assert charclass("^").regex() == "^"
-	assert charclass("a^").regex() == "[\\^a]"
-	assert charclass("0123456789a").regex() == "[0-9a]"
-	assert charclass("\t\n\v\f\r A").regex() == "[\\t\\n\\v\\f\\r A]"
-	assert charclass("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz|").regex() == "[0-9A-Z_a-z|]"
-	assert W.regex() == "\\W"
-	assert D.regex() == "\\D"
-	assert S.regex() == "\\S"
-	assert dot.regex() == "."
-	assert (~charclass("")).regex() == "."
-	assert (~charclass("a")).regex() == "[^a]"
-	assert (~charclass("{")).regex() == "[^{]"
-	assert (~charclass("\t")).regex() == "[^\\t]"
-	assert (~charclass("^")).regex() == "[^\\^]"
+	# str(charclass)
+	assert str(w) == "\\w"
+	assert str(d) == "\\d"
+	assert str(s) == "\\s"
+	assert str(charclass("a")) == "a"
+	assert str(charclass("{")) == "\\{"
+	assert str(charclass("\t")) == "\\t"
+	assert str(charclass("ab")) == "[ab]"
+	assert str(charclass("a{")) == "[a{]"
+	assert str(charclass("a\t")) == "[\\ta]"
+	assert str(charclass("a-")) == "[\\-a]"
+	assert str(charclass("a[")) == "[\\[a]"
+	assert str(charclass("a]")) == "[\\]a]"
+	assert str(charclass("ab")) == "[ab]"
+	assert str(charclass("abc")) == "[abc]"
+	assert str(charclass("abcd")) == "[a-d]"
+	assert str(charclass("abcdfghi")) == "[a-df-i]"
+	assert str(charclass("^")) == "^"
+	assert str(charclass("\\")) == "\\\\"
+	assert str(charclass("a^")) == "[\\^a]"
+	assert str(charclass("0123456789a")) == "[0-9a]"
+	assert str(charclass("\t\n\v\f\r A")) == "[\\t\\n\\v\\f\\r A]"
+	assert str(charclass("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz|")) == "[0-9A-Z_a-z|]"
+	assert str(W) == "\\W"
+	assert str(D) == "\\D"
+	assert str(S) == "\\S"
+	assert str(dot) == "."
+	assert str(~charclass("")) == "."
+	assert str(~charclass("a")) == "[^a]"
+	assert str(~charclass("{")) == "[^{]"
+	assert str(~charclass("\t")) == "[^\\t]"
+	assert str(~charclass("^")) == "[^\\^]"
 
 	# charclass parsing
 	assert charclass.match("a", 0) == (charclass("a"), 1)
@@ -2106,40 +2203,30 @@ if __name__ == '__main__':
 	# [^ab] n [^bc] = [^abc]
 	assert ~charclass("ab") & ~charclass("bc") == ~charclass("abc")
 
-	# issubset()
-	# [a] < [ab] = True
-	assert charclass("a").issubset(charclass("ab"))
-	# [c] < [^ab] = True
-	assert charclass("c").issubset(~charclass("ab"))
-	# [^c] < [ab] = False
-	assert not (~charclass("c")).issubset(charclass("ab"))
-	# [^ab] < [^a] = True
-	assert (~charclass("ab")).issubset(~charclass("a"))
-
 	# mult equality
 	assert mult(charclass("a"), one) == mult(charclass("a"), one)
 	assert mult(charclass("a"), one) != mult(charclass("b"), one)
 	assert mult(charclass("a"), one) != mult(charclass("a"), qm)
 	assert mult(charclass("a"), one) != mult(charclass("a"), multiplier(1, 2))
 
-	# mult.regex() tests
+	# str(mult) tests
 	a = charclass("a")
-	assert mult(a, one).regex() == "a"
-	assert mult(a, multiplier(2, 2)).regex() == "aa"
-	assert mult(a, multiplier(3, 3)).regex() == "aaa"
-	assert mult(a, multiplier(4, 4)).regex() == "aaaa"
-	assert mult(a, multiplier(5, 5)).regex() == "a{5}"
-	assert mult(a, qm).regex() == "a?"
-	assert mult(a, star).regex() == "a*"
-	assert mult(a, plus).regex() == "a+"
-	assert mult(a, multiplier(2, 5)).regex() == "a{2,5}"
-	assert bound(2).regex() == "2"
-	assert bound(None).regex() == ""
-	assert multiplier(2, None).regex() == "{2,}"
-	assert mult(a, multiplier(2, None)).regex() == "a{2,}"
-	assert mult(d, one).regex() == "\\d"
-	assert mult(d, multiplier(2, 2)).regex() == "\\d\\d"
-	assert mult(d, multiplier(3, 3)).regex() == "\\d{3}"
+	assert str(mult(a, one)) == "a"
+	assert str(mult(a, multiplier(2, 2))) == "aa"
+	assert str(mult(a, multiplier(3, 3))) == "aaa"
+	assert str(mult(a, multiplier(4, 4))) == "aaaa"
+	assert str(mult(a, multiplier(5, 5))) == "a{5}"
+	assert str(mult(a, qm)) == "a?"
+	assert str(mult(a, star)) == "a*"
+	assert str(mult(a, plus)) == "a+"
+	assert str(mult(a, multiplier(2, 5))) == "a{2,5}"
+	assert str(bound(2)) == "2"
+	assert str(infinity) == ""
+	assert str(multiplier(2, infinity)) == "{2,}"
+	assert str(mult(a, multiplier(2, infinity))) == "a{2,}"
+	assert str(mult(d, one)) == "\\d"
+	assert str(mult(d, multiplier(2, 2))) == "\\d\\d"
+	assert str(mult(d, multiplier(3, 3))) == "\\d{3}"
 
 	# mult parsing
 	assert mult.match("[a-g]+", 0) == (
@@ -2174,14 +2261,14 @@ if __name__ == '__main__':
 	assert mult(charclass("a"), one).reduce() == charclass("a")
 	assert mult(charclass("a"), qm).reduce() == mult(charclass("a"), qm)
 	assert mult(charclass("a"), zero).reduce() == emptystring
-	assert mult(charclass(), one).reduce() == nothing
-	assert mult(charclass(), qm).reduce() == emptystring
-	assert mult(charclass(), zero).reduce() == emptystring
-	assert mult(charclass(), multiplier(0, 5)).reduce() == emptystring
 	assert mult(nothing, one).reduce() == nothing
 	assert mult(nothing, qm).reduce() == emptystring
 	assert mult(nothing, zero).reduce() == emptystring
 	assert mult(nothing, multiplier(0, 5)).reduce() == emptystring
+	assert mult(pattern(), one).reduce() == nothing
+	assert mult(pattern(), qm).reduce() == emptystring
+	assert mult(pattern(), zero).reduce() == emptystring
+	assert mult(pattern(), multiplier(0, 5)).reduce() == emptystring
 
 	# mult contains a pattern containing an empty conc? Pull the empty
 	# part out where it's external
@@ -2252,8 +2339,8 @@ if __name__ == '__main__':
 	assert conc(mult(charclass("a"), one)) != conc(mult(charclass("a"), multiplier(1, 2)))
 	assert conc(mult(charclass("a"), one)) != emptystring
 
-	# conc.regex() tests
-	assert conc(
+	# str(conc) tests
+	assert str(conc(
 		mult(charclass("a"), one),
 		mult(charclass("b"), one),
 		mult(charclass("c"), one),
@@ -2262,7 +2349,7 @@ if __name__ == '__main__':
 		mult(~charclass("fg"), star),
 		mult(charclass("h"), multiplier(5, 5)),
 		mult(charclass("abcdefghijklmnopqrstuvwxyz"), plus),
-	).regex() == "abcde[^fg]*h{5}[a-z]+"
+	)) == "abcde[^fg]*h{5}[a-z]+"
 
 	# conc parsing
 	assert conc.match("abcde[^fg]*h{5}[a-z]+", 0) == (
@@ -2373,16 +2460,16 @@ if __name__ == '__main__':
 		conc(mult(charclass("a"), one)),
 	)
 
-	# pattern.regex()
-	assert pattern(
+	# str(pattern)
+	assert str(pattern(
 		conc(mult(charclass("a"), one)),
 		conc(mult(charclass("b"), one)),
-	).regex() == "a|b"
-	assert pattern(
+	)) == "a|b"
+	assert str(pattern(
 		conc(mult(charclass("a"), one)),
 		conc(mult(charclass("a"), one)),
-	).regex() == "a"
-	assert pattern(
+	)) == "a"
+	assert str(pattern(
 		conc(
 			mult(charclass("a"), one),
 			mult(charclass("b"), one),
@@ -2407,7 +2494,7 @@ if __name__ == '__main__':
 				), one
 			),
 		),
-	).regex() == "abc|def(ghi|jkl)"
+	)) == "abc|def(ghi|jkl)"
 
 	# pattern.reduce() tests
 
@@ -2573,7 +2660,7 @@ if __name__ == '__main__':
 	# a * {1,3} = a{1,3}
 	assert charclass("a") * multiplier(1, 3) == mult(charclass("a"), multiplier(1, 3))
 	# a * {4,} = a{4,}
-	assert charclass("a") * multiplier(4, None) == mult(charclass("a"), multiplier(4, None))
+	assert charclass("a") * multiplier(4, infinity) == mult(charclass("a"), multiplier(4, infinity))
 
 	# mult multiplication
 	# a{2,3} * 1 = a{2,3}
@@ -2584,10 +2671,10 @@ if __name__ == '__main__':
 	assert mult(
 		charclass("a"), multiplier(2, 3)
 	) * multiplier(4, 5) == mult(charclass("a"), multiplier(8, 15))
-	# a{2,} * {2,None} = a{4,}
+	# a{2,} * {2,} = a{4,}
 	assert mult(
-		charclass("a"), multiplier(2, None)
-	) * multiplier(2, None) == mult(charclass("a"), multiplier(4, None))
+		charclass("a"), multiplier(2, infinity)
+	) * multiplier(2, infinity) == mult(charclass("a"), multiplier(4, infinity))
 
 	# conc multiplication
 	# ab? * {0,1} = (ab?)?
@@ -2629,93 +2716,105 @@ if __name__ == '__main__':
 
 	# bound class tests
 
-	assert bound(0) & bound(None) == bound(0)
-	assert bound(1) & bound(None) == bound(1)
+	assert bound(0).common(infinity) == bound(0)
+	assert bound(1).common(infinity) == bound(1)
 	assert qm.mandatory == bound(0)
 	assert qm.optional == bound(1)
 
 	# multiplier intersection operator tests
-	assert zero & zero == zero
-	assert zero & qm   == zero
-	assert zero & one  == zero
-	assert zero & star == zero
-	assert zero & plus == zero
-
-	assert qm   & zero == zero
-	assert qm   & qm   == qm
-	assert qm   & one  == zero
-	assert qm   & star == qm
-	assert qm   & plus == qm
-
-	assert one  & zero == zero
-	assert one  & qm   == zero
-	assert one  & one  == one
-	assert one  & star == zero
-	assert one  & plus == one
-
-	assert star & zero == zero
-	assert star & qm   == qm
-	assert star & one  == zero
-	assert star & star == star
-	assert star & plus == star
-
-	assert plus & zero == zero
-	assert plus & qm   == qm
-	assert plus & one  == one
-	assert plus & star == star
-	assert plus & plus == plus
+	assert zero.common(zero) == zero
+	assert zero.common(qm  ) == zero
+	assert zero.common(one ) == zero
+	assert zero.common(star) == zero
+	assert zero.common(plus) == zero
+	assert qm  .common(zero) == zero
+	assert qm  .common(qm  ) == qm
+	assert qm  .common(one ) == zero
+	assert qm  .common(star) == qm
+	assert qm  .common(plus) == qm
+	assert one .common(zero) == zero
+	assert one .common(qm  ) == zero
+	assert one .common(one ) == one
+	assert one .common(star) == zero
+	assert one .common(plus) == one
+	assert star.common(zero) == zero
+	assert star.common(qm  ) == qm
+	assert star.common(one ) == zero
+	assert star.common(star) == star
+	assert star.common(plus) == star
+	assert plus.common(zero) == zero
+	assert plus.common(qm  ) == qm
+	assert plus.common(one ) == one
+	assert plus.common(star) == star
+	assert plus.common(plus) == plus
 
 	# a{3,4}, a{2,5} -> a{2,3} (with a{1,1}, a{0,2} left over)
-	assert multiplier(3, 4) & multiplier(2, 5) == multiplier(2, 3)
+	assert multiplier(3, 4).common(multiplier(2, 5)) == multiplier(2, 3)
+	assert multiplier(3, 4) - multiplier(2, 3) == one
+	assert multiplier(2, 5) - multiplier(2, 3) == multiplier(0, 2)
 
 	# a{2,}, a{1,5} -> a{1,5} (with a{1,}, a{0,0} left over)
-	assert multiplier(2, None) & multiplier(1, 5) == multiplier(1, 5)
+	assert multiplier(2, infinity).common(multiplier(1, 5)) == multiplier(1, 5)
+	assert multiplier(2, infinity) - multiplier(1, 5) == plus
+	assert multiplier(1, 5) - multiplier(1, 5) == zero
 
 	# a{3,}, a{2,} -> a{2,} (with a, epsilon left over)
-	assert multiplier(3, None) & multiplier(2, None) == multiplier(2, None)
+	assert multiplier(3, infinity).common(multiplier(2, infinity)) == multiplier(2, infinity)
+	assert multiplier(3, infinity) - multiplier(2, infinity) == one
+	assert multiplier(2, infinity) - multiplier(2, infinity) == zero
 
-	# a{3,}, a{3,} -> a{3,} (with None, None left over)
-	assert multiplier(3, None) & multiplier(3, None) == multiplier(3, None)
+	# a{3,}, a{3,} -> a{3,} (with zero, zero left over)
+	assert multiplier(3, infinity).common(multiplier(3, infinity)) == multiplier(3, infinity)
+	assert multiplier(3, infinity) - multiplier(3, infinity) == zero
 
 	# mult intersection ("&") tests
-
-	# a & b -> no intersection
-	try:
-		mult(charclass("a"), one) & mult(charclass("b"), one)
-		assert(False)
-	except NoCommonMultiplicandException:
-		pass
-
+	# a & b? = nothing
+	assert mult(charclass("a"), one) & mult(charclass("b"), qm) == charclass()
+	assert mult(charclass("a"), one) & mult(charclass("b"), qm) == nothing
+	# a & a? = nothing
+	assert mult(charclass("a"), one) & mult(charclass("a"), qm) == charclass("a")
+	# a{2} & a{2,} = a{2}
+	assert mult(charclass("a"), multiplier(2, 2)) \
+	& mult(charclass("a"), multiplier(2, infinity)) \
+	== mult(charclass("a"), multiplier(2, 2))
+	# a & b -> no intersection.
+	assert mult(charclass("a"), one) & mult(charclass("b"), one) == nothing
 	# a & a -> a
-	assert mult(charclass("a"), one) & mult(charclass("a"), one) == mult(charclass("a"), one)
+	assert mult(charclass("a"), one) & mult(charclass("a"), one) == charclass("a")
+	# a* & a -> no intersection
+	assert mult(charclass("a"), star) & mult(charclass("a"), one) == charclass("a")
+	# a* & b* -> emptystring
+	assert mult(charclass("a"), star) & mult(charclass("b"), star) == emptystring
+	# a* & a+ -> a+
+	assert mult(charclass("a"), star) & mult(charclass("a"), plus) == mult(charclass("a"), plus)
 
 	# a{3,4} & a{2,5} -> a{2,3}
 	assert mult(
 		charclass("a"), multiplier(3, 4)
-	) & mult(
+	).common(mult(
 		charclass("a"), multiplier(2, 5)
-	) == mult(charclass("a"), multiplier(2, 3))
+	)) == mult(charclass("a"), multiplier(2, 3))
 
 	# a{2,} & a{1,5} -> a{1,5}
 	assert mult(
-		charclass("a"), multiplier(2, None)
-	) & mult(
+		charclass("a"), multiplier(2, infinity)
+	).common(mult(
 		charclass("a"), multiplier(1, 5)
-	) == mult(charclass("a"), multiplier(1, 5))
+	)) == mult(charclass("a"), multiplier(1, 5))
 
 	# a{3,}, a{2,} -> a{2,} (with a, epsilon left over)
 	assert mult(
-		charclass("a"), multiplier(3, None)
-	) & mult(
-		charclass("a"), multiplier(2, None)
-	) == mult(charclass("a"), multiplier(2, None))
+		charclass("a"), multiplier(3, infinity)
+	).common(mult(
+		charclass("a"), multiplier(2, infinity)
+	)) == mult(charclass("a"), multiplier(2, infinity))
 
-	# a{3,}, a{3,} -> a{3,} (with None, None left over)
+	# a{3,}, a{3,} -> a{3,} (with infinity, infinity left over)
 	assert mult(
-		charclass("a"), multiplier(3, None)
+		charclass("a"), multiplier(3, infinity)
 	) & mult(
-		charclass("a"), multiplier(3, None)
-	) == mult(charclass("a"), multiplier(3, None))
+		charclass("a"), multiplier(3, infinity)
+	) == mult(charclass("a"), multiplier(3, infinity))
 
 	# pattern._concsuffix() tests
 
@@ -2879,7 +2978,7 @@ if __name__ == '__main__':
 	# a + a = a{2}
 	assert charclass("a") + mult(charclass("a"), one) == mult(charclass("a"), multiplier(2, 2))
 	# a + a{2,} = a{3,}
-	assert charclass("a") + mult(charclass("a"), multiplier(2, None)) == mult(charclass("a"), multiplier(3, None))
+	assert charclass("a") + mult(charclass("a"), multiplier(2, infinity)) == mult(charclass("a"), multiplier(3, infinity))
 	# a + a{,8} = a{1,9}
 	assert charclass("a") + mult(charclass("a"), multiplier(0, 8)) == mult(charclass("a"), multiplier(1, 9))
 	# a + b{,8} = ab{,8}
@@ -3050,7 +3149,7 @@ if __name__ == '__main__':
 		mult(charclass("b"), qm),
 	)
 	# a* + a{2} = a{2,}
-	assert mult(charclass("a"), star) + mult(charclass("a"), multiplier(2, 2)) == mult(charclass("a"), multiplier(2, None))
+	assert mult(charclass("a"), star) + mult(charclass("a"), multiplier(2, 2)) == mult(charclass("a"), multiplier(2, infinity))
 
 	# mult + conc
 	# a{2} + bc = a{2}bc
@@ -3403,5 +3502,17 @@ if __name__ == '__main__':
 			),
 		), multiplier(2, 2)
 	)
+
+	assert nothing.empty()
+	assert charclass().empty()
+	assert not dot.empty()
+	assert not mult(charclass("a"), zero).empty()
+	assert mult(charclass(), one).empty()
+	assert not mult(charclass(), qm).empty()
+	assert conc(mult(charclass("a"), one), mult(charclass(), one)).empty()
+	assert not conc(mult(charclass("a"), one), mult(charclass(), qm)).empty()
+	assert pattern().empty()
+	assert not pattern(conc(mult(charclass("a"), zero))).empty()
+	assert not pattern(conc(mult(charclass(), qm))).empty()
 
 	print("OK")
