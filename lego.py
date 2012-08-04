@@ -213,11 +213,11 @@ class charclass(multiplicand):
 	def __hash__(self):
 		return hash((self.chars, self.negated))
 
-	def __mul__(self, multiplier):
+	def __mul__(self, ier):
 		# e.g. "a" * {0,1} = "a?"
-		if multiplier == one:
+		if ier == one:
 			return self.reduce()
-		return mult(self, multiplier).reduce()
+		return mult(self, ier).reduce()
 
 	# These are the characters carrying special meanings when they appear "outdoors"
 	# within a regular expression. To be interpreted literally, they must be
@@ -681,8 +681,8 @@ class bound:
 		if other == inf:
 			if self == inf:
 				# Infinity minus infinity is zero. This has to be true so that
-				# we can for example subtract multiplier(0, inf) from
-				# multiplier(1, inf) to get multiplier(1, 1)
+				# we can for example subtract multiplier(bound(0), inf) from
+				# multiplier(bound(1), inf) to get multiplier(bound(1), bound(1))
 				return bound(0)
 			raise Exception("Can't subtract " + str(other) + " from " + str(self))
 		if self == inf:
@@ -713,11 +713,11 @@ class multiplier(lego):
 	'''
 	def __init__(self, min, max):
 		if not isinstance(min, bound):
-			min = bound(min)
+			raise Exception
+		if not isinstance(max, bound):
+			raise Exception
 		if min == inf:
 			raise Exception("Can't have an infinite lower bound")
-		if not isinstance(max, bound):
-			max = bound(max)
 		if max < min:
 			raise Exception(
 				"max '" + str(max) + "' must match or exceed min '" + str(min) + "'"
@@ -766,7 +766,7 @@ class multiplier(lego):
 			j = cls.matchStatic(string, j, ",")
 			max, j = cls.matchInteger(string, j)
 			j = cls.matchStatic(string, j, "}")
-			return multiplier(min, max), j
+			return multiplier(bound(min), bound(max)), j
 		except nomatch:
 			pass
 
@@ -775,7 +775,7 @@ class multiplier(lego):
 			j = cls.matchStatic(string, i, "{")
 			min, j = cls.matchInteger(string, j)
 			j = cls.matchStatic(string, j, ",}")
-			return multiplier(min, inf), j
+			return multiplier(bound(min), inf), j
 		except nomatch:
 			pass
 
@@ -784,7 +784,7 @@ class multiplier(lego):
 			j = cls.matchStatic(string, i, "{")
 			min, j = cls.matchInteger(string, j)
 			j = cls.matchStatic(string, j, "}")
-			return multiplier(min, min), j
+			return multiplier(bound(min), bound(min)), j
 		except nomatch:
 			pass
 
@@ -1098,7 +1098,7 @@ class conc(lego):
 		return conc(*(self.mults + other.mults)).reduce()
 
 	def __or__(self, other):
-		return pattern(self) | other
+		return pattern(self) | other # pattern.__or__() calls reduce()
 
 	def __and__(self, other):
 		return pattern(self) & other # pattern.__and__() calls reduce()
@@ -1569,11 +1569,11 @@ escapes = {
 inf = bound(None)
 
 # Preset multipliers. These get used ALL THE TIME in unit tests
-zero = multiplier(0, 0) # has some occasional uses
-qm   = multiplier(0, 1)
-one  = multiplier(1, 1)
-star = multiplier(0, inf)
-plus = multiplier(1, inf)
+zero = multiplier(bound(0), bound(0)) # has some occasional uses
+qm   = multiplier(bound(0), bound(1))
+one  = multiplier(bound(1), bound(1))
+star = multiplier(bound(0), inf)
+plus = multiplier(bound(1), inf)
 
 # Symbol lookup table for preset multipliers.
 symbolic = {
@@ -1813,7 +1813,7 @@ if __name__ == '__main__':
 	d2 = pattern(
 		conc(
 			mult(
-				d, multiplier(2, 2)
+				d, multiplier(bound(2), bound(2))
 			)
 		)
 	).fsm(d.chars)
@@ -1947,7 +1947,7 @@ if __name__ == '__main__':
 	assert pattern(
 		conc(
 			mult(charclass("c"), one),
-			mult(charclass("f"), multiplier(1, 2)),
+			mult(charclass("f"), multiplier(bound(1), bound(2))),
 		),
 		conc(
 			mult(charclass("c"), one),
@@ -1955,7 +1955,7 @@ if __name__ == '__main__':
 		),
 	).behead(mult(charclass("c"), one)) == pattern(
 		conc(
-			mult(charclass("f"), multiplier(1, 2)),
+			mult(charclass("f"), multiplier(bound(1), bound(2))),
 		),
 		conc(
 			mult(charclass("f"), one),
@@ -2070,7 +2070,7 @@ if __name__ == '__main__':
 	assert pattern(
 		conc(
 			mult(charclass("c"), one),
-			mult(charclass("f"), multiplier(1, 2)),
+			mult(charclass("f"), multiplier(bound(1), bound(2))),
 		),
 		conc(
 			mult(charclass("c"), one),
@@ -2085,7 +2085,7 @@ if __name__ == '__main__':
 	assert pattern(
 		conc(
 			mult(charclass("c"), one),
-			mult(charclass("f"), multiplier(1, 2)),
+			mult(charclass("f"), multiplier(bound(1), bound(2))),
 		),
 		conc(
 			mult(charclass("c"), one),
@@ -2192,7 +2192,7 @@ if __name__ == '__main__':
 	# a{2}b|a+c -> a
 	assert pattern(
 		conc(
-			mult(charclass("a"), multiplier(2, 2)),
+			mult(charclass("a"), multiplier(bound(2), bound(2))),
 			mult(charclass("b"), one),
 		),
 		conc(
@@ -2204,7 +2204,7 @@ if __name__ == '__main__':
 	# a{2}b|a+c.behead(a) = (ab|a*c)
 	assert pattern(
 		conc(
-			mult(charclass("a"), multiplier(2, 2)),
+			mult(charclass("a"), multiplier(bound(2), bound(2))),
 			mult(charclass("b"), one),
 		),
 		conc(
@@ -2329,26 +2329,26 @@ if __name__ == '__main__':
 	assert mult(charclass("a"), one) == mult(charclass("a"), one)
 	assert mult(charclass("a"), one) != mult(charclass("b"), one)
 	assert mult(charclass("a"), one) != mult(charclass("a"), qm)
-	assert mult(charclass("a"), one) != mult(charclass("a"), multiplier(1, 2))
+	assert mult(charclass("a"), one) != mult(charclass("a"), multiplier(bound(1), bound(2)))
 
 	# str(mult) tests
 	a = charclass("a")
 	assert str(mult(a, one)) == "a"
-	assert str(mult(a, multiplier(2, 2))) == "aa"
-	assert str(mult(a, multiplier(3, 3))) == "aaa"
-	assert str(mult(a, multiplier(4, 4))) == "aaaa"
-	assert str(mult(a, multiplier(5, 5))) == "a{5}"
+	assert str(mult(a, multiplier(bound(2), bound(2)))) == "aa"
+	assert str(mult(a, multiplier(bound(3), bound(3)))) == "aaa"
+	assert str(mult(a, multiplier(bound(4), bound(4)))) == "aaaa"
+	assert str(mult(a, multiplier(bound(5), bound(5)))) == "a{5}"
 	assert str(mult(a, qm)) == "a?"
 	assert str(mult(a, star)) == "a*"
 	assert str(mult(a, plus)) == "a+"
-	assert str(mult(a, multiplier(2, 5))) == "a{2,5}"
+	assert str(mult(a, multiplier(bound(2), bound(5)))) == "a{2,5}"
 	assert str(bound(2)) == "2"
 	assert str(inf) == ""
-	assert str(multiplier(2, inf)) == "{2,}"
-	assert str(mult(a, multiplier(2, inf))) == "a{2,}"
+	assert str(multiplier(bound(2), inf)) == "{2,}"
+	assert str(mult(a, multiplier(bound(2), inf))) == "a{2,}"
 	assert str(mult(d, one)) == "\\d"
-	assert str(mult(d, multiplier(2, 2))) == "\\d\\d"
-	assert str(mult(d, multiplier(3, 3))) == "\\d{3}"
+	assert str(mult(d, multiplier(bound(2), bound(2)))) == "\\d\\d"
+	assert str(mult(d, multiplier(bound(3), bound(3)))) == "\\d{3}"
 
 	# mult parsing
 	assert mult.match("[a-g]+", 0) == (
@@ -2368,12 +2368,16 @@ if __name__ == '__main__':
 		11
 	)
 	assert mult.match("abcde[^fg]*h{5}[a-z]+", 11) == (
-		mult(charclass("h"), multiplier(5, 5)),
+		mult(charclass("h"), multiplier(bound(5), bound(5))),
 		15
 	)
-	assert mult.match("abcde[^fg]*h{5}[a-z]+", 15) == (
+	assert mult.match("abcde[^fg]*h{5}[a-z]+T{1,}", 15) == (
 		mult(charclass("abcdefghijklmnopqrstuvwxyz"), plus),
 		21
+	)
+	assert mult.match("abcde[^fg]*h{5}[a-z]+T{2,}", 21) == (
+		mult(charclass("T"), multiplier(bound(2), inf)),
+		26
 	)
 
 	# mult.reduce() tests
@@ -2386,11 +2390,11 @@ if __name__ == '__main__':
 	assert mult(nothing, one).reduce() == nothing
 	assert mult(nothing, qm).reduce() == emptystring
 	assert mult(nothing, zero).reduce() == emptystring
-	assert mult(nothing, multiplier(0, 5)).reduce() == emptystring
+	assert mult(nothing, multiplier(bound(0), bound(5))).reduce() == emptystring
 	assert mult(pattern(), one).reduce() == nothing
 	assert mult(pattern(), qm).reduce() == emptystring
 	assert mult(pattern(), zero).reduce() == emptystring
-	assert mult(pattern(), multiplier(0, 5)).reduce() == emptystring
+	assert mult(pattern(), multiplier(bound(0), bound(5))).reduce() == emptystring
 
 	# mult contains a pattern containing an empty conc? Pull the empty
 	# part out where it's external
@@ -2399,19 +2403,19 @@ if __name__ == '__main__':
 			conc(mult(charclass("a"), one)),
 			conc(mult(charclass("b"), star)),
 			emptystring
-		), multiplier(2, 2)
+		), multiplier(bound(2), bound(2))
 	).reduce() == mult(
 		pattern(
 			conc(mult(charclass("a"), one)),
 			conc(mult(charclass("b"), star)),
-		), multiplier(0, 2)
+		), multiplier(bound(0), bound(2))
 	)
 
 	# This happens even if emptystring is the only thing left inside the mult
 	assert mult(
 		pattern(
 			emptystring
-		), multiplier(2, 2)
+		), multiplier(bound(2), bound(2))
 	).reduce() == emptystring
 
 	# mult contains a pattern containing a single conc containing a single mult?
@@ -2428,10 +2432,10 @@ if __name__ == '__main__':
 	assert mult(
 		pattern(
 			conc(
-				mult(charclass("c"), multiplier(1, 2))
+				mult(charclass("c"), multiplier(bound(1), bound(2)))
 			)
-		), multiplier(3, 4)
-	).reduce() == mult(charclass("c"), multiplier(3, 8))
+		), multiplier(bound(3), bound(4))
+	).reduce() == mult(charclass("c"), multiplier(bound(3), bound(8)))
 
 	# recursive mult reduction
 	assert mult(
@@ -2445,20 +2449,20 @@ if __name__ == '__main__':
 	# a{4,5} - a{3} = a{1,2}
 	assert mult(
 		charclass("a"),
-		multiplier(4, 5)
+		multiplier(bound(4), bound(5))
 	) - mult(
 		charclass("a"),
-		multiplier(3, 3)
+		multiplier(bound(3), bound(3))
 	) == mult(
 		charclass("a"),
-		multiplier(1, 2)
+		multiplier(bound(1), bound(2))
 	)
 
 	# conc equality
 	assert conc(mult(charclass("a"), one)) == conc(mult(charclass("a"), one))
 	assert conc(mult(charclass("a"), one)) != conc(mult(charclass("b"), one))
 	assert conc(mult(charclass("a"), one)) != conc(mult(charclass("a"), qm))
-	assert conc(mult(charclass("a"), one)) != conc(mult(charclass("a"), multiplier(1, 2)))
+	assert conc(mult(charclass("a"), one)) != conc(mult(charclass("a"), multiplier(bound(1), bound(2))))
 	assert conc(mult(charclass("a"), one)) != emptystring
 
 	# str(conc) tests
@@ -2469,7 +2473,7 @@ if __name__ == '__main__':
 		mult(charclass("d"), one),
 		mult(charclass("e"), one),
 		mult(~charclass("fg"), star),
-		mult(charclass("h"), multiplier(5, 5)),
+		mult(charclass("h"), multiplier(bound(5), bound(5))),
 		mult(charclass("abcdefghijklmnopqrstuvwxyz"), plus),
 	)) == "abcde[^fg]*h{5}[a-z]+"
 
@@ -2482,7 +2486,7 @@ if __name__ == '__main__':
 			mult(charclass("d"), one),
 			mult(charclass("e"), one),
 			mult(~charclass("fg"), star),
-			mult(charclass("h"), multiplier(5, 5)),
+			mult(charclass("h"), multiplier(bound(5), bound(5))),
 			mult(charclass("abcdefghijklmnopqrstuvwxyz"), plus),
 		), 21
 	)
@@ -2506,11 +2510,11 @@ if __name__ == '__main__':
 	)
 	assert conc.match("\\d{4}-\\d{2}-\\d{2}", 0) == (
 		conc(
-			mult(charclass("0123456789"), multiplier(4, 4)),
+			mult(charclass("0123456789"), multiplier(bound(4), bound(4))),
 			mult(charclass("-"), one),
-			mult(charclass("0123456789"), multiplier(2, 2)),
+			mult(charclass("0123456789"), multiplier(bound(2), bound(2))),
 			mult(charclass("-"), one),
-			mult(charclass("0123456789"), multiplier(2, 2)),
+			mult(charclass("0123456789"), multiplier(bound(2), bound(2))),
 		),
 		17
 	)
@@ -2531,8 +2535,8 @@ if __name__ == '__main__':
 	)
 	# conc -> mult
 	assert conc(
-		mult(charclass("a"), multiplier(3, 4)),
-	).reduce() == mult(charclass("a"), multiplier(3, 4))
+		mult(charclass("a"), multiplier(bound(3), bound(4))),
+	).reduce() == mult(charclass("a"), multiplier(bound(3), bound(4)))
 	# conc -> charclass
 	assert conc(
 		mult(charclass("a"), one),
@@ -2547,7 +2551,7 @@ if __name__ == '__main__':
 		mult(charclass("b"), one),
 	).reduce() == conc(
 		mult(charclass("a"), one),
-		mult(charclass("$%^"), multiplier(1, 2)),
+		mult(charclass("$%^"), multiplier(bound(1), bound(2))),
 		mult(charclass("b"), one)
 	)
 
@@ -2624,41 +2628,41 @@ if __name__ == '__main__':
 	# (ab|cd) -> (ab|cd)
 	assert pattern(
 		conc(
-			mult(charclass("a"), multiplier(2, 2)),
-			mult(charclass("b"), multiplier(2, 2)),
+			mult(charclass("a"), multiplier(bound(2), bound(2))),
+			mult(charclass("b"), multiplier(bound(2), bound(2))),
 		),
 		conc(
-			mult(charclass("c"), multiplier(2, 2)),
-			mult(charclass("d"), multiplier(2, 2)),
+			mult(charclass("c"), multiplier(bound(2), bound(2))),
+			mult(charclass("d"), multiplier(bound(2), bound(2))),
 		),
 	).reduce() == pattern(
 		conc(
-			mult(charclass("a"), multiplier(2, 2)),
-			mult(charclass("b"), multiplier(2, 2)),
+			mult(charclass("a"), multiplier(bound(2), bound(2))),
+			mult(charclass("b"), multiplier(bound(2), bound(2))),
 		),
 		conc(
-			mult(charclass("c"), multiplier(2, 2)),
-			mult(charclass("d"), multiplier(2, 2)),
+			mult(charclass("c"), multiplier(bound(2), bound(2))),
+			mult(charclass("d"), multiplier(bound(2), bound(2))),
 		),
 	)
 
 	# pattern -> conc
 	assert pattern(
 		conc(
-			mult(charclass("a"), multiplier(2, 2)),
-			mult(charclass("b"), multiplier(2, 2)),
+			mult(charclass("a"), multiplier(bound(2), bound(2))),
+			mult(charclass("b"), multiplier(bound(2), bound(2))),
 		),
 	).reduce() == conc(
-		mult(charclass("a"), multiplier(2, 2)),
-		mult(charclass("b"), multiplier(2, 2)),
+		mult(charclass("a"), multiplier(bound(2), bound(2))),
+		mult(charclass("b"), multiplier(bound(2), bound(2))),
 	)
 
 	# pattern -> mult
 	assert pattern(
 		conc(
-			mult(charclass("a"), multiplier(2, 2)),
+			mult(charclass("a"), multiplier(bound(2), bound(2))),
 		),
-	).reduce() == mult(charclass("a"), multiplier(2, 2))
+	).reduce() == mult(charclass("a"), multiplier(bound(2), bound(2)))
 
 	# pattern -> charclass
 	assert pattern(
@@ -2672,18 +2676,18 @@ if __name__ == '__main__':
 	assert pattern(
 		conc(mult(charclass("0"), one)),
 		conc(mult(charclass("123456789"), one)),
-		conc(mult(charclass("a"), multiplier(5, 7))),
+		conc(mult(charclass("a"), multiplier(bound(5), bound(7)))),
 	).reduce() == pattern(
 		conc(mult(charclass("0123456789"), one)),
-		conc(mult(charclass("a"), multiplier(5, 7))),
+		conc(mult(charclass("a"), multiplier(bound(5), bound(7)))),
 	)
 	assert pattern(
 		conc(mult(charclass("0"), star)),
 		conc(mult(charclass("123456789"), star)),
-		conc(mult(charclass("a"), multiplier(5, 7))),
+		conc(mult(charclass("a"), multiplier(bound(5), bound(7)))),
 	).reduce() == pattern(
 		conc(mult(charclass("0123456789"), star)),
-		conc(mult(charclass("a"), multiplier(5, 7))),
+		conc(mult(charclass("a"), multiplier(bound(5), bound(7)))),
 	)
 	assert pattern(
 		conc(mult(charclass("0"), star)),
@@ -2703,7 +2707,7 @@ if __name__ == '__main__':
 				pattern(
 					conc(mult(charclass("0"), one)),
 					conc(mult(charclass("123456789"), one)),
-					conc(mult(charclass("a"), multiplier(5, 7))),
+					conc(mult(charclass("a"), multiplier(bound(5), bound(7)))),
 				), one
 			)
 		)
@@ -2713,7 +2717,7 @@ if __name__ == '__main__':
 			mult(
 				pattern(
 					conc(mult(charclass("0123456789"), one)),
-					conc(mult(charclass("a"), multiplier(5, 7))),
+					conc(mult(charclass("a"), multiplier(bound(5), bound(7)))),
 				), one
 			)
 		)
@@ -2723,7 +2727,7 @@ if __name__ == '__main__':
 	# a{2}b|a+c -> a{2}(ab|a*c)
 	assert pattern(
 		conc(
-			mult(charclass("a"), multiplier(2, 2)),
+			mult(charclass("a"), multiplier(bound(2), bound(2))),
 			mult(charclass("b"), one),
 		),
 		conc(
@@ -2780,23 +2784,23 @@ if __name__ == '__main__':
 	# a * 1 = a
 	assert charclass("a") * one == charclass("a")
 	# a * {1,3} = a{1,3}
-	assert charclass("a") * multiplier(1, 3) == mult(charclass("a"), multiplier(1, 3))
+	assert charclass("a") * multiplier(bound(1), bound(3)) == mult(charclass("a"), multiplier(bound(1), bound(3)))
 	# a * {4,} = a{4,}
-	assert charclass("a") * multiplier(4, inf) == mult(charclass("a"), multiplier(4, inf))
+	assert charclass("a") * multiplier(bound(4), inf) == mult(charclass("a"), multiplier(bound(4), inf))
 
 	# mult multiplication
 	# a{2,3} * 1 = a{2,3}
 	assert mult(
-		charclass("a"), multiplier(2, 3)
-	) * one == mult(charclass("a"), multiplier(2, 3))
+		charclass("a"), multiplier(bound(2), bound(3))
+	) * one == mult(charclass("a"), multiplier(bound(2), bound(3)))
 	# a{2,3} * {4,5} = a{8,15}
 	assert mult(
-		charclass("a"), multiplier(2, 3)
-	) * multiplier(4, 5) == mult(charclass("a"), multiplier(8, 15))
+		charclass("a"), multiplier(bound(2), bound(3))
+	) * multiplier(bound(4), bound(5)) == mult(charclass("a"), multiplier(bound(8), bound(15)))
 	# a{2,} * {2,} = a{4,}
 	assert mult(
-		charclass("a"), multiplier(2, inf)
-	) * multiplier(2, inf) == mult(charclass("a"), multiplier(4, inf))
+		charclass("a"), multiplier(bound(2), inf)
+	) * multiplier(bound(2), inf) == mult(charclass("a"), multiplier(bound(4), inf))
 
 	# conc multiplication
 	# ab? * {0,1} = (ab?)?
@@ -2823,7 +2827,7 @@ if __name__ == '__main__':
 			mult(charclass("b"), one),
 			mult(charclass("a"), qm),
 		),
-	) * multiplier(2, 3) == mult(
+	) * multiplier(bound(2), bound(3)) == mult(
 		pattern(
 			conc(
 				mult(charclass("a"), one),
@@ -2833,7 +2837,7 @@ if __name__ == '__main__':
 				mult(charclass("b"), one),
 				mult(charclass("a"), qm),
 			),
-		), multiplier(2, 3)
+		), multiplier(bound(2), bound(3))
 	)
 
 	# bound class tests
@@ -2871,23 +2875,23 @@ if __name__ == '__main__':
 	assert plus.common(plus) == plus
 
 	# a{3,4}, a{2,5} -> a{2,3} (with a{1,1}, a{0,2} left over)
-	assert multiplier(3, 4).common(multiplier(2, 5)) == multiplier(2, 3)
-	assert multiplier(3, 4) - multiplier(2, 3) == one
-	assert multiplier(2, 5) - multiplier(2, 3) == multiplier(0, 2)
+	assert multiplier(bound(3), bound(4)).common(multiplier(bound(2), bound(5))) == multiplier(bound(2), bound(3))
+	assert multiplier(bound(3), bound(4)) - multiplier(bound(2), bound(3)) == one
+	assert multiplier(bound(2), bound(5)) - multiplier(bound(2), bound(3)) == multiplier(bound(0), bound(2))
 
 	# a{2,}, a{1,5} -> a{1,5} (with a{1,}, a{0,0} left over)
-	assert multiplier(2, inf).common(multiplier(1, 5)) == multiplier(1, 5)
-	assert multiplier(2, inf) - multiplier(1, 5) == plus
-	assert multiplier(1, 5) - multiplier(1, 5) == zero
+	assert multiplier(bound(2), inf).common(multiplier(bound(1), bound(5))) == multiplier(bound(1), bound(5))
+	assert multiplier(bound(2), inf) - multiplier(bound(1), bound(5)) == plus
+	assert multiplier(bound(1), bound(5)) - multiplier(bound(1), bound(5)) == zero
 
 	# a{3,}, a{2,} -> a{2,} (with a, epsilon left over)
-	assert multiplier(3, inf).common(multiplier(2, inf)) == multiplier(2, inf)
-	assert multiplier(3, inf) - multiplier(2, inf) == one
-	assert multiplier(2, inf) - multiplier(2, inf) == zero
+	assert multiplier(bound(3), inf).common(multiplier(bound(2), inf)) == multiplier(bound(2), inf)
+	assert multiplier(bound(3), inf) - multiplier(bound(2), inf) == one
+	assert multiplier(bound(2), inf) - multiplier(bound(2), inf) == zero
 
 	# a{3,}, a{3,} -> a{3,} (with zero, zero left over)
-	assert multiplier(3, inf).common(multiplier(3, inf)) == multiplier(3, inf)
-	assert multiplier(3, inf) - multiplier(3, inf) == zero
+	assert multiplier(bound(3), inf).common(multiplier(bound(3), inf)) == multiplier(bound(3), inf)
+	assert multiplier(bound(3), inf) - multiplier(bound(3), inf) == zero
 
 	# mult intersection ("&") tests
 	# a & b? = nothing
@@ -2896,9 +2900,9 @@ if __name__ == '__main__':
 	# a & a? = nothing
 	assert mult(charclass("a"), one) & mult(charclass("a"), qm) == charclass("a")
 	# a{2} & a{2,} = a{2}
-	assert mult(charclass("a"), multiplier(2, 2)) \
-	& mult(charclass("a"), multiplier(2, inf)) \
-	== mult(charclass("a"), multiplier(2, 2))
+	assert mult(charclass("a"), multiplier(bound(2), bound(2))) \
+	& mult(charclass("a"), multiplier(bound(2), inf)) \
+	== mult(charclass("a"), multiplier(bound(2), bound(2)))
 	# a & b -> no intersection.
 	assert mult(charclass("a"), one) & mult(charclass("b"), one) == nothing
 	# a & a -> a
@@ -2912,31 +2916,31 @@ if __name__ == '__main__':
 
 	# a{3,4} & a{2,5} -> a{2,3}
 	assert mult(
-		charclass("a"), multiplier(3, 4)
+		charclass("a"), multiplier(bound(3), bound(4))
 	).common(mult(
-		charclass("a"), multiplier(2, 5)
-	)) == mult(charclass("a"), multiplier(2, 3))
+		charclass("a"), multiplier(bound(2), bound(5))
+	)) == mult(charclass("a"), multiplier(bound(2), bound(3)))
 
 	# a{2,} & a{1,5} -> a{1,5}
 	assert mult(
-		charclass("a"), multiplier(2, inf)
+		charclass("a"), multiplier(bound(2), inf)
 	).common(mult(
-		charclass("a"), multiplier(1, 5)
-	)) == mult(charclass("a"), multiplier(1, 5))
+		charclass("a"), multiplier(bound(1), bound(5))
+	)) == mult(charclass("a"), multiplier(bound(1), bound(5)))
 
 	# a{3,}, a{2,} -> a{2,} (with a, epsilon left over)
 	assert mult(
-		charclass("a"), multiplier(3, inf)
+		charclass("a"), multiplier(bound(3), inf)
 	).common(mult(
-		charclass("a"), multiplier(2, inf)
-	)) == mult(charclass("a"), multiplier(2, inf))
+		charclass("a"), multiplier(bound(2), inf)
+	)) == mult(charclass("a"), multiplier(bound(2), inf))
 
 	# a{3,}, a{3,} -> a{3,} (with inf, inf left over)
 	assert mult(
-		charclass("a"), multiplier(3, inf)
+		charclass("a"), multiplier(bound(3), inf)
 	) & mult(
-		charclass("a"), multiplier(3, inf)
-	) == mult(charclass("a"), multiplier(3, inf))
+		charclass("a"), multiplier(bound(3), inf)
+	) == mult(charclass("a"), multiplier(bound(3), inf))
 
 	# pattern._commonconc(suffix=True) tests
 
@@ -3057,7 +3061,7 @@ if __name__ == '__main__':
 	# f{2,3}c, fc -> fc
 	assert pattern(
 		conc(
-			mult(charclass("f"), multiplier(2, 3)),
+			mult(charclass("f"), multiplier(bound(2), bound(3))),
 			mult(charclass("c"), one),
 		),
 		conc(
@@ -3072,7 +3076,7 @@ if __name__ == '__main__':
 	# (f{2,3}c|fc) - fc = (f{1,2}|)
 	assert pattern(
 		conc(
-			mult(charclass("f"), multiplier(2, 3)),
+			mult(charclass("f"), multiplier(bound(2), bound(3))),
 			mult(charclass("c"), one),
 		),
 		conc(
@@ -3085,7 +3089,7 @@ if __name__ == '__main__':
 	) == pattern(
 		emptystring,
 		conc(
-			mult(charclass("f"), multiplier(1, 2)),
+			mult(charclass("f"), multiplier(bound(1), bound(2))),
 		),
 	)
 
@@ -3123,31 +3127,31 @@ if __name__ == '__main__':
 		mult(charclass("b"), one),
 	)
 	# a + a = a{2}
-	assert charclass("a") + charclass("a") == mult(charclass("a"), multiplier(2, 2))
+	assert charclass("a") + charclass("a") == mult(charclass("a"), multiplier(bound(2), bound(2)))
 
 	# charclass + mult
 	# a + a = a{2}
-	assert charclass("a") + mult(charclass("a"), one) == mult(charclass("a"), multiplier(2, 2))
+	assert charclass("a") + mult(charclass("a"), one) == mult(charclass("a"), multiplier(bound(2), bound(2)))
 	# a + a{2,} = a{3,}
-	assert charclass("a") + mult(charclass("a"), multiplier(2, inf)) == mult(charclass("a"), multiplier(3, inf))
+	assert charclass("a") + mult(charclass("a"), multiplier(bound(2), inf)) == mult(charclass("a"), multiplier(bound(3), inf))
 	# a + a{,8} = a{1,9}
-	assert charclass("a") + mult(charclass("a"), multiplier(0, 8)) == mult(charclass("a"), multiplier(1, 9))
+	assert charclass("a") + mult(charclass("a"), multiplier(bound(0), bound(8))) == mult(charclass("a"), multiplier(bound(1), bound(9)))
 	# a + b{,8} = ab{,8}
-	assert charclass("a") + mult(charclass("b"), multiplier(0, 8)) == conc(
+	assert charclass("a") + mult(charclass("b"), multiplier(bound(0), bound(8))) == conc(
 		mult(charclass("a"), one),
-		mult(charclass("b"), multiplier(0, 8)),
+		mult(charclass("b"), multiplier(bound(0), bound(8))),
 	)
 
 	# mult + charclass
 	# b + b = b{2}
-	assert mult(charclass("b"), one) + charclass("b") == mult(charclass("b"), multiplier(2, 2))
+	assert mult(charclass("b"), one) + charclass("b") == mult(charclass("b"), multiplier(bound(2), bound(2)))
 	# b* + b = b+
 	assert mult(charclass("b"), star) + charclass("b") == mult(charclass("b"), plus)
 	 # b{,8} + b = b{1,9}
-	assert mult(charclass("b"), multiplier(0, 8)) + charclass("b") == mult(charclass("b"), multiplier(1, 9))
+	assert mult(charclass("b"), multiplier(bound(0), bound(8))) + charclass("b") == mult(charclass("b"), multiplier(bound(1), bound(9)))
 	# b{,8} + c = b{,8}c
-	assert mult(charclass("b"), multiplier(0, 8)) + charclass("c") == conc(
-		mult(charclass("b"), multiplier(0, 8)),
+	assert mult(charclass("b"), multiplier(bound(0), bound(8))) + charclass("c") == conc(
+		mult(charclass("b"), multiplier(bound(0), bound(8))),
 		mult(charclass("c"), one),
 	)
 
@@ -3168,7 +3172,7 @@ if __name__ == '__main__':
 		mult(charclass("a"), one),
 		mult(charclass("b"), one),
 	) == conc(
-		mult(charclass("a"), multiplier(2, 2)),
+		mult(charclass("a"), multiplier(bound(2), bound(2))),
 		mult(charclass("b"), one),
 	)
 
@@ -3190,7 +3194,7 @@ if __name__ == '__main__':
 		mult(charclass("b"), one),
 	) + charclass("b") == conc(
 		mult(charclass("a"), one),
-		mult(charclass("b"), multiplier(2, 2)),
+		mult(charclass("b"), multiplier(bound(2), bound(2))),
 	)
 
 	# pattern + charclass
@@ -3221,7 +3225,7 @@ if __name__ == '__main__':
 	assert pattern(
 		conc(
 			mult(charclass("a"), one),
-			mult(charclass("c"), multiplier(2, 2)),
+			mult(charclass("c"), multiplier(bound(2), bound(2))),
 		),
 		conc(
 			mult(charclass("b"), one),
@@ -3240,7 +3244,7 @@ if __name__ == '__main__':
 				),
 			), one
 		),
-		mult(charclass("c"), multiplier(2, 2)),
+		mult(charclass("c"), multiplier(bound(2), bound(2))),
 	)
 
 	# charclass + pattern
@@ -3270,7 +3274,7 @@ if __name__ == '__main__':
 	# a + (a{2}b|a+c) = a{2}(ab|a*c)
 	assert charclass("a") + pattern(
 		conc(
-			mult(charclass("a"), multiplier(2, 2)),
+			mult(charclass("a"), multiplier(bound(2), bound(2))),
 			mult(charclass("b"), one),
 		),
 		conc(
@@ -3278,7 +3282,7 @@ if __name__ == '__main__':
 			mult(charclass("c"), one),
 		),
 	) == conc(
-		mult(charclass("a"), multiplier(2, 2)),
+		mult(charclass("a"), multiplier(bound(2), bound(2))),
 		mult(
 			pattern(
 				conc(
@@ -3295,20 +3299,20 @@ if __name__ == '__main__':
 
 	# mult + mult
 	# a{3,4} + b? = a{3,4}b?
-	assert mult(charclass("a"), multiplier(3, 4)) + mult(charclass("b"), qm) == conc(
-		mult(charclass("a"), multiplier(3, 4)),
+	assert mult(charclass("a"), multiplier(bound(3), bound(4))) + mult(charclass("b"), qm) == conc(
+		mult(charclass("a"), multiplier(bound(3), bound(4))),
 		mult(charclass("b"), qm),
 	)
 	# a* + a{2} = a{2,}
-	assert mult(charclass("a"), star) + mult(charclass("a"), multiplier(2, 2)) == mult(charclass("a"), multiplier(2, inf))
+	assert mult(charclass("a"), star) + mult(charclass("a"), multiplier(bound(2), bound(2))) == mult(charclass("a"), multiplier(bound(2), inf))
 
 	# mult + conc
 	# a{2} + bc = a{2}bc
-	assert mult(charclass("a"), multiplier(2, 2)) + conc(
+	assert mult(charclass("a"), multiplier(bound(2), bound(2))) + conc(
 		mult(charclass("b"), one),
 		mult(charclass("c"), one),
 	) == conc(
-		mult(charclass("a"), multiplier(2, 2)),
+		mult(charclass("a"), multiplier(bound(2), bound(2))),
 		mult(charclass("b"), one),
 		mult(charclass("c"), one),
 	)
@@ -3317,7 +3321,7 @@ if __name__ == '__main__':
 		mult(charclass("a"), one),
 		mult(charclass("b"), one),
 	) == conc(
-		mult(charclass("a"), multiplier(1, 2)),
+		mult(charclass("a"), multiplier(bound(1), bound(2))),
 		mult(charclass("b"), one),
 	)
 
@@ -3342,7 +3346,7 @@ if __name__ == '__main__':
 
 	# mult + pattern
 	# a{2,3} + (b|cd) = a{2,3}(b|cd)
-	assert mult(charclass("a"), multiplier(2, 3)) + pattern(
+	assert mult(charclass("a"), multiplier(bound(2), bound(3))) + pattern(
 		conc(
 			mult(charclass("b"), one),
 		),
@@ -3351,7 +3355,7 @@ if __name__ == '__main__':
 			mult(charclass("d"), one),
 		),
 	) == conc(
-		mult(charclass("a"), multiplier(2, 3)),
+		mult(charclass("a"), multiplier(bound(2), bound(3))),
 		mult(
 			pattern(
 				conc(
@@ -3365,9 +3369,9 @@ if __name__ == '__main__':
 		)
 	)
 	# a{2,3} + (a{2}b|a+c) = a{3,4}(ab|a*c)
-	assert mult(charclass("a"), multiplier(2, 3)) + pattern(
+	assert mult(charclass("a"), multiplier(bound(2), bound(3))) + pattern(
 		conc(
-			mult(charclass("a"), multiplier(2, 2)),
+			mult(charclass("a"), multiplier(bound(2), bound(2))),
 			mult(charclass("b"), one),
 		),
 		conc(
@@ -3375,7 +3379,7 @@ if __name__ == '__main__':
 			mult(charclass("c"), one),
 		),
 	) == conc(
-		mult(charclass("a"), multiplier(3, 4)),
+		mult(charclass("a"), multiplier(bound(3), bound(4))),
 		mult(
 			pattern(
 				conc(
@@ -3400,7 +3404,7 @@ if __name__ == '__main__':
 			mult(charclass("c"), one),
 			mult(charclass("d"), one),
 		),
-	) + mult(charclass("a"), multiplier(2, 3)) == conc(
+	) + mult(charclass("a"), multiplier(bound(2), bound(3))) == conc(
 		mult(
 			pattern(
 				conc(
@@ -3412,19 +3416,19 @@ if __name__ == '__main__':
 				),
 			), one
 		),
-		mult(charclass("a"), multiplier(2, 3)),
+		mult(charclass("a"), multiplier(bound(2), bound(3))),
 	)
 	# (ba{2}|ca+) + a{2,3} = (ba|ca*)a{3,4}
 	assert pattern(
 		conc(
 			mult(charclass("b"), one),
-			mult(charclass("a"), multiplier(2, 2)),
+			mult(charclass("a"), multiplier(bound(2), bound(2))),
 		),
 		conc(
 			mult(charclass("c"), one),
 			mult(charclass("a"), plus),
 		),
-	) + mult(charclass("a"), multiplier(2, 3)) == conc(
+	) + mult(charclass("a"), multiplier(bound(2), bound(3))) == conc(
 		mult(
 			pattern(
 				conc(
@@ -3437,7 +3441,7 @@ if __name__ == '__main__':
 				),
 			), one
 		),
-		mult(charclass("a"), multiplier(3, 4)),
+		mult(charclass("a"), multiplier(bound(3), bound(4))),
 	)
 
 	# conc + conc
@@ -3463,7 +3467,7 @@ if __name__ == '__main__':
 		mult(charclass("c"), one),
 	) == conc(
 		mult(charclass("a"), one),
-		mult(charclass("b"), multiplier(2, 2)),
+		mult(charclass("b"), multiplier(bound(2), bound(2))),
 		mult(charclass("c"), one),
 	)
 
@@ -3471,7 +3475,7 @@ if __name__ == '__main__':
 	# za{2,3} + (b|cd) = za{2,3}(b|cd)
 	assert conc(
 		mult(charclass("z"), one),
-		mult(charclass("a"), multiplier(2, 3)),
+		mult(charclass("a"), multiplier(bound(2), bound(3))),
 	) + pattern(
 		conc(
 			mult(charclass("b"), one),
@@ -3482,7 +3486,7 @@ if __name__ == '__main__':
 		),
 	) == conc(
 		mult(charclass("z"), one),
-		mult(charclass("a"), multiplier(2, 3)),
+		mult(charclass("a"), multiplier(bound(2), bound(3))),
 		mult(
 			pattern(
 				conc(
@@ -3498,10 +3502,10 @@ if __name__ == '__main__':
 	# za{2,3} + (a{2}b|a+c) = za{3,4}(ab|a*c)
 	assert conc(
 		mult(charclass("z"), one),
-		mult(charclass("a"), multiplier(2, 3)),
+		mult(charclass("a"), multiplier(bound(2), bound(3))),
 	) + pattern(
 		conc(
-			mult(charclass("a"), multiplier(2, 2)),
+			mult(charclass("a"), multiplier(bound(2), bound(2))),
 			mult(charclass("b"), one),
 		),
 		conc(
@@ -3510,7 +3514,7 @@ if __name__ == '__main__':
 		),
 	) == conc(
 		mult(charclass("z"), one),
-		mult(charclass("a"), multiplier(3, 4)),
+		mult(charclass("a"), multiplier(bound(3), bound(4))),
 		mult(
 			pattern(
 				conc(
@@ -3537,7 +3541,7 @@ if __name__ == '__main__':
 		),
 	) + conc(
 		mult(charclass("z"), one),
-		mult(charclass("a"), multiplier(2, 3)),
+		mult(charclass("a"), multiplier(bound(2), bound(3))),
 	) == conc(
 		mult(
 			pattern(
@@ -3551,20 +3555,20 @@ if __name__ == '__main__':
 			), one
 		),
 		mult(charclass("z"), one),
-		mult(charclass("a"), multiplier(2, 3)),
+		mult(charclass("a"), multiplier(bound(2), bound(3))),
 	)
 	# (ba{2}|ca+) + a{2,3}z = (ba|ca*)a{3,4}z
 	assert pattern(
 		conc(
 			mult(charclass("b"), one),
-			mult(charclass("a"), multiplier(2, 2)),
+			mult(charclass("a"), multiplier(bound(2), bound(2))),
 		),
 		conc(
 			mult(charclass("c"), one),
 			mult(charclass("a"), plus),
 		),
 	) + conc(
-		mult(charclass("a"), multiplier(2, 3)),
+		mult(charclass("a"), multiplier(bound(2), bound(3))),
 		mult(charclass("z"), one),
 	) == conc(
 		mult(
@@ -3579,7 +3583,7 @@ if __name__ == '__main__':
 				),
 			), one
 		),
-		mult(charclass("a"), multiplier(3, 4)),
+		mult(charclass("a"), multiplier(bound(3), bound(4))),
 		mult(charclass("z"), one),
 	)
 
@@ -3651,7 +3655,7 @@ if __name__ == '__main__':
 				mult(charclass("b"), one),
 				mult(charclass("c"), one),
 			),
-		), multiplier(2, 2)
+		), multiplier(bound(2), bound(2))
 	)
 
 	assert nothing.empty()
@@ -3665,5 +3669,31 @@ if __name__ == '__main__':
 	assert pattern().empty()
 	assert not pattern(conc(mult(charclass("a"), zero))).empty()
 	assert not pattern(conc(mult(charclass(), qm))).empty()
+
+	assert str(parse("a.b")) == "a.b" # not "a[ab]b"
+	assert str(parse("\\d{4}")) == "\\d{4}"
+
+	# Intersection tests
+	assert str(parse("a*") & parse("b*")) == ""
+	assert str(parse("a") & parse("b")) == "[]"
+	assert str(parse("\\d") & parse(".")) == "\\d"
+	assert str(parse("\\d{2}") & parse("0.")) == "0\\d"
+	assert str(parse("\\d{2}") & parse("19.*")) == "19"
+	assert str(parse("\\d{3}") & parse("19.*")) == "19\\d"
+	assert str(parse("abc...") & parse("...def")) == "abcdef"
+	assert str(parse("[bc]*[ab]*") & parse("[ab]*[bc]*")) == "([ab]*a|[bc]*c)?b*"
+	assert str(parse("\\W*") & parse("[a-g0-8$%\\^]+") & parse("[^d]{2,8}")) == "[$%\\^]{2,8}"
+	assert str(parse("\\d{4}-\\d{2}-\\d{2}") & parse("19.*")) == "19\\d\\d-\\d\\d-\\d\\d"
+
+	# Reduction tests
+	# ARGH, they need to be FSMed!!
+	assert str(parse("(|(|(|(|(|(|[$%\^])[$%\^])[$%\^])[$%\^])[$%\^])[$%\^])[$%\^][$%\^]")) == "[$%\^]{2,8}"
+	assert str(parse("[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]")) == "[0-9A-Fa-f]{3}"
+	long = \
+	"(aa|bb*aa)a*|((ab|bb*ab)|(aa|bb*aa)a*b)((ab|bb*ab)|(aa|bb*aa)a*b)*" + \
+	"(aa|bb*aa)a*|((ab|bb*ab)|(aa|bb*aa)a*b)((ab|bb*ab)|(aa|bb*aa)a*b)*"
+	assert str(parse(".*") & parse(long).reduce()) == "[ab]*a[ab]"
+	short = "[ab]*a?b*|[ab]*b?a*"
+	assert str(parse(".*") & parse(short).reduce()) == "[ab]*"
 
 	print("OK")
