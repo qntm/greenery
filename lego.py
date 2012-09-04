@@ -1430,43 +1430,25 @@ class pattern(multiplicand):
 			return pattern(*reduced).reduce()
 
 		# If this pattern contains several concs each containing just 1 mult
-		# each containing just a charclass, with identical multipliers,
+		# each containing just a charclass, with a multiplier of 1,
 		# then we can merge those branches together.
-		# e.g.
-
-		# pattern(
-		# 	conc(mult(charclass("0"), one)),
-		# 	conc(mult(charclass("123456789"), one)),
-		#	)
-		# "0|[1-9]"
-
-		# becomes
-		# pattern(
-		#		conc(mult(charclass("0123456789"), one)),
-		#	)
-		# "[0-9]"
-
-		# Do this for all distinct multipliers.
-		# Keep track of whether anything actually changed. If not,
-		# don't actually try to change anything, or we'll end up
-		# recursing forever due to that final "reduce()" call
+		# e.g. "0|[1-9]|ab" -> "[0-9]|ab"
 		changed = False
-		merged = {} # key is multiplier, value is all merged charclasses at that multiplier
+		merger = None
 		rest = []
 		for c in self.concs:
 			if len(c.mults) == 1 \
+			and c.mults[0].multiplier == one \
 			and isinstance(c.mults[0].multiplicand, charclass):
-				key = c.mults[0].multiplier
-				if key in merged:
-					merged[key] |= c.mults[0].multiplicand
-					changed = True
+				if merger is None:
+					merger = c.mults[0].multiplicand
 				else:
-					merged[key] = c.mults[0].multiplicand
+					merger |= c.mults[0].multiplicand
+					changed = True
 			else:
 				rest.append(c)
-		if changed == True:
-			for key in merged:
-				rest.append(conc(mult(merged[key], key)))
+		if changed:
+			rest.append(conc(mult(merger, one)))
 			return pattern(*rest).reduce()
 
 		# If the present pattern's concs all have a common prefix, split
@@ -2704,23 +2686,6 @@ if __name__ == '__main__':
 		conc(mult(charclass("0123456789"), one)),
 		conc(mult(charclass("a"), multiplier(bound(5), bound(7)))),
 	)
-	assert pattern(
-		conc(mult(charclass("0"), star)),
-		conc(mult(charclass("123456789"), star)),
-		conc(mult(charclass("a"), multiplier(bound(5), bound(7)))),
-	).reduce() == pattern(
-		conc(mult(charclass("0123456789"), star)),
-		conc(mult(charclass("a"), multiplier(bound(5), bound(7)))),
-	)
-	assert pattern(
-		conc(mult(charclass("0"), star)),
-		conc(mult(charclass("123456789"), star)),
-		conc(mult(charclass("a"), plus)),
-		conc(mult(charclass("b"), plus)),
-	).reduce() == pattern(
-		conc(mult(charclass("0123456789"), star)),
-		conc(mult(charclass("ab"), plus)),
-	)
 
 	# recursive pattern reduction
 	assert pattern(
@@ -3718,5 +3683,12 @@ if __name__ == '__main__':
 	assert str(parse(".*") & parse(long).reduce()) == "[ab]*a[ab]"
 	short = "[ab]*a?b*|[ab]*b?a*"
 	assert str(parse(".*") & parse(short).reduce()) == "[ab]*"
+
+	# DEFECT: "0{2}|1{2}" was erroneously reduced() to "[01]{2}"
+	bad = parse("0{2}|1{2}").fsm({"0", "1", otherchars})
+	assert bad.accepts("00")
+	assert bad.accepts("11")
+	assert not bad.accepts("01")
+	assert str(parse("0|[1-9]|ab")) == "\d|ab"
 
 	print("OK")
