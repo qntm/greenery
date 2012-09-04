@@ -567,38 +567,44 @@ class charclass(multiplicand):
 		return charclass(self.chars, negateMe=not self.negated)
 
 	def __or__(self, other):
-		if not isinstance(other, charclass):
+		try:
+			# ¬A OR ¬B = ¬(A AND B)
+			# ¬A OR B = ¬(A - B)
+			# A OR ¬B = ¬(B - A)
+			# A OR B
+			if self.negated:
+				if other.negated:
+					return ~charclass(self.chars & other.chars)
+				return ~charclass(self.chars - other.chars)
+			if other.negated:
+				return ~charclass(other.chars - self.chars)
+			return charclass(self.chars | other.chars)
+
+		# "other" lacks attribute "negated" or "chars"
+		# "other" is not a charclass
+		# Never mind!
+		except AttributeError:
 			return mult(self, one) | other
 
-		# ¬A OR ¬B = ¬(A AND B)
-		# ¬A OR B = ¬(A - B)
-		# A OR ¬B = ¬(B - A)
-		# A OR B
-		if self.negated:
-			if other.negated:
-				return ~charclass(self.chars & other.chars)
-			return ~charclass(self.chars - other.chars)
-		if other.negated:
-			return ~charclass(other.chars - self.chars)
-		return charclass(self.chars | other.chars)
-
-		raise Exception("What")
-
 	def __and__(self, other):
-		if not isinstance(other, charclass):
-			return mult(self, one) & other # mult.__and__() calls reduce()
-
-		# ¬A AND ¬B = ¬(A OR B)
-		# ¬A AND B = B - A
-		# A AND ¬B = A - B
-		# A AND B
-		if self.negated:
+		try:
+			# ¬A AND ¬B = ¬(A OR B)
+			# ¬A AND B = B - A
+			# A AND ¬B = A - B
+			# A AND B
+			if self.negated:
+				if other.negated:
+					return ~charclass(self.chars | other.chars)
+				return charclass(other.chars - self.chars)
 			if other.negated:
-				return ~charclass(self.chars | other.chars)
-			return charclass(other.chars - self.chars)
-		if other.negated:
-			return charclass(self.chars - other.chars)
-		return charclass(self.chars & other.chars)
+				return charclass(self.chars - other.chars)
+			return charclass(self.chars & other.chars)
+
+		# "other" lacks attribute "negated" or "chars"
+		# "other" is not a charclass
+		# Never mind!
+		except AttributeError:
+			return (mult(self, one) & other).reduce()
 
 	def __sub__(self, other):
 		'''
@@ -621,9 +627,8 @@ class charclass(multiplicand):
 class bound:
 	'''An integer but sometimes also possibly infinite (None)'''
 	def __init__(self, v):
-		if v is not None:
-			if v < 0:
-				raise Exception("Value must be >= 0 or None")
+		if v is not None and v < 0:
+			raise Exception("Value must be >= 0 or None")
 
 		self.__dict__['v'] = v
 
@@ -712,10 +717,6 @@ class multiplier(lego):
 		"zero" to exist, which actually are quite useful in their own special way.
 	'''
 	def __init__(self, min, max):
-		if not isinstance(min, bound):
-			raise Exception
-		if not isinstance(max, bound):
-			raise Exception
 		if min == inf:
 			raise Exception("Can't have an infinite lower bound")
 		if max < min:
@@ -875,11 +876,6 @@ class mult(lego):
 	'''
 
 	def __init__(self, cand, ier):
-		if not isinstance(cand, multiplicand):
-			raise Exception("Wrong type '" + str(type(cand)) + "' for multiplicand")
-		if not isinstance(ier, multiplier):
-			raise Exception("Wrong type '" + str(type(ier)) + "' for multiplier")
-
 		self.__dict__["multiplicand"] = cand
 		self.__dict__["multiplier"]   = ier
 
@@ -906,10 +902,10 @@ class mult(lego):
 		return mult(self.multiplicand, self.multiplier * multiplier).reduce()
 
 	def __add__(self, other):
-		return conc(self) + other # conc.__add__() calls reduce()
+		return (conc(self) + other).reduce()
 
 	def __or__(self, other):
-		return conc(self) | other # conc.__or__() calls reduce()
+		return (conc(self) | other).reduce()
 
 	def __sub__(self, other):
 		'''
@@ -941,15 +937,18 @@ class mult(lego):
 
 		# If two mults are given which have a common multiplicand, the shortcut
 		# is just to take the intersection of the two multiplicands.
-		if hasattr(other, "multiplicand") \
-		and hasattr(other, "multiplier") \
-		and self.multiplicand == other.multiplicand:
-			return mult(self.multiplicand, self.multiplier & other.multiplier).reduce()
+		try:
+			if self.multiplicand == other.multiplicand:
+				return mult(self.multiplicand, self.multiplier & other.multiplier).reduce()
+		except AttributeError:
+			# "other" isn't a mult; lacks either a multiplicand or a multiplier.
+			# Never mind!
+			pass
 
 		# This situation is substantially more complicated if the multiplicand is,
 		# for example, a pattern. It's difficult to reason sensibly about this
 		# kind of thing.
-		return conc(self) & other # conc.__and__() calls reduce()
+		return (conc(self) & other).reduce()
 
 	def alphabet(self):
 		return self.multiplicand.alphabet()
@@ -961,29 +960,32 @@ class mult(lego):
 		return False
 
 	def reduce(self):
+		# Can't match anything: reduce to nothing
+		if self.empty():
+			return nothing.reduce()
+
 		# If our multiplicand is a pattern containing an empty conc()
 		# we can pull that "optional" bit out into our own multiplier
 		# instead.
 		# e.g. (A|B|C|)D -> (A|B|C)?D
 		# e.g. (A|B|C|){2} -> (A|B|C){0,2}
-		if hasattr(self.multiplicand, "concs") \
-		and emptystring in self.multiplicand.concs:
-			return mult(
-				pattern(
-					*self.multiplicand.concs.difference({emptystring})
-				),
-				self.multiplier * qm,
-			).reduce()
+		try:
+			if emptystring in self.multiplicand.concs:
+				return mult(
+					pattern(
+						*self.multiplicand.concs.difference({emptystring})
+					),
+					self.multiplier * qm,
+				).reduce()
+		except AttributeError:
+			# self.multiplicand has no attribute "concs"; isn't a pattern; never mind
+			pass
 
 		# If we have an empty multiplicand, we can only match it
 		# zero times
 		if self.multiplicand.empty() \
 		and self.multiplier.min == bound(0):
 			return emptystring.reduce()
-
-		# Can't match anything: reduce to nothing
-		if self.empty():
-			return nothing.reduce()
 
 		# Failing that, we have a positive multiplicand which we
 		# intend to match zero times. In this case the only possible
@@ -1008,26 +1010,27 @@ class mult(lego):
 		# If our multiplicand is a pattern containing a single conc
 		# containing a single mult, we can separate that out a lot
 		# e.g. ([ab])* -> [ab]*
-		if hasattr(self.multiplicand, "concs") \
-		and len(self.multiplicand.concs) == 1:
-			singleton = [c for c in self.multiplicand.concs][0]
-			if len(singleton.mults) == 1:
-				return mult(
-					singleton.mults[0].multiplicand,
-					singleton.mults[0].multiplier * self.multiplier
-				).reduce()
+		try:
+			if len(self.multiplicand.concs) == 1:
+				singleton = [c for c in self.multiplicand.concs][0]
+				if len(singleton.mults) == 1:
+					return mult(
+						singleton.mults[0].multiplicand,
+						singleton.mults[0].multiplier * self.multiplier
+					).reduce()
+		except AttributeError:
+			# self.multiplicand has no attribute "concs"; isn't a pattern; never mind
+			pass
 
 		return self
 
 	def __str__(self):
-		output = ""
-
 		# recurse into subpattern
 		if isinstance(self.multiplicand, pattern):
-			output += "(" + str(self.multiplicand) + ")"
+			output = "(" + str(self.multiplicand) + ")"
 
 		else: 
-			output += str(self.multiplicand)
+			output = str(self.multiplicand)
 
 		suffix = str(self.multiplier)
 
@@ -1035,11 +1038,9 @@ class mult(lego):
 		# e.g. "aa" beats "a{2}", "ababab" beats "(ab){3}"
 		if self.multiplier.min == self.multiplier.max \
 		and len(output) * self.multiplier.min.v <= len(output) + len(suffix):
-			output += str(output) * (self.multiplier.min.v - 1) # because it has one already
-		else:
-			output += suffix
+			return output * self.multiplier.min.v
 
-		return output
+		return output + suffix
 
 	def fsm(self, alphabet):
 		from fsm import epsilon
@@ -1121,10 +1122,10 @@ class conc(lego):
 		return conc(*(self.mults + other.mults)).reduce()
 
 	def __or__(self, other):
-		return pattern(self) | other # pattern.__or__() calls reduce()
+		return (pattern(self) | other).reduce()
 
 	def __and__(self, other):
-		return pattern(self) & other # pattern.__and__() calls reduce()
+		return (pattern(self) & other).reduce()
 
 	def reduce(self):
 		# Can't match anything
@@ -1171,12 +1172,14 @@ class conc(lego):
 		# AND NOT "a(d(ab|a*c)|y)"
 		for i in range(len(self.mults)):
 			m = self.mults[i]
-			if m.multiplier == one \
-			and hasattr(m.multiplicand, "concs") \
-			and len(m.multiplicand.concs) == 1:
-				single = [c for c in m.multiplicand.concs][0]
-				new = self.mults[:i] + single.mults + self.mults[i+1:]
-				return conc(*new).reduce()
+			try:
+				if m.multiplier == one and len(m.multiplicand.concs) == 1:
+					single = [c for c in m.multiplicand.concs][0]
+					new = self.mults[:i] + single.mults + self.mults[i+1:]
+					return conc(*new).reduce()
+			except AttributeError:
+				# m.multiplicand has no attribute "concs"; isn't a pattern; never mind
+				pass
 
 		return self
 
@@ -1262,8 +1265,6 @@ class conc(lego):
 			This is the opposite of concatenation. For example, if ABC + DEF = ABCDEF,
 			then logically ABCDEF - DEF = ABC.
 		'''
-		if(isinstance(other, mult)):
-			other = conc(other)
 		
 		# e.g. self has mults at indices [0, 1, 2, 3, 4, 5, 6] len=7
 		# e.g. other has mults at indices [0, 1, 2] len=3
@@ -1292,9 +1293,7 @@ class conc(lego):
 			As with __sub__ but the other way around. For example, if
 			ABC + DEF = ABCDEF, then ABCDEF.behead(AB) = CDEF.
 		'''
-		if(isinstance(other, mult)):
-			other = conc(other)
-		
+
 		# e.g. self has mults at indices [0, 1, 2, 3, 4, 5, 6]
 		# e.g. other has mults at indices [0, 1, 2]
 		new = list(self.mults)
@@ -1401,15 +1400,15 @@ class pattern(multiplicand):
 		return "|".join(sorted(str(c) for c in self.concs))
 
 	def reduce(self):
+		# emptiness
+		if self.empty():
+			return nothing.reduce()
+
 		# If one of our internal concs is empty, remove it
 		for c in self.concs:
 			if c.empty():
 				new = self.concs - {c}
 				return pattern(*new).reduce()
-
-		# emptiness
-		if self.empty():
-			return nothing.reduce()
 
 		# no point alternating among one possibility
 		if len(self.concs) == 1:
@@ -1534,6 +1533,7 @@ class pattern(multiplicand):
 
 			If "suffix" is True, the same result but for suffixes.
 		'''
+		# There's probably a way to do this as a one-liner
 		result = None
 		for c in self.concs:
 			if result is None:
@@ -1933,13 +1933,13 @@ if __name__ == '__main__':
 		),
 	)
 
-	# (aa).behead(a) = a
+	# "(aa)".behead("a") = "a"
 	assert pattern(
 		conc(
 			mult(charclass("a"), one),
 			mult(charclass("a"), one),
 		),
-	).behead(mult(charclass("a"), one)) == pattern(
+	).behead(conc(mult(charclass("a"), one))) == pattern(
 		conc(
 			mult(charclass("a"), one)
 		),
@@ -1956,7 +1956,7 @@ if __name__ == '__main__':
 			mult(charclass("a"), one),
 			mult(charclass("a"), one),
 		),
-	).behead(mult(charclass("a"), one)) == pattern(
+	).behead(conc(mult(charclass("a"), one))) == pattern(
 		conc(
 			mult(charclass("a"), one),
 		),
@@ -1976,7 +1976,7 @@ if __name__ == '__main__':
 			mult(charclass("c"), one),
 			mult(charclass("f"), one),
 		),
-	).behead(mult(charclass("c"), one)) == pattern(
+	).behead(conc(mult(charclass("c"), one))) == pattern(
 		conc(
 			mult(charclass("f"), multiplier(bound(1), bound(2))),
 		),
