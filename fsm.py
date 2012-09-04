@@ -305,34 +305,20 @@ class fsm:
 	def __mul__(self, multiplier):
 		'''
 			Given an FSM and a multiplier, return the multiplied FSM.
-			The minimum has to be an integer, but the maximum may be None
-			to stand for infinity.
-			Call using "fsm2 = fsm1 * (0, 1)"
 		'''
-		min, max = multiplier
+		if multiplier < 0:
+			raise Exception("Can't multiply an FSM by a number less than 0.")
 
-		# worked example: (min, max) = (5, 7) or (5, None)
+		if multiplier == 0:
+			return epsilon(self.alphabet)
 
-		output = epsilon(self.alphabet)
-		# accepts ""
+		# worked example: multiplier = 5
+		output = self
+		# accepts e.g. "ab"
 
-		for i in range(min):
+		for i in range(multiplier - 1):
 			output += self
 		# now accepts e.g. "ababababab"
-
-		# unlimited additional copies
-		if max is None:
-			output += self.star()
-			# now accepts e.g. "ababababab(ab)*" = "(ab){5,}"
-
-		# finite additional copies
-		else:
-			q = self | epsilon(self.alphabet)
-			# accepts "(ab)?"
-
-			for i in range(min, max):
-				output += q
-				# now accepts e.g. "ababababab(ab)?(ab)?" = "(ab){5,7}"
 
 		return output
 
@@ -907,21 +893,15 @@ if __name__ == "__main__":
 	assert starA.accepts("aaaaaaaaa")
 
 	# multiplication simple test
-	twoA = a * (2, 2)
+	twoA = a * 2
 	assert not twoA.accepts("")
 	assert not twoA.accepts("a")
 	assert twoA.accepts("aa")
 	assert not twoA.accepts("aaa")
 
-	fourormoreA = a * (4, None)
-	assert not fourormoreA.accepts("")
-	assert not fourormoreA.accepts("a")
-	assert not fourormoreA.accepts("aa")
-	assert not fourormoreA.accepts("aaa")
-	assert fourormoreA.accepts("aaaa")
-	assert fourormoreA.accepts("aaaaa")
-	assert fourormoreA.accepts("aaaaaa")
-	assert fourormoreA.accepts("aaaaaaa")
+	zeroA = a * 0
+	assert zeroA.accepts("")
+	assert not zeroA.accepts("a")
 
 	# intersection simple test
 	intAB = a & b

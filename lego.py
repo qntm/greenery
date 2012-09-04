@@ -1042,7 +1042,30 @@ class mult(lego):
 		return output
 
 	def fsm(self, alphabet):
-		return self.multiplicand.fsm(alphabet) * (self.multiplier.min.v, self.multiplier.max.v)
+		from fsm import epsilon
+
+		# worked example: (min, max) = (5, 7) or (5, inf)
+		# (mandatory, optional) = (5, 2) or (5, inf)
+
+		unit = self.multiplicand.fsm(alphabet)
+		# accepts e.g. "ab"
+
+		# accepts "ababababab"
+		mandatory = unit * self.multiplier.mandatory.v
+
+		# unlimited additional copies
+		if self.multiplier.optional == inf:
+			optional = unit.star()
+			# accepts "(ab)*"
+
+		else:
+			optional = epsilon(alphabet) | unit
+			# accepts "(ab)?"
+
+			optional *= self.multiplier.optional.v
+			# accepts "(ab)?(ab)?"
+
+		return mandatory + optional
 
 	@classmethod
 	def match(cls, string, i):
