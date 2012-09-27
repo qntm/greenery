@@ -381,6 +381,21 @@ class fsm:
 
 		return _crawl(self.alphabet, initial, final, follow)
 
+	def everythingbut(self):
+		'''
+			Return a finite state machine which will accept any string NOT
+			accepted by self, and will not accept any string accepted by self.
+			This is achieved very easily by flipping the "is final" property
+			of each state.
+		'''
+		return fsm(
+			self.alphabet,
+			self.states,
+			self.initial,
+			self.states - self.finals,
+			self.map
+		).automerge()
+
 	def lego(self):
 		'''
 			This is the big kahuna of this module.
@@ -909,6 +924,13 @@ if __name__ == "__main__":
 	assert not intAB.accepts("a")
 	assert not intAB.accepts("b")
 
+	everythingbutA = a.everythingbut()
+	assert everythingbutA.accepts("")
+	assert not everythingbutA.accepts("a")
+	assert everythingbutA.accepts("b")
+	assert everythingbutA.accepts("aa")
+	assert everythingbutA.accepts("ab")
+
 	# this is "0*1" in heavy disguise. _crawl should resolve this duplication
 	# Notice how states 2 and 3 behave identically. When resolved together,
 	# states 1 and 2&3 also behave identically, so they, too should be resolved
@@ -951,5 +973,19 @@ if __name__ == "__main__":
 	assert starred.accepts("aaba")
 	assert not starred.accepts("aabb")
 	assert starred.accepts("abababa")
+
+	# automerge() behaviour test
+	asdf = fsm(
+		alphabet = {None},
+		states = {0, 1, 2},
+		initial = 0,
+		finals = {1},
+		map = {
+			0 : {None : 2},
+			1 : {None : 2},
+			2 : {None : 2},
+		}
+	)
+	assert len(asdf.everythingbut().states) == 2
 
 	print("OK")
