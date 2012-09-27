@@ -169,6 +169,16 @@ class lego:
 		'''
 		pass
 
+	def everythingbut(self):
+		'''
+			Return a lego object which will match any string not matched by self,
+			and which will not match any string matched by self.
+			Another task which is very difficult in general (and typically returns
+			utter garbage when actually printed), but becomes trivial to code
+			thanks to FSM routines.
+		'''
+		return self.fsm().everythingbut().lego().reduce()
+
 	def empty(self):
 		'''
 			Return False if there exists a string which the present lego piece
@@ -3719,5 +3729,24 @@ if __name__ == '__main__':
 	assert bad.accepts("11")
 	assert not bad.accepts("01")
 	assert str(parse("0|[1-9]|ab")) == "\d|ab"
+
+	# everythingbut().
+	# Regexes are usually gibberish but we make a few claims
+	a = parse("a")
+	notA = a.everythingbut().fsm()
+	assert notA.accepts("")
+	assert not notA.accepts("a")
+	assert notA.accepts("aa")
+
+	# everythingbut(), called twice, should take us back to where we started.
+	beer = parse("beer")
+	notBeer = beer.everythingbut()
+	print(notBeer)
+	beer2 = notBeer.everythingbut()
+	assert str(beer2) == "beer"
+
+	# ".*" becomes "[]" under this call.
+	everything = parse(".*")
+	assert str(everything.everythingbut()) == str(nothing)
 
 	print("OK")
