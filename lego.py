@@ -160,6 +160,7 @@ class lego:
 			a function, self.alphabet(), but in the vast majority of cases
 			this will never be queried so it's a waste of computation to
 			calculate it every time a lego piece is instantiated.
+			By convention, otherchars is always included in this result.
 		'''
 		pass
 
@@ -369,7 +370,7 @@ class charclass(multiplicand):
 		return (mult(self, one) + other).reduce()
 
 	def alphabet(self):
-		return self.chars
+		return {otherchars}.union(self.chars)
 
 	def empty(self):
 		return len(self.chars) == 0 and self.negated == False
@@ -951,7 +952,7 @@ class mult(lego):
 		return (conc(self) & other).reduce()
 
 	def alphabet(self):
-		return self.multiplicand.alphabet()
+		return {otherchars}.union(self.multiplicand.alphabet())
 	
 	def empty(self):
 		if self.multiplicand.empty() \
@@ -1193,7 +1194,7 @@ class conc(lego):
 		return fsm1
 
 	def alphabet(self):
-		return set().union(*[m.alphabet() for m in self.mults])
+		return {otherchars}.union(*[m.alphabet() for m in self.mults])
 
 	def empty(self):
 		for m in self.mults:
@@ -1356,7 +1357,7 @@ class pattern(multiplicand):
 		return mult(self, one) + other
 
 	def alphabet(self):
-		return set().union(*[c.alphabet() for c in self.concs])
+		return {otherchars}.union(*[c.alphabet() for c in self.concs])
 
 	def empty(self):
 		for c in self.concs:
@@ -1368,12 +1369,6 @@ class pattern(multiplicand):
 		# A deceptively simple method for an astoundingly difficult operation
 		alphabet = self.alphabet() | other.alphabet()
 	
-		# We need to add an extra character in the alphabet which can stand for
-		# "everything else". For example, if the regex is "abc.", then at the moment
-		# our alphabet is {"a", "b", "c"}. But "." could match anything else not yet
-		# specified. This extra letter stands for that ("[^abc]" in this case).
-		alphabet.add(otherchars)
-
 		# Which means that we can build finite state machines sharing that alphabet
 		combined = self.fsm(alphabet) & other.fsm(alphabet)
 		return combined.lego().reduce()
@@ -1536,8 +1531,10 @@ class pattern(multiplicand):
 
 # Special and useful values go here.
 
-# A special character representing "all characters not explicitly
-# mentioned elsewhere in this alphabet"
+# We need to add an extra character in the alphabet which can stand for
+# "everything else". For example, if the regex is "abc.", then at the moment
+# our alphabet is {"a", "b", "c"}. But "." could match anything else not yet
+# specified. This extra letter stands for that ("[^abc]" in this case).
 otherchars = None
 
 # Standard character classes
@@ -3690,5 +3687,8 @@ if __name__ == '__main__':
 	assert bad.accepts("11")
 	assert not bad.accepts("01")
 	assert str(parse("0|[1-9]|ab")) == "\d|ab"
+
+	# lego.alphabet() should include "otherchars"
+	assert parse("").alphabet() == {otherchars}
 
 	print("OK")
