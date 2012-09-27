@@ -389,7 +389,7 @@ class charclass(multiplicand):
 		return (mult(self, one) + other).reduce()
 
 	def alphabet(self):
-		return {otherchars}.union(self.chars)
+		return {otherchars} | self.chars
 
 	def empty(self):
 		return len(self.chars) == 0 and self.negated == False
@@ -971,7 +971,7 @@ class mult(lego):
 		return (conc(self) & other).reduce()
 
 	def alphabet(self):
-		return {otherchars}.union(self.multiplicand.alphabet())
+		return {otherchars} | self.multiplicand.alphabet()
 	
 	def empty(self):
 		if self.multiplicand.empty() \
@@ -1470,6 +1470,25 @@ class pattern(multiplicand):
 		if changed:
 			rest.append(conc(mult(merger, one)))
 			return pattern(*rest).reduce()
+
+		# If one of the present pattern's concs is the empty string, and
+		# there is another conc with a single mult whose lower bound is 0, we
+		# can omit the empty string.
+		# E.g. "|(ab)*|def" => "(ab)*|def".
+		# If there is another conc with a single mult whose lower bound is 1,
+		# we can merge the empty string into that.
+		# E.g. "|(ab)+|def" => "(ab)*|def".
+		if conc() in self.concs:
+			for c in self.concs:
+				if len(c.mults) != 1:
+					continue
+				m = c.mults[0]
+				if m.multiplier.min == bound(0):
+					rest = self.concs - {conc()}
+					return pattern(*rest).reduce()
+				if m.multiplier.min == bound(1):
+					rest = self.concs - {conc(), c} | {m * qm}
+					return pattern(*rest).reduce()
 
 		# If the present pattern's concs all have a common prefix, split
 		# that out. This increases the depth of the object
@@ -3744,8 +3763,15 @@ if __name__ == '__main__':
 	beer2 = notBeer.everythingbut()
 	assert str(beer2) == "beer"
 
-	# ".*" becomes "[]" under this call.
+	# ".*" becomes "[]" and vice versa under this call.
 	everything = parse(".*")
 	assert str(everything.everythingbut()) == str(nothing)
+	assert str(nothing.everythingbut()) == str(everything)
+
+	# epsilon reduction in patterns.
+	assert parse("|(ab)*|def").reduce() == parse("(ab)*|def")
+	assert parse("|(ab)+|def").reduce() == parse("(ab)*|def")
+	assert parse("|.+").reduce() == parse(".*")
+	assert parse("|a+|b+") in {parse("a+|b*"), parse("a*|b+")}
 
 	print("OK")
