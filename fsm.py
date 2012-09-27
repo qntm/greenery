@@ -95,7 +95,7 @@ class fsm:
 
 		return True
 
-	def automerge(self):
+	def reduce(self):
 		'''
 			Search through our own states looking for duplicates.
 			If found, merge them and repeat. If not, return
@@ -394,7 +394,7 @@ class fsm:
 			self.initial,
 			self.states - self.finals,
 			self.map
-		).automerge()
+		).reduce()
 
 	def lego(self):
 		'''
@@ -661,7 +661,7 @@ def _crawl(alphabet, initial, final, follow):
 		i += 1
 
 	result = fsm(alphabet, range(len(states)), 0, finals, map)
-	result = result.automerge()
+	result = result.reduce()
 	# TODO: make initial 0 after automerging.
 	return result
 
@@ -805,7 +805,7 @@ if __name__ == "__main__":
 	assert mergeme2.equivalent(3, 3)
 	assert not mergeme2.equivalent(3, 4)
 	assert mergeme2.equivalent(4, 4)
-	mergeme2 = mergeme2.automerge()
+	mergeme2 = mergeme2.reduce()
 	assert not (2 in mergeme2.states and 3 in mergeme2.states)
 	assert mergeme2.map[1]["0"] == mergeme2.map[1]["1"] # formerly 2 and 3
 
@@ -947,7 +947,7 @@ if __name__ == "__main__":
 			4          : {"0" : "oblivion", "1" : "oblivion"},
 			"oblivion" : {"0" : "oblivion", "1" : "oblivion"},
 		}
-	).automerge()
+	).reduce()
 	assert len(merged.states) == 3
 
 	# this is (a*ba)*
@@ -974,7 +974,7 @@ if __name__ == "__main__":
 	assert not starred.accepts("aabb")
 	assert starred.accepts("abababa")
 
-	# automerge() behaviour test
+	# reduce() behaviour test
 	asdf = fsm(
 		alphabet = {None},
 		states = {0, 1, 2},
