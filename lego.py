@@ -83,6 +83,11 @@ class lego:
 		'''
 			Return the present lego piece in the form of a finite state machine,
 			as imported from the fsm module.
+			If no alphabet is explicitly supplied, which seems quite probable,
+			we use the lego.alphabet() method (later) to list all the characters
+			mentioned in self. However, if we intend to connect this FSM to another
+			one which uses different characters, we may need to supply an alphabet
+			which is a superset of both sets.
 		'''
 
 	def __repr__(self):
@@ -324,8 +329,12 @@ class charclass(multiplicand):
 
 		return output
 
-	def fsm(self, alphabet):
+	def fsm(self, alphabet=None):
 		from fsm import fsm
+
+		if alphabet is None:
+			alphabet = self.alphabet()
+
 		# 0 is initial, 1 is final, 2 is oblivion
 
 		# If negated, make a singular FSM accepting any other characters
@@ -1043,8 +1052,11 @@ class mult(lego):
 
 		return output + suffix
 
-	def fsm(self, alphabet):
+	def fsm(self, alphabet=None):
 		from fsm import epsilon
+
+		if alphabet is None:
+			alphabet = self.alphabet()
 
 		# worked example: (min, max) = (5, 7) or (5, inf)
 		# (mandatory, optional) = (5, 2) or (5, inf)
@@ -1184,8 +1196,11 @@ class conc(lego):
 
 		return self
 
-	def fsm(self, alphabet):
+	def fsm(self, alphabet=None):
 		from fsm import epsilon
+
+		if alphabet is None:
+			alphabet = self.alphabet()
 
 		# start with a component accepting only the empty string
 		fsm1 = epsilon(alphabet)
@@ -1521,8 +1536,11 @@ class pattern(multiplicand):
 			raise Exception
 		return result
 
-	def fsm(self, alphabet):
+	def fsm(self, alphabet=None):
 		from fsm import null
+
+		if alphabet is None:
+			alphabet = self.alphabet()
 
 		fsm1 = null(alphabet)
 		for c in self.concs:
@@ -3690,5 +3708,16 @@ if __name__ == '__main__':
 
 	# lego.alphabet() should include "otherchars"
 	assert parse("").alphabet() == {otherchars}
+
+	# You should be able to fsm() a single lego piece without supplying a specific
+	# alphabet. That should be determinable from context.
+	assert str(parse("a.b").fsm().lego()) == "a.b" # not "a[ab]b"
+
+	# A suspiciously familiar example
+	bad = parse("0{2}|1{2}").fsm()
+	assert bad.accepts("00")
+	assert bad.accepts("11")
+	assert not bad.accepts("01")
+	assert str(parse("0|[1-9]|ab")) == "\d|ab"
 
 	print("OK")
