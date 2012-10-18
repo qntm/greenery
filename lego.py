@@ -626,24 +626,6 @@ class charclass(multiplicand):
 		except AttributeError:
 			return (mult(self, one) & other).reduce()
 
-	def __sub__(self, other):
-		'''
-			Subtract B from A. Here, this is a set operation on two sets of
-			characters. For other lego pieces, __sub__ has different meanings.
-		'''
-
-		# ¬A - ¬B = B - A
-		# ¬A - B = ¬(A OR B)
-		# A - ¬B = A AND B
-		# A - B
-		if self.negated:
-			if other.negated:
-				return charclass(other.chars - self.chars)
-			return ~charclass(self.chars | other.chars)
-		if other.negated:
-			return charclass(self.chars & other.chars)
-		return charclass(self.chars - other.chars)
-
 class bound:
 	'''An integer but sometimes also possibly infinite (None)'''
 	def __init__(self, v):
@@ -2353,16 +2335,6 @@ if __name__ == '__main__':
 	assert ~charclass("ab") | charclass("bc") == ~charclass("a")
 	# [^ab] u [^bc] = [^b]
 	assert ~charclass("ab") | ~charclass("bc") == ~charclass("b")
-
-	# charclass subtraction
-	# [ab] - [bc] = [a]
-	assert charclass("ab") - charclass("bc") == charclass("a")
-	# [ab] - [^bc] = [b]
-	assert charclass("ab") - ~charclass("bc") == charclass("b")
-	# [^ab] - [bc] = [^abc]
-	assert ~charclass("ab") - charclass("bc") == ~charclass("abc")
-	# [^ab] - [^bc] = [c]
-	assert ~charclass("ab") - ~charclass("bc") == charclass("c")
 
 	# charclass intersection
 	# [ab] n [bc] = [b]
