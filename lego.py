@@ -58,7 +58,8 @@ class nomatch(Exception):
 	'''Thrown when parsing fails. Almost always caught and almost never fatal'''
 
 def parse(string):
-	'''Parse a full string and return a lego piece. Fail if the whole string wasn't parsed'''
+	'''Parse a full string and return a lego piece. Fail if the whole string
+	wasn't parsed'''
 	p, i = pattern.match(string, 0)
 	if i != len(string):
 		raise Exception("Could not parse '" + string + "' beyond index " + str(i))
@@ -178,6 +179,14 @@ class lego:
 			thanks to FSM routines.
 		'''
 		return self.fsm().everythingbut().lego().reduce()
+
+	def __reversed__(self):
+		'''
+			Return a lego object which will match any string which, when reversed,
+			would match self. E.g. if self matches "beer" then reversed(self) will
+			match "reeb".
+		'''
+		pass
 
 	def empty(self):
 		'''
@@ -625,6 +634,9 @@ class charclass(multiplicand):
 		# Never mind!
 		except AttributeError:
 			return (mult(self, one) & other).reduce()
+
+	def __reversed__(self):
+		return self
 
 class bound:
 	'''An integer but sometimes also possibly infinite (None)'''
@@ -1085,6 +1097,9 @@ class mult(lego):
 		ier, j = multiplier.match(string, j)
 		return mult(cand, ier), j
 
+	def __reversed__(self):
+		return mult(reversed(self.multiplicand), self.multiplier)
+
 class conc(lego):
 	'''
 		A conc (short for "concatenation") is a tuple of mults i.e. an unbroken
@@ -1322,6 +1337,9 @@ class conc(lego):
 
 		return conc(*new)
 
+	def __reversed__(self):
+		return conc(*reversed([reversed(m) for m in self.mults]))
+
 class pattern(multiplicand):
 	'''
 		A pattern (also known as an "alt", short for "alternation") is a
@@ -1557,6 +1575,9 @@ class pattern(multiplicand):
 		for c in self.concs:
 			fsm1 |= c.fsm(alphabet)
 		return fsm1
+
+	def __reversed__(self):
+		return pattern(*(reversed(c) for c in self.concs))
 
 # Special and useful values go here.
 
@@ -3745,5 +3766,13 @@ if __name__ == '__main__':
 	assert parse("|(ab)+|def").reduce() == parse("(ab)*|def")
 	assert parse("|.+").reduce() == parse(".*")
 	assert parse("|a+|b+") in {parse("a+|b*"), parse("a*|b+")}
+
+	# Regex reversal
+	assert reversed(parse("b")) == parse("b")
+	assert reversed(parse("e*")) == parse("e*")
+	assert reversed(parse("bear")) == parse("raeb")
+	assert reversed(parse("beer")) == parse("reeb")
+	assert reversed(parse("abc|def|ghi")) == parse("cba|fed|ihg")
+	assert reversed(parse("(abc)*d")) == parse("d(cba)*")
 
 	print("OK")
