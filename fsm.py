@@ -696,6 +696,7 @@ def crawl(alphabet, initial, final, follow):
 
 # Unit tests.
 if __name__ == "__main__":
+
 	# Buggggs.
 	abstar = fsm(
 		{'a', None, 'b'},
@@ -1076,5 +1077,30 @@ if __name__ == "__main__":
 
 	# epsilon reversed is epsilon
 	assert reversed(epsilon("a")).accepts("")
+
+	# Bug fix. This is a(a{2})* (i.e. accepts an odd number of "a" chars in a
+	# row), but when .lego() is called, the result is "a+". Turned out to be
+	# a fault in the lego.multiplier __mul__() routine
+	elesscomplex = fsm(
+		alphabet = {"a"},
+		states = {0, 1},
+		initial = 0,
+		finals = {1},
+		map = {
+			0    : {"a" : 1},
+			1    : {"a" : 0},
+		},
+	)
+	assert not elesscomplex.accepts("")
+	assert elesscomplex.accepts("a")
+	assert not elesscomplex.accepts("aa")
+	assert elesscomplex.accepts("aaa")
+	elesscomplex = elesscomplex.lego()
+	assert str(elesscomplex) == "a(aa)*"
+	elesscomplex = elesscomplex.fsm()
+	assert not elesscomplex.accepts("")
+	assert elesscomplex.accepts("a")
+	assert not elesscomplex.accepts("aa")
+	assert elesscomplex.accepts("aaa")
 
 	print("OK")

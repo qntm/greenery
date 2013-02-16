@@ -673,6 +673,9 @@ class bound:
 			return True
 		return self.v < other.v
 
+	def __ge__(self, other):
+		return not self < other
+
 	def __gt__(self, other):
 		if other == inf:
 			return False
@@ -840,8 +843,26 @@ class multiplier(lego):
 				pass
 		raise nomatch("Can't find any of '" + str(collection) + "' at index " + str(i) + " in '" + string + "'")
 
+	def canmultiplyby(self, other):
+		'''
+			Multiplication is not well-defined for all pairs of multipliers because
+			the resulting possibilities do not necessarily form a continuous range.
+			For example:
+				{0,x} * {0,y} = {0,x*y}
+				{2} * {3} = {6}
+				{2} * {1,2} = ERROR
+
+			The proof isn't simple but suffice it to say that {p,p+q} * {r,r+s} is
+			equal to {pr, (p+q)(r+s)} only if s=0 or qr+1 >= p. If not, then at least
+			one gap appears in the range. The first inaccessible number is (p+q)r + 1.
+		'''
+		return self.mandatory == zero or \
+		self.optional * other.mandatory + bound(1) >= self.mandatory
+
 	def __mul__(self, other):
 		'''Multiply this multiplier by another'''
+		if not self.canmultiplyby(other):
+			raise Exception("Can't multiply " + repr(self) + " by " + repr(other))
 		return multiplier(self.min * other.min, self.max * other.max)
 
 	def __add__(self, other):
@@ -913,7 +934,9 @@ class mult(lego):
 	def __mul__(self, multiplier):
 		if multiplier == one:
 			return self.reduce()
-		return mult(self.multiplicand, self.multiplier * multiplier).reduce()
+		if self.multiplier.canmultiplyby(multiplier):
+			return mult(self.multiplicand, self.multiplier * multiplier).reduce()
+		return mult(pattern(conc(self)), multiplier)
 
 	def __add__(self, other):
 		return (conc(self) + other).reduce()
@@ -984,7 +1007,8 @@ class mult(lego):
 		# e.g. (A|B|C|)D -> (A|B|C)?D
 		# e.g. (A|B|C|){2} -> (A|B|C){0,2}
 		try:
-			if emptystring in self.multiplicand.concs:
+			if emptystring in self.multiplicand.concs \
+			and self.multiplier.canmultiplyby(qm):
 				return mult(
 					pattern(
 						*self.multiplicand.concs.difference({emptystring})
@@ -1028,10 +1052,12 @@ class mult(lego):
 			if len(self.multiplicand.concs) == 1:
 				singleton = [c for c in self.multiplicand.concs][0]
 				if len(singleton.mults) == 1:
-					return mult(
-						singleton.mults[0].multiplicand,
-						singleton.mults[0].multiplier * self.multiplier
-					).reduce()
+					singlemult = singleton.mults[0]
+					if singlemult.multiplier.canmultiplyby(self.multiplier):
+						return mult(
+							singlemult.multiplicand,
+							singlemult.multiplier * self.multiplier
+						).reduce()
 		except AttributeError:
 			# self.multiplicand has no attribute "concs"; isn't a pattern; never mind
 			pass
@@ -2440,24 +2466,46 @@ if __name__ == '__main__':
 
 	# mult contains a pattern containing an empty conc? Pull the empty
 	# part out where it's external
+	# e.g. (a|b*|) -> (a|b*)?
 	assert mult(
 		pattern(
 			conc(mult(charclass("a"), one)),
 			conc(mult(charclass("b"), star)),
 			emptystring
-		), multiplier(bound(2), bound(2))
+		), one
 	).reduce() == mult(
 		pattern(
 			conc(mult(charclass("a"), one)),
 			conc(mult(charclass("b"), star)),
-		), multiplier(bound(0), bound(2))
+		), qm
 	)
+
+	# e.g. (a|b*|)c -> (a|b*)?c
+	assert conc(
+		mult(
+			pattern(
+				conc(mult(charclass("a"), one)),
+				conc(mult(charclass("b"), star)),
+				emptystring
+			), one
+		),
+		mult(charclass("c"), one),
+	).reduce() == conc(
+		mult(
+			pattern(
+				conc(mult(charclass("a"), one)),
+				conc(mult(charclass("b"), star)),
+			), qm
+		),
+		mult(charclass("c"), one),
+	)
+
 
 	# This happens even if emptystring is the only thing left inside the mult
 	assert mult(
 		pattern(
 			emptystring
-		), multiplier(bound(2), bound(2))
+		), one
 	).reduce() == emptystring
 
 	# mult contains a pattern containing a single conc containing a single mult?
@@ -3774,5 +3822,10 @@ if __name__ == '__main__':
 	assert reversed(parse("beer")) == parse("reeb")
 	assert reversed(parse("abc|def|ghi")) == parse("cba|fed|ihg")
 	assert reversed(parse("(abc)*d")) == parse("d(cba)*")
+
+	# Defect: (a{2})* should NOT reduce to a*
+	a2 = mult(charclass("a"), multiplier(bound(2), bound(2)))
+	a2star = a2 * star
+	assert a2star == mult(pattern(conc(a2)), star)
 
 	print("OK")
