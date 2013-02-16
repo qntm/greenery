@@ -256,7 +256,7 @@ class fsm:
 
 			return frozenset(next)
 
-		return _crawl(self.alphabet, initial, final, follow)
+		return crawl(self.alphabet, initial, final, follow)
 
 	def star(self):
 		'''
@@ -300,7 +300,7 @@ class fsm:
 		def final(state):
 			return omega in state
 
-		return _crawl(self.alphabet, initial, final, follow)
+		return crawl(self.alphabet, initial, final, follow)
 
 	def __mul__(self, multiplier):
 		'''
@@ -349,7 +349,7 @@ class fsm:
 			return state[0] in self.finals \
 			or state[1] in other.finals
 
-		return _crawl(self.alphabet, initial, final, follow)
+		return crawl(self.alphabet, initial, final, follow)
 
 	def __and__(self, other):
 		'''
@@ -379,7 +379,7 @@ class fsm:
 			return state[0] in self.finals \
 			and state[1] in other.finals
 
-		return _crawl(self.alphabet, initial, final, follow)
+		return crawl(self.alphabet, initial, final, follow)
 
 	def everythingbut(self):
 		'''
@@ -395,6 +395,36 @@ class fsm:
 			self.states - self.finals,
 			self.map
 		).reduce()
+
+	def __reversed__(self):
+		'''
+			Return a new FSM such that for every string that self accepts (e.g.
+			"beer", the new FSM accepts the reversed string ("reeb").
+			This is done using "state-sets" (i.e. we go non-deterministic for a
+			little while).
+		'''
+
+		# Start from a composite "state-set" consisting of all final states.
+		# If there are no final states, this set is empty and we'll find that
+		# no other states get generated.
+		initial = frozenset(self.finals)
+
+		# Find every possible way to reach the current state-set
+		# using this symbol.
+		def follow(current, symbol):
+			return frozenset([
+				prev
+				for prev in self.map
+				for state in current
+				if self.map[prev][symbol] == state
+			])
+
+		# A state-set is final if the initial state is in it.
+		def final(state):
+			return self.initial in state
+
+		# Man, crawl() is the best!
+		return crawl(self.alphabet, initial, final, follow)
 
 	def lego(self):
 		'''
@@ -623,13 +653,12 @@ def epsilon(alphabet):
 		},
 	)
 
-def _crawl(alphabet, initial, final, follow):
+def crawl(alphabet, initial, final, follow):
 	'''
-		Given the above conditions and instructions, crawl a new
-		unknown FSM, mapping its states, final states and
-		transitions. Return the new one.
+		Given the above conditions and instructions, crawl a new unknown FSM,
+		mapping its states, final states and transitions. Return the new FSM.
 		This is a pretty powerful procedure which could potentially go on
-		forever if you supply an evil version of follow()
+		forever if you supply an evil version of follow().
 	'''
 
 	states = [initial]
@@ -931,7 +960,7 @@ if __name__ == "__main__":
 	assert everythingbutA.accepts("aa")
 	assert everythingbutA.accepts("ab")
 
-	# this is "0*1" in heavy disguise. _crawl should resolve this duplication
+	# this is "0*1" in heavy disguise. crawl should resolve this duplication
 	# Notice how states 2 and 3 behave identically. When resolved together,
 	# states 1 and 2&3 also behave identically, so they, too should be resolved
 	# (this is impossible to spot before 2 and 3 have been combined).
@@ -984,8 +1013,68 @@ if __name__ == "__main__":
 			0 : {None : 2},
 			1 : {None : 2},
 			2 : {None : 2},
-		}
+		},
 	)
 	assert len(asdf.everythingbut().states) == 2
+
+	# FSM reversal
+	abc = fsm(
+		alphabet = {"a", "b", "c"},
+		states = {0, 1, 2, 3, None},
+		initial = 0,
+		finals = {3},
+		map = {
+			0    : {"a" : 1   , "b" : None, "c" : None},
+			1    : {"a" : None, "b" : 2   , "c" : None},
+			2    : {"a" : None, "b" : None, "c" : 3   },
+			3    : {"a" : None, "b" : None, "c" : None},
+			None : {"a" : None, "b" : None, "c" : None},
+		},
+	)
+	cba = reversed(abc)
+	assert cba.accepts("cba")
+
+	# This is (a|b)*a(a|b)
+	brzozowski = fsm(
+		alphabet = {"a", "b"},
+		states = {"A", "B", "C", "D", "E"},
+		initial = "A",
+		finals = {"C", "E"},
+		map = {
+			"A" : {"a" : "B", "b" : "D"},
+			"B" : {"a" : "C", "b" : "E"},
+			"C" : {"a" : "C", "b" : "E"},
+			"D" : {"a" : "B", "b" : "D"},
+			"E" : {"a" : "B", "b" : "D"},
+		},
+	)
+	assert brzozowski.accepts("aa")
+	assert brzozowski.accepts("ab")
+	assert brzozowski.accepts("aab")
+	assert brzozowski.accepts("bab")
+	assert brzozowski.accepts("abbbbbbbab")
+	assert not brzozowski.accepts("")
+	assert not brzozowski.accepts("a")
+	assert not brzozowski.accepts("b")
+	assert not brzozowski.accepts("ba")
+	assert not brzozowski.accepts("bb")
+	assert not brzozowski.accepts("bbbbbbbbbbbb")
+
+	# So this is (a|b)a(a|b)*
+	b2 = reversed(brzozowski)
+	assert b2.accepts("aa")
+	assert b2.accepts("ba")
+	assert b2.accepts("baa")
+	assert b2.accepts("bab")
+	assert b2.accepts("babbbbbbba")
+	assert not b2.accepts("")
+	assert not b2.accepts("a")
+	assert not b2.accepts("b")
+	assert not b2.accepts("ab")
+	assert not b2.accepts("bb")
+	assert not b2.accepts("bbbbbbbbbbbb")
+
+	# epsilon reversed is epsilon
+	assert reversed(epsilon("a")).accepts("")
 
 	print("OK")
