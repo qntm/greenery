@@ -506,8 +506,8 @@ class fsm:
 				univ = brz[b][a] # i.e. "3"
 				del brz[b][a]
 
-				for left in brz[a]:
-					brz[b][left] |= univ + brz[a][left]
+				for right in brz[a]:
+					brz[b][right] |= univ + brz[a][right]
 
 		return brz[self.initial][outside]
 

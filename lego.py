@@ -264,6 +264,16 @@ class charclass(multiplicand):
 		"0123456789",
 	}
 
+	# Shorthand codes for use inside charclasses e.g. [abc\d]
+	w = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz"
+	d = "0123456789"
+	s = "\t\n\v\f\r "
+	shorthand = {
+		w : "\\w",
+		d : "\\d",
+		s : "\\s",
+	}
+
 	def __str__(self):
 		# e.g. \w
 		if self in shorthand.keys():
@@ -462,40 +472,51 @@ class charclass(multiplicand):
 		internals = ""
 		try:
 			while True:
-				internal, i = cls.matchRange(string, i)
+				internal, i = cls.matchClassInterior1(string, i)
 				internals += internal
 		except nomatch:
 			pass
 		return internals, i
 
 	@classmethod
-	def matchRange(cls, string, i):
-		first, i = cls.matchInternalChar(string, i)
+	def matchClassInterior1(cls, string, i):
+
+		# Attempt 1: shorthand e.g. "\w"
+		for key in charclass.shorthand:
+			try:
+				return key, cls.matchStatic(string, i, charclass.shorthand[key])
+			except nomatch:
+				pass
+
+		# Attempt 2: a range e.g. "d-h"
 		try:
-			j = cls.matchStatic(string, i, "-")
-			last, j = cls.matchInternalChar(string, j)
+			first, j = cls.matchInternalChar(string, i)
+			k = cls.matchStatic(string, j, "-")
+			last, k = cls.matchInternalChar(string, k)
 
 			for allowableRange in charclass.allowableRanges:
-				if first in allowableRange:
-					# first and last must be in the same character range
-					if last not in allowableRange:
-						raise nomatch("Char '" + last + "' not allowed as end of range")
+				if first not in allowableRange:
+					continue
 
-					firstIndex = allowableRange.index(first)
-					lastIndex = allowableRange.index(last)
+				# last must be in the same character range as first
+				if last not in allowableRange:
+					continue
 
-					# and in order i.e. a < b
-					if firstIndex >= lastIndex:
-						raise nomatch(
-							"Disordered range ('" + first + "' !< '" + last + "')"
-						)
+				firstIndex = allowableRange.index(first)
+				lastIndex = allowableRange.index(last)
 
-					# OK
-					return allowableRange[firstIndex:lastIndex + 1], j
+				# and in order i.e. a < b
+				if firstIndex >= lastIndex:
+					continue
 
-			raise nomatch("Char '" + first + "' not allowed as start of a range")
+				# OK
+				return allowableRange[firstIndex:lastIndex + 1], k
+
+			raise nomatch("Range '" + first + "' to '" + last + "' not allowed")
 		except nomatch:
-			return first, i
+			pass
+
+		return cls.matchInternalChar(string, i)
 
 	@classmethod
 	def matchInternalChar(cls, string, i):
@@ -991,10 +1012,7 @@ class mult(lego):
 		return {otherchars} | self.multiplicand.alphabet()
 	
 	def empty(self):
-		if self.multiplicand.empty() \
-		and self.multiplier.min > bound(0):
-			return True
-		return False
+		return self.multiplicand.empty() and self.multiplier.min > bound(0)
 
 	def reduce(self):
 		# Can't match anything: reduce to nothing
@@ -3832,5 +3850,10 @@ if __name__ == '__main__':
 	a2 = mult(charclass("a"), multiplier(bound(2), bound(2)))
 	a2star = a2 * star
 	assert a2star == mult(pattern(conc(a2)), star)
+
+	# Allow "\w", "\d" and "\s" in charclasses
+	assert parse("[\w~]*").fsm().accepts("a0~")
+	assert parse("[\da]*").fsm().accepts("0129a")
+	assert parse("[\s]+").fsm().accepts(" \t \t ")
 
 	print("OK")
