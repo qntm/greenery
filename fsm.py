@@ -428,198 +428,88 @@ class fsm:
 
 	def lego(self):
 		'''
-			This is the big kahuna of this module.
-			Turn the present FSM into a regular expression object, as imported
-			from the lego module.
-
-			This is accomplished by considering the FSM as a set of "equations"
-			which relate state-sets to other state-sets using transitions.
-			We start at a state-set composed of all the possible final
-			states, then we find all the possible routes to that final
-			state-set, using substitution.
+			This is the big kahuna of this module. Turn the present FSM into a regular
+			expression object, as imported from the lego module. This is accomplished
+			using the Brzozowski algebraic method.
 		'''
 		from lego import nothing, charclass, emptystring, star, otherchars
 
-		# Represents a "state-set" which is totally external to the FSM.
-		# This is different from the empty state-set. From the empty state-set,
-		# every transition leads to the empty state-set again. But from
-		# "outside", consuming the empty string puts you at the initial state
-		# of the FSM.
-		outside = None
+		outside = 0
+		while outside in self.states:
+			outside += 1
 
-		class equation:
-			'''
-				This is a small representation of all the strings which could be used to
-				REACH the current state-set.
+		# The set of strings that would be accepted by this FSM if you started
+		# at state i is represented by the regex R_i.
+		# If state i has a sole transition "a" to state j, then we know R_i = a R_j.
+		# If state i is final, then the empty string is also accepted by this regex.
+		# And so on...
 
-				E.g. if:
-					'|0|33|A1|A4|B1|B75|C8'       = A
-					'(|0|33)|A(1|4)|B(1|75)|C(8)' = A
-					'(|0|33)|A[14]|B(1|75)|C8'    = A
-				where A, B and C are state-sets and 0, 1, 3, 4, 5, 7 and 8 are symbols
-				then:
+		# From this we can build a set of simultaneous equations in len(self.states)
+		# variables. This system is easily solved for all variables, but we only
+		# need one: R_a, where a is the starting state.
 
-				equation = {
-					"lefts" : {
-						None : {
-							conc(),
-							charclass("0"),
-							mult(charclass("3"), multiplier(2, 2)),
-						},
-						"A" : {
-							charclass("1", "4"),
-						},
-						"B" : {
-							charclass("1"),
-							conc(
-								mult(charclass("7"), one),
-								mult(charclass("5"), one),
-							),
-						),
-						"C" : {
-							charclass("8"),
-						),
-					},
-					"right" : "A",
-				}
-
-				Notice how lefts is a dict of sets of lego bits. These
-				can be freely combined using methods in the lego module.
-			'''
-
-			def __init__(self, right, fsm):
-
-				# The equation needs to know what it represents.
-				# This is for elimination purposes.
-				self.right = right
-
-				# A simple dictionary of (state-set, transition symbol) indicating
-				# transitions leading FROM the other state-set TO the present state-set
-				# under that transition.
-				# Some state-sets can be reached by transitions (directly or
-				# indirectly) from themselves. Initially these will be just single
-				# internal transitions (e.g. f(A, 0) = A) but as backfilling continues
-				# more complex loops will appear
-				self.lefts = {}
-
-				for symbol in sorted(fsm.alphabet, key=str):
-
-					# find every possible way to reach the current state set
-					# using this symbol
-					left = frozenset([
-						prev
-						for prev in fsm.map
-						for state in right
-						if fsm.map[prev][symbol] == state
-					])
-
-					# "otherchars" should never actually
-					# be used as a character in a charclass and throws an exception
-					# when you try.
-					if symbol == otherchars:
-						self.addtransition(left, ~charclass(fsm.alphabet - {otherchars}))
-
-					else:
-						self.addtransition(left, charclass({symbol}))
-
-				# initial alone can be reached via an empty string ;)
-				if fsm.initial in right:
-					self.addtransition(outside, emptystring)
-
-			def addtransition(self, left, element):
-				if left in self.lefts:
-					self.lefts[left] |= element
-				else:
-					self.lefts[left] = element
-
-			def applyloops(self):
-				'''
-					Remove the self-transition from an equation
-					e.g. "A0 | B1 | C2 = A" becomes "B10* | C10* = A"
-				'''
-				if self.right not in self.lefts:
-					return
-
-				loop = self.lefts[self.right] * star
-				del self.lefts[self.right]
-				
-				for left in self.lefts:
-					self.lefts[left] = self.lefts[left] + loop
-
-			def substitute(self, other):
-				'''
-					Take the equation of some other state-set and substitute it into
-					this equation, cancelling out any references to the other.
-				'''
-
-				# No transition from other to self? Then no substitution is required.
-				if other.right not in self.lefts:
-					return
-
-				# Now how about dynamic routes here
-				for left in other.lefts:
-
-					# If other still has self-transitions, that's a mistake.
-					if left == other.right:
-						raise Exception("Did you forget applyloops()?")
-
-					# any transition from left to other.right, coupled with
-					# the universal transition from other.right to *here*, counts as
-					# as transition from left to here.
-					self.addtransition(
-						left,
-						other.lefts[left] + self.lefts[other.right]
-					)
-
-				del self.lefts[other.right]
-
-			def __str__(self):
-				string = ""
-				string += "lefts:\n"
-				for left in self.lefts:
-					string += " " + repr(left) + ": " + repr(self.lefts[left]) + "\n"
-				string += "right: " + repr(self.right) + "\n"
-				string += "\n"
-				return string
-
-		# Now that we have equations down, here is how we actually
-		# run this thing.
-
-		# This first equation is the critical one. We solve for
-		# this.
-		equations = [equation(frozenset(self.finals), self)]
-
-		# Iterate over a growing list, generating further equations.
-		i = 0;
-		while i < len(equations):
-
-			# record newly-found state-sets for future reference (no dupes)
-			for right in equations[i].lefts:
-				if right != outside \
-				and right not in [e.right for e in equations]:
-					equations.append(equation(right, self))
-
+		# The first thing we need to do is organise the states into order of depth,
+		# so that when we perform our back-substitutions, we can start with the
+		# last (deepest) state and therefore finish with R_a.
+		states = [self.initial]
+		i = 0
+		while i < len(states):
+			current = states[i]
+			for symbol in sorted(self.alphabet, key=str):
+				next = self.map[current][symbol]
+				if next not in states:
+					states.append(next)
 			i += 1
 
-		# Next, we start at the end of our list, and substitute backwards
-		# to show all possible routes.
-		for i in reversed(range(len(equations))):
-			equations[i].applyloops()
-			for j in reversed(range(i)):
-				equations[j].substitute(equations[i])
+		# Our system of equations is represented like so:
+		brz = {}
+		for a in self.states:
+			brz[a] = {}
+			for b in self.states | {outside}:
+				brz[a][b] = nothing
 
-		# By this point all back-substitutions have been performed and the final
-		# element in equations[] should be ready to convert into a regex.
-		# Only "outside" (static transitions to final states) should be left after
-		# the back-substitution is completed.
-		try:
-			return equations[0].lefts[outside]
+		# Populate it with some initial data.
+		for a in self.map:
+			for symbol in self.map[a]:
+				b = self.map[a][symbol]
+				if symbol == otherchars:
+					brz[a][b] |= ~charclass(self.alphabet - {otherchars})
+				else:
+					brz[a][b] |= charclass({symbol})
+			if a in self.finals:
+				brz[a][outside] |= emptystring
 
-		# If no such transition exists, or it is empty, then an exception arises,
-		# as there are no static strings leading to the final state-set.
-		# That means there's no pattern. So:
-		except KeyError:
-			return nothing
+		# Now perform our back-substitution
+		for i in reversed(range(len(states))):
+			a = states[i]
+
+			# Before the equation for R_a can be substituted into the other
+			# equations, we need to resolve the self-transition (if any).
+			# e.g.    R_a = 0 R_a |   1 R_b |   2 R_c
+			# becomes R_a =         0*1 R_b | 0*2 R_c
+			loop = brz[a][a] * star # i.e. "0*"
+			del brz[a][a]
+
+			for right in brz[a]:
+				brz[a][right] = loop + brz[a][right]
+
+			# Note: even if we're down to our final equation, the above step still
+			# needs to be performed before anything is returned.
+
+			# Now we can substitute this equation into all of the previous ones.
+			for j in range(i):
+				b = states[j]
+
+				# e.g. substituting R_a =  0*1 R_b |      0*2 R_c
+				# into              R_b =    3 R_a |        4 R_c | 5 R_d
+				# yields            R_b = 30*1 R_b | (30*2|4) R_c | 5 R_d
+				univ = brz[b][a] # i.e. "3"
+				del brz[b][a]
+
+				for left in brz[a]:
+					brz[b][left] |= univ + brz[a][left]
+
+		return brz[self.initial][outside]
 
 def null(alphabet):
 	'''
@@ -1096,7 +986,7 @@ if __name__ == "__main__":
 	assert not elesscomplex.accepts("aa")
 	assert elesscomplex.accepts("aaa")
 	elesscomplex = elesscomplex.lego()
-	assert str(elesscomplex) == "a(aa)*"
+	assert str(elesscomplex) in {"a(aa)*", "(aa)*a"}
 	elesscomplex = elesscomplex.fsm()
 	assert not elesscomplex.accepts("")
 	assert elesscomplex.accepts("a")

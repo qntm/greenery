@@ -3754,18 +3754,23 @@ if __name__ == '__main__':
 	assert str(parse("\\d{2}") & parse("19.*")) == "19"
 	assert str(parse("\\d{3}") & parse("19.*")) == "19\\d"
 	assert str(parse("abc...") & parse("...def")) == "abcdef"
-	assert str(parse("[bc]*[ab]*") & parse("[ab]*[bc]*")) == "([ab]*a|[bc]*c)?b*"
+	assert str(parse("[bc]*[ab]*") & parse("[ab]*[bc]*")) in {"([ab]*a|[bc]*c)?b*", "b*(a[ab]*|c[bc]*)?"}
 	assert str(parse("\\W*") & parse("[a-g0-8$%\\^]+") & parse("[^d]{2,8}")) == "[$%\\^]{2,8}"
 	assert str(parse("\\d{4}-\\d{2}-\\d{2}") & parse("19.*")) == "19\\d\\d-\\d\\d-\\d\\d"
 
 	# Reduction tests
-	# ARGH, they need to be FSMed!!
 	assert str(parse("(|(|(|(|(|(|[$%\^])[$%\^])[$%\^])[$%\^])[$%\^])[$%\^])[$%\^][$%\^]")) == "[$%\^]{2,8}"
 	assert str(parse("[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]")) == "[0-9A-Fa-f]{3}"
+
+	# This one is horrendous and we have to jump through some hoops to get to
+	# a sensible result. Probably not a good unit test actually.
 	long = \
 	"(aa|bb*aa)a*|((ab|bb*ab)|(aa|bb*aa)a*b)((ab|bb*ab)|(aa|bb*aa)a*b)*" + \
 	"(aa|bb*aa)a*|((ab|bb*ab)|(aa|bb*aa)a*b)((ab|bb*ab)|(aa|bb*aa)a*b)*"
-	assert str(parse(".*") & parse(long).reduce()) == "[ab]*a[ab]"
+	long = parse(long)
+	long = reversed(long.fsm())
+	long = reversed(long.lego())
+	assert str(long) == "[ab]*a[ab]"
 	short = "[ab]*a?b*|[ab]*b?a*"
 	assert str(parse(".*") & parse(short).reduce()) == "[ab]*"
 
