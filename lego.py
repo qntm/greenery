@@ -90,12 +90,14 @@ class lego:
 			one which uses different characters, we may need to supply an alphabet
 			which is a superset of both sets.
 		'''
+		raise Exception("Not implemented")
 
 	def __repr__(self):
 		'''
 			Return a string approximating the instantiation line
 			for the present lego piece.
 		'''
+		raise Exception("Not implemented")
 
 	def __str__(self):
 		'''
@@ -103,6 +105,7 @@ class lego:
 			Some lego pieces may be created which cannot be rendered in this way.
 			In particular: a pattern containing no concs; a multiplier of zero.
 		'''
+		raise Exception("Not implemented")
 
 	def match(cls, string, i):
 		'''
@@ -111,6 +114,7 @@ class lego:
 			need for flair. The opposite of __str__(), above. (In most cases.)
 			Throws a nomatch in the event of failure.
 		'''
+		raise Exception("Not implemented")
 
 	def reduce(self):
 		'''
@@ -124,6 +128,7 @@ class lego:
 			STRICTLY SIMPLER than the current object. Otherwise, infinite loops become
 			possible in reduce() calls.
 		'''
+		raise Exception("Not implemented")
 
 	def __add__(self, other):
 		'''
@@ -132,6 +137,7 @@ class lego:
 			as possible.
 			Call using "a = b + c"
 		'''
+		raise Exception("Not implemented")
 
 	def __mul__(self, multiplier):
 		'''
@@ -140,6 +146,7 @@ class lego:
 			Call using "a = b * qm"
 			Reduce() is always called afterwards.
 		'''
+		raise Exception("Not implemented")
 
 	def __or__(self, other):
 		'''
@@ -147,6 +154,7 @@ class lego:
 			Again, reduce() is called afterwards, usually with excellent results.
 			Call using "a = b | c"
 		'''
+		raise Exception("Not implemented")
 
 	def __and__(self, other):
 		'''
@@ -158,6 +166,7 @@ class lego:
 			back to lego afterwards.
 			Call using "a = b & c"
 		'''
+		raise Exception("Not implemented")
 
 	def alphabet(self):
 		'''
@@ -168,7 +177,7 @@ class lego:
 			calculate it every time a lego piece is instantiated.
 			By convention, otherchars is always included in this result.
 		'''
-		pass
+		raise Exception("Not implemented")
 
 	def everythingbut(self):
 		'''
@@ -186,7 +195,7 @@ class lego:
 			would match self. E.g. if self matches "beer" then reversed(self) will
 			match "reeb".
 		'''
-		pass
+		raise Exception("Not implemented")
 
 	def empty(self):
 		'''
@@ -194,7 +203,34 @@ class lego:
 			can match. Return True if no such string exists. Examples of empty
 			lego pieces are charclass() and pattern()
 		'''
-		pass
+		raise Exception("Not implemented")
+
+	def strings(self, otherchar=None):
+		'''
+			Each time next() is called on this iterator, a new string is returned
+			which will the present lego piece can match. StopIteration is raised once
+			all such strings have been returned, although a regex with a * in may
+			match infinitely many strings.
+		'''
+
+		# In the case of a regex like "[^abc]", there are infinitely many (well, a
+		# very large finite number of) single characters which will match. It's not
+		# productive to iterate over all of these giving every single example.
+		# You may supply your own "otherchar" to stand in for all of these
+		# possibilities.
+
+		for string in self.fsm().strings():
+
+			# Have to represent "otherchars" somehow.
+			if otherchars in string:
+				if otherchar == None:
+					raise Exception("Please choose an 'otherchar'")
+				string = [
+					otherchar if char == otherchars else char
+					for char in string
+				]
+
+			yield "".join(string)
 
 	@classmethod
 	def matchStatic(cls, string, i, static):
@@ -3855,5 +3891,131 @@ if __name__ == '__main__':
 	assert parse("[\w~]*").fsm().accepts("a0~")
 	assert parse("[\da]*").fsm().accepts("0129a")
 	assert parse("[\s]+").fsm().accepts(" \t \t ")
+
+	# String generators: charclass
+	gen = charclass("xyz").strings()
+	assert next(gen) == "x"
+	assert next(gen) == "y"
+	assert next(gen) == "z"
+	try:
+		next(gen)
+		assert False
+	except StopIteration:
+		assert True
+
+	# Generators: mult
+	# One term
+	gen = mult(charclass("ab"), one).strings()
+	assert next(gen) == "a"
+	assert next(gen) == "b"
+	try:
+		next(gen)
+		assert False
+	except StopIteration:
+		assert True
+
+	# No terms
+	gen = mult(charclass("ab"), zero).strings()
+	assert next(gen) == ""
+	try:
+		next(gen)
+		assert False
+	except StopIteration:
+		assert True
+
+	# Many terms
+	# [ab]*
+	gen = mult(charclass("ab"), star).strings()
+	assert next(gen) == ""
+	assert next(gen) == "a"
+	assert next(gen) == "b"
+	assert next(gen) == "aa"
+	assert next(gen) == "ab"
+	assert next(gen) == "ba"
+	assert next(gen) == "bb"
+	assert next(gen) == "aaa"
+
+	# Generators: conc
+	# [ab][cd]
+	gen = conc(mult(charclass("ab"), one), mult(charclass("cd"), one)).strings()
+	assert next(gen) == "ac"
+	assert next(gen) == "ad"
+	assert next(gen) == "bc"
+	assert next(gen) == "bd"
+	try:
+		next(gen)
+		assert False
+	except StopIteration:
+		assert True
+
+	# Generators: pattern
+	# [ab]|[cd]
+	gen = pattern(
+		conc(mult(charclass("ab"), one)),
+		conc(mult(charclass("cde"), one)),
+	).strings()
+	assert next(gen) == "a"
+	assert next(gen) == "b"
+	assert next(gen) == "c"
+	assert next(gen) == "d"
+	assert next(gen) == "e"
+	try:
+		next(gen)
+		assert False
+	except StopIteration:
+		assert True
+
+	# more complex
+	gen = parse("abc|def(ghi|jkl)").strings()
+	assert next(gen) == "abc"
+	assert next(gen) == "defghi"
+	assert next(gen) == "defjkl"
+
+	gen = parse("[0-9a-fA-F]{3,10}").strings()
+	assert next(gen) == "000"
+	assert next(gen) == "001"
+	assert next(gen) == "002"
+
+	# Infinite generator, flummoxes both depth-first and breadth-first searches
+	gen = parse("a*b*").strings()
+	assert next(gen) == ""
+	assert next(gen) == "a"
+	assert next(gen) == "b"
+	assert next(gen) == "aa"
+	assert next(gen) == "ab"
+	assert next(gen) == "bb"
+	assert next(gen) == "aaa"
+	assert next(gen) == "aab"
+	assert next(gen) == "abb"
+	assert next(gen) == "bbb"
+	assert next(gen) == "aaaa"
+
+	# Generator needs to handle wildcards as well
+	gen = parse("a.b").strings(otherchar="*")
+	assert next(gen) == "a*b"
+	assert next(gen) == "aab"
+	assert next(gen) == "abb"
+	try:
+		next(gen)
+		assert False
+	except StopIteration:
+		assert True
+
+	# Complexify!
+	gen = (parse("[bc]*[ab]*") & parse("[ab]*[bc]*")).strings()
+	assert next(gen) == ""
+	assert next(gen) == "a"
+	assert next(gen) == "b"
+	assert next(gen) == "c"
+	assert next(gen) == "aa"
+	assert next(gen) == "ab"
+	# no "ac"
+	assert next(gen) == "ba"
+	assert next(gen) == "bb"
+	assert next(gen) == "bc"
+	# no "ca"
+	assert next(gen) == "cb"
+	assert next(gen) == "cc"
+	assert next(gen) == "aaa"
 
 	print("OK")

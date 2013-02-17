@@ -68,86 +68,13 @@ class fsm:
 			state = self.map[state][symbol]
 		return state in self.finals
 
-	def equivalent(self, state1, state2):
-		'''
-			See whether two states in this state machine are
-			functionally equivalent: that is, they have the same
-			finality and the same transition function.
-			Equivalent states appear quite commonly in automatically-
-			generated FSMs, where it's equally common to merge()
-			them once discovered.
-			This could be broadened to 3 or more states quite simply...
-		'''
-		if (state1 in self.finals) != (state2 in self.finals):
-			return False
-
-		# hypothetically merge state2 into state1. What do the
-		# transitions look like?
-		for symbol in self.alphabet:
-			next1 = self.map[state1][symbol]
-			next2 = self.map[state2][symbol]
-			if next1 == state2:
-				next1 = state1
-			if next2 == state2:
-				next2 = state1
-			if next1 != next2:
-				return False
-
-		return True
-
 	def reduce(self):
 		'''
-			Search through our own states looking for duplicates.
-			If found, merge them and repeat. If not, return
+			A result by Brzozowski (1963) shows that a minimal finite state machine
+			equivalent to the original can be obtained by reversing the original
+			twice.
 		'''
-
-		def trymerge(self):
-			'''
-				Find and merge two equivalent states, return True.
-				Return False if they can't be found.
-			'''
-			for this in self.states:
-				for that in self.states:
-					if that == this:
-						continue
-					if self.equivalent(this, that):
-						return True, self.replace(this, that)
-			return False, self
-
-		# Do it until it hurts
-		new = self
-		again = True
-		while(again):
-			again, new = trymerge(new)
-
-		return new
-
-	def replace(self, this, that):
-		'''
-			Return a new FSM with that replaced with this,
-			including all references in the map, etc.
-			This is used when renumbering() the FSM.
-		'''
-
-		lookups = dict([
-			(s, that if s == this else s)
-			for s in self.states
-		])
-
-		# return new, modified
-		return fsm(
-			alphabet = self.alphabet,
-			states   = set([lookups[s] for s in self.states]),
-			initial  = lookups[self.initial],
-			finals   = set([lookups[s] for s in self.finals]),
-			map      = dict([
-				(lookups[s], dict([
-					(a, lookups[self.map[s][a]])
-					for a in self.map[s].keys()
-				]))
-				for s in self.map.keys()
-			]),
-		)
+		return reversed(reversed(self))
 
 	def __repr__(self):
 		string = "fsm("
@@ -256,20 +183,18 @@ class fsm:
 
 			return frozenset(next)
 
-		return crawl(self.alphabet, initial, final, follow)
+		return crawl(self.alphabet, initial, final, follow).reduce()
 
 	def star(self):
 		'''
 			If the present FSM accepts X, returns an FSM accepting X* (i.e. 0 or
-			more Xes).
-
-			This is NOT as simple as naively connecting the final states back to the
-			initial state: see (b*ab)* for example.
-			
-			Instead we must create an articial "omega state" which is our only accepting
-			state and which dives into the FSM and from which all exits return.
+			more Xes). This is NOT as simple as naively connecting the final states
+			back to the initial state: see (b*ab)* for example. Instead we must create
+			an articial "omega state" which is our only accepting state and which
+			dives into the FSM and from which all exits return.
 		'''
 
+		# We need a new state not already used
 		omega = 0
 		while omega in self.states:
 			omega += 1
@@ -300,7 +225,7 @@ class fsm:
 		def final(state):
 			return omega in state
 
-		return crawl(self.alphabet, initial, final, follow)
+		return crawl(self.alphabet, initial, final, follow).reduce()
 
 	def __mul__(self, multiplier):
 		'''
@@ -320,7 +245,7 @@ class fsm:
 			output += self
 		# now accepts e.g. "ababababab"
 
-		return output
+		return output.reduce()
 
 	def __or__(self, other):
 		'''
@@ -339,17 +264,13 @@ class fsm:
 		# dedicated function accepts a "superset" and returns the next "superset"
 		# obtained by following this transition in the new FSM
 		def follow(current, symbol):
-			return (
-				self.map[current[0]][symbol],
-				other.map[current[1]][symbol]
-			)
+			return (self.map[current[0]][symbol], other.map[current[1]][symbol])
 
 		# state is final if *any* of its internal states are final
 		def final(state):
-			return state[0] in self.finals \
-			or state[1] in other.finals
+			return state[0] in self.finals or state[1] in other.finals
 
-		return crawl(self.alphabet, initial, final, follow)
+		return crawl(self.alphabet, initial, final, follow).reduce()
 
 	def __and__(self, other):
 		'''
@@ -369,17 +290,13 @@ class fsm:
 		# dedicated function accepts a "superset" and returns the next "superset"
 		# obtained by following this transition in the new FSM
 		def follow(current, symbol):
-			return (
-				self.map[current[0]][symbol],
-				other.map[current[1]][symbol],
-			)
+			return (self.map[current[0]][symbol], other.map[current[1]][symbol])
 
 		# state is final if *all* of its substates are final
 		def final(state):
-			return state[0] in self.finals \
-			and state[1] in other.finals
+			return state[0] in self.finals and state[1] in other.finals
 
-		return crawl(self.alphabet, initial, final, follow)
+		return crawl(self.alphabet, initial, final, follow).reduce()
 
 	def everythingbut(self):
 		'''
@@ -400,8 +317,6 @@ class fsm:
 		'''
 			Return a new FSM such that for every string that self accepts (e.g.
 			"beer", the new FSM accepts the reversed string ("reeb").
-			This is done using "state-sets" (i.e. we go non-deterministic for a
-			little while).
 		'''
 
 		# Start from a composite "state-set" consisting of all final states.
@@ -425,6 +340,67 @@ class fsm:
 
 		# Man, crawl() is the best!
 		return crawl(self.alphabet, initial, final, follow)
+		# Do not reduce() the result, since reduce() calls reversed() in turn
+
+	def strings(self):
+		'''
+			Generate strings that this FSM accepts. Since there may be infinitely
+			many of these we use a generator instead of constructing a static list.
+			Strings will be sorted in order of length and then lexically. This
+			procedure uses arbitrary amounts of memory but is very fast. There may be
+			more efficient ways to do this, that I haven't investigated yet.
+			This routine returns lists of symbols. Since the "alphabet" used by this
+			FSM might well not consist simply of single characters, the "strings" that
+			it accepts might well not be strings. 
+		'''
+
+		# Many FSMs have "dead states". Once you reach a dead state, you can no
+		# longer reach a final state. Since many strings may end up here, it's
+		# advantageous to constrain our search to live states only.
+
+		def islive(state):
+			'''A state is "live" if a final state can be reached from it.'''
+			reachable = [state]
+			i = 0
+			while i < len(reachable):
+				current = reachable[i]
+				if current in self.finals:
+					return True
+				for symbol in self.alphabet:
+					next = self.map[current][symbol]
+					if next not in reachable:
+						reachable.append(next)
+				i += 1
+			return False
+
+		livestates = {state for state in self.states if islive(state)}
+
+		# We store a list of tuples. Each tuple consists of an input string and the
+		# state that this input string leads to. This means we don't have to run the
+		# state machine from the very beginning every time we want to check a new
+		# string.
+		strings = []
+
+		# Initial entry (or possibly not, in which case this is a short one)
+		cstate = self.initial
+		cstring = []
+		if cstate in livestates:
+			if cstate in self.finals:
+				yield cstring
+			strings.append((cstring, cstate))
+
+		# Fixed point calculation
+		i = 0
+		while i < len(strings):
+			(cstring, cstate) = strings[i]
+			for symbol in sorted(self.alphabet, key=str):
+				nstate = self.map[cstate][symbol]
+				nstring = cstring + [symbol]
+				if nstate in livestates:
+					if nstate in self.finals:
+						yield nstring
+					strings.append((nstring, nstate))
+			i += 1
 
 	def lego(self):
 		'''
@@ -580,7 +556,6 @@ def crawl(alphabet, initial, final, follow):
 		i += 1
 
 	result = fsm(alphabet, range(len(states)), 0, finals, map)
-	result = result.reduce()
 	# TODO: make initial 0 after automerging.
 	return result
 
@@ -662,92 +637,6 @@ if __name__ == "__main__":
 			3: {"0": 0, "1": 2},
 		}
 	).lego()) == "0[01]"
-
-	# Equivalence testing.
-	mergeme = fsm(
-		alphabet = {"0", "1"},
-		states   = {1, 2, 3, 4, "oblivion"},
-		initial  = 1,
-		finals   = {4},
-		map      = {
-			1          : {"0" : 2         , "1" : 4         },
-			2          : {"0" : 3         , "1" : 4         },
-			3          : {"0" : 3         , "1" : 4         },
-			4          : {"0" : "oblivion", "1" : "oblivion"},
-			"oblivion" : {"0" : "oblivion", "1" : "oblivion"},
-		},
-	)
-	assert mergeme.equivalent(1, 1)
-	assert not mergeme.equivalent(1, 2)
-	assert not mergeme.equivalent(1, 3)
-	assert not mergeme.equivalent(1, 4)
-	assert not mergeme.equivalent(1, "oblivion")
-	assert mergeme.equivalent(2, 2)
-	assert mergeme.equivalent(2, 3) # the important one
-	assert not mergeme.equivalent(2, 4)
-	assert not mergeme.equivalent(2, "oblivion")
-	assert mergeme.equivalent(3, 3)
-	assert not mergeme.equivalent(3, 4)
-	assert not mergeme.equivalent(3, "oblivion")
-	assert mergeme.equivalent(4, 4)
-	assert not mergeme.equivalent(4, "oblivion")
-	assert mergeme.equivalent("oblivion", "oblivion")
-	mergeme = mergeme.replace(3, 2)
-	assert not 3 in mergeme.states
-	assert mergeme.map[2]["0"] == 2 # formerly 3
-	assert mergeme.equivalent(1, 2)
-	mergeme = mergeme.replace(2, 1)
-	assert not 2 in mergeme.states
-	assert mergeme.map[1]["0"] == 1 # formerly 2
-
-	# Slightly more advanced equivalence testing
-	# (0|1)0*
-	# States 2 and 3 are "equivalent" since they can be merged
-	mergeme2 = fsm(
-		alphabet = {"0", "1"},
-		states   = {1, 2, 3, 4},
-		initial  = 1,
-		finals   = {2, 3},
-		map      = {
-			1 : {"0" : 2, "1" : 3},
-			2 : {"0" : 2, "1" : 4},
-			3 : {"0" : 3, "1" : 4},
-			4 : {"0" : 4, "1" : 4},
-		},
-	)
-	assert mergeme2.equivalent(1, 1)
-	assert not mergeme2.equivalent(1, 2)
-	assert not mergeme2.equivalent(1, 3)
-	assert not mergeme2.equivalent(1, 4)
-	assert mergeme2.equivalent(2, 2)
-	assert mergeme2.equivalent(2, 3) # the important one
-	assert not mergeme2.equivalent(2, 4)
-	assert mergeme2.equivalent(3, 3)
-	assert not mergeme2.equivalent(3, 4)
-	assert mergeme2.equivalent(4, 4)
-	mergeme2 = mergeme2.reduce()
-	assert not (2 in mergeme2.states and 3 in mergeme2.states)
-	assert mergeme2.map[1]["0"] == mergeme2.map[1]["1"] # formerly 2 and 3
-
-	# replace() test
-	replaceme = fsm(
-		alphabet = {"0", "1"},
-		states   = {0, 1, 2},
-		initial  = 0,
-		finals   = {0},
-		map      = {
-			0 : {"0" : 0, "1" : 1},
-			1 : {"0" : 1, "1" : 2},
-			2 : {"0" : 2, "1" : 0},
-		},
-	)
-	replaceme = replaceme.replace(0, None)
-	assert set(replaceme.states) == {None, 1, 2}
-	assert replaceme.initial == None
-	assert replaceme.finals == {None}
-	assert 0 not in replaceme.map
-	assert replaceme.map[None]["0"] == None
-	assert replaceme.map[2]["1"] == None
 
 	# built-ins testing
 	assert not null("a").accepts("a")
@@ -895,6 +784,7 @@ if __name__ == "__main__":
 	assert starred.accepts("abababa")
 
 	# reduce() behaviour test
+	# FSM accepts no strings but has 3 states, needs only 1
 	asdf = fsm(
 		alphabet = {None},
 		states = {0, 1, 2},
@@ -906,7 +796,8 @@ if __name__ == "__main__":
 			2 : {None : 2},
 		},
 	)
-	assert len(asdf.everythingbut().states) == 2
+	asdf = asdf.reduce()
+	assert len(asdf.states) == 1
 
 	# FSM reversal
 	abc = fsm(
@@ -965,6 +856,16 @@ if __name__ == "__main__":
 	assert not b2.accepts("bb")
 	assert not b2.accepts("bbbbbbbbbbbb")
 
+	# Test string generator functionality.
+	gen = b2.strings()
+	assert next(gen) == ["a", "a"]
+	assert next(gen) == ["b", "a"]
+	assert next(gen) == ["a", "a", "a"]
+	assert next(gen) == ["a", "a", "b"]
+	assert next(gen) == ["b", "a", "a"]
+	assert next(gen) == ["b", "a", "b"]
+	assert next(gen) == ["a", "a", "a", "a"]
+
 	# epsilon reversed is epsilon
 	assert reversed(epsilon("a")).accepts("")
 
@@ -992,5 +893,10 @@ if __name__ == "__main__":
 	assert elesscomplex.accepts("a")
 	assert not elesscomplex.accepts("aa")
 	assert elesscomplex.accepts("aaa")
+	gen = elesscomplex.strings()
+	assert next(gen) == ["a"]
+	assert next(gen) == ["a", "a", "a"]
+	assert next(gen) == ["a", "a", "a", "a", "a"]
+	assert next(gen) == ["a", "a", "a", "a", "a", "a", "a"]
 
 	print("OK")
