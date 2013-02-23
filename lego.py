@@ -422,7 +422,7 @@ class charclass(lego):
 			string += "~"
 		string += "charclass("
 		if len(self.chars) > 0:
-			string += repr(join(str(char) for char in sorted(self.chars, key=str)))
+			string += repr("".join(str(char) for char in sorted(self.chars, key=str)))
 		string += ")"
 		return string
 
@@ -3973,5 +3973,7 @@ if __name__ == '__main__':
 	# lego.mult and as __main__.mult and apparently these count as different
 	# classes for some reason, so isinstance(m, mult) was returning false.
 	starfree = (parse("").everythingbut() + parse("aa") + parse("").everythingbut()).everythingbut()
+
+	assert repr(~charclass("a")) == "~charclass('a')"
 
 	print("OK")
