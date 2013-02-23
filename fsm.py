@@ -120,9 +120,9 @@ class fsm:
 				rows[y][x] = rows[y][x].ljust(colwidths[x])
 
 		# horizontal line
-		rows.insert(1, ["-" * colwidths[x] for x in range(len(rows[0]))])
+		rows.insert(1, ["-" * colwidth for colwidth in colwidths])
 
-		return "".join("".join(rows[y]) + "\n" for y in range(len(rows)))
+		return "".join("".join(row) + "\n" for row in rows)
 
 	def __add__(self, other):
 		'''
@@ -344,14 +344,11 @@ class fsm:
 
 	def strings(self):
 		'''
-			Generate strings that this FSM accepts. Since there may be infinitely
-			many of these we use a generator instead of constructing a static list.
-			Strings will be sorted in order of length and then lexically. This
-			procedure uses arbitrary amounts of memory but is very fast. There may be
-			more efficient ways to do this, that I haven't investigated yet.
-			This routine returns lists of symbols. Since the "alphabet" used by this
-			FSM might well not consist simply of single characters, the "strings" that
-			it accepts might well not be strings. 
+			Generate strings (lists of symbols) that this FSM accepts. Since there may
+			be infinitely many of these we use a generator instead of constructing a
+			static list. Strings will be sorted in order of length and then lexically.
+			This procedure uses arbitrary amounts of memory but is very fast. There
+			may be more efficient ways to do this, that I haven't investigated yet.
 		'''
 
 		# Many FSMs have "dead states". Once you reach a dead state, you can no
@@ -555,9 +552,7 @@ def crawl(alphabet, initial, final, follow):
 
 		i += 1
 
-	result = fsm(alphabet, range(len(states)), 0, finals, map)
-	# TODO: make initial 0 after automerging.
-	return result
+	return fsm(alphabet, range(len(states)), 0, finals, map)
 
 # Unit tests.
 if __name__ == "__main__":

@@ -66,6 +66,11 @@ def parse(string):
 	
 	return p.reduce()
 
+def static(string, i, static):
+	if string[i:i+len(static)] == static:
+		return i+len(static)
+	raise nomatch
+
 class lego:
 	'''
 		Parent class for all lego pieces.
@@ -216,7 +221,7 @@ class lego:
 		# In the case of a regex like "[^abc]", there are infinitely many (well, a
 		# very large finite number of) single characters which will match. It's not
 		# productive to iterate over all of these giving every single example.
-		# You may supply your own "otherchar" to stand in for all of these
+		# You must supply your own "otherchar" to stand in for all of these
 		# possibilities.
 
 		for string in self.fsm().strings():
@@ -232,21 +237,7 @@ class lego:
 
 			yield "".join(string)
 
-	@classmethod
-	def matchStatic(cls, string, i, static):
-		if string[i:len(static)+i] == static:
-			return i+len(static)
-		raise nomatch(
-			"Can't find '" + static + "' at index " + str(i) + " in '" + string + "'"
-		)
-
-class multiplicand(lego):
-	'''
-		This class only exists so that it can be a parent to both charclass and
-		pattern, which can both be used in multipliers.
-	'''
-
-class charclass(multiplicand):
+class charclass(lego):
 	'''
 		A charclass is basically a frozenset of symbols. The reason for the
 		charclass object instead of using frozenset directly is to allow us to
@@ -266,8 +257,7 @@ class charclass(multiplicand):
 
 	def __eq__(self, other):
 		try:
-			return self.chars == other.chars \
-			and self.negated == other.negated
+			return self.chars == other.chars and self.negated == other.negated
 		except AttributeError:
 			return False
 
@@ -432,7 +422,7 @@ class charclass(multiplicand):
 			string += "~"
 		string += "charclass("
 		if len(self.chars) > 0:
-			string += "\"" + "".join(str(char) for char in sorted(self.chars, key=str)) + "\""
+			string += repr(join(str(char) for char in sorted(self.chars, key=str)))
 		string += ")"
 		return string
 
@@ -451,27 +441,104 @@ class charclass(multiplicand):
 
 	@classmethod
 	def match(cls, string, i):
+		if i >= len(string):
+			raise nomatch
+
+		def matchInternalChar(string, i):
+
+			# e.g. if we see "\\t", return "\t"
+			for key in escapes.keys():
+				try:
+					return key, static(string, i, escapes[key])
+				except nomatch:
+					pass
+
+			# special chars e.g. "\\-" returns "-"
+			for char in charclass.classSpecial:
+				try:
+					return char, static(string, i, "\\" + char)
+				except nomatch:
+					pass
+
+			# single non-special character, not contained
+			# inside square brackets
+			char, j = string[i], i+1
+			if char in charclass.classSpecial:
+				raise nomatch
+
+			return char, j
+
+		def matchClassInterior1(string, i):
+
+			# Attempt 1: shorthand e.g. "\w"
+			for key in charclass.shorthand:
+				try:
+					return key, static(string, i, charclass.shorthand[key])
+				except nomatch:
+					pass
+
+			# Attempt 2: a range e.g. "d-h"
+			try:
+				first, j = matchInternalChar(string, i)
+				k = static(string, j, "-")
+				last, k = matchInternalChar(string, k)
+
+				for allowableRange in charclass.allowableRanges:
+					if first not in allowableRange:
+						continue
+
+					# last must be in the same character range as first
+					if last not in allowableRange:
+						continue
+
+					firstIndex = allowableRange.index(first)
+					lastIndex = allowableRange.index(last)
+
+					# and in order i.e. a < b
+					if firstIndex >= lastIndex:
+						continue
+
+					# OK
+					return allowableRange[firstIndex:lastIndex + 1], k
+
+				raise nomatch("Range '" + first + "' to '" + last + "' not allowed")
+			except nomatch:
+				pass
+
+			# Attempt 3: just a character on its own
+			return matchInternalChar(string, i)
+
+		def matchClassInterior(string, i):
+			internals = ""
+			try:
+				while True:
+					internal, i = matchClassInterior1(string, i)
+					internals += internal
+			except nomatch:
+				pass
+			return internals, i
+
 		# wildcard ".", "\\w", "\\d", etc.
 		for key in shorthand.keys():
 			try:
-				return key, cls.matchStatic(string, i, shorthand[key])
+				return key, static(string, i, shorthand[key])
 			except nomatch:
 				pass
 
 		# "[^dsgsdg]"
 		try:
-			j = cls.matchStatic(string, i, "[^")
-			chars, j = cls.matchClassInterior(string, j)
-			j = cls.matchStatic(string, j, "]")
+			j = static(string, i, "[^")
+			chars, j = matchClassInterior(string, j)
+			j = static(string, j, "]")
 			return ~charclass(chars), j
 		except nomatch:
 			pass
 
 		# "[sdfsf]"
 		try:
-			j = cls.matchStatic(string, i, "[")
-			chars, j = cls.matchClassInterior(string, j)
-			j = cls.matchStatic(string, j, "]")
+			j = static(string, i, "[")
+			chars, j = matchClassInterior(string, j)
+			j = static(string, j, "]")
 			return charclass(chars), j
 		except nomatch:
 			pass
@@ -479,105 +546,23 @@ class charclass(multiplicand):
 		# e.g. if seeing "\\t", return "\t"
 		for key in escapes.keys():
 			try:
-				return charclass(key), cls.matchStatic(string, i, escapes[key])
+				return charclass(key), static(string, i, escapes[key])
 			except nomatch:
 				pass
 
 		# e.g. if seeing "\\{", return "{"
 		for char in charclass.allSpecial:
 			try:
-				return charclass(char), cls.matchStatic(string, i, "\\" + char)
+				return charclass(char), static(string, i, "\\" + char)
 			except nomatch:
 				pass
 
 		# single non-special character, not contained inside square brackets
-		char, i = cls.matchAny(string, i)
+		char, i = string[i], i+1
 		if char in charclass.allSpecial:
 			raise nomatch
 
 		return charclass(char), i
-
-	@classmethod
-	def matchAny(cls, string, i):
-		if i >= len(string):
-			raise nomatch
-		return string[i], i+1
-
-	@classmethod
-	def matchClassInterior(cls, string, i):
-		internals = ""
-		try:
-			while True:
-				internal, i = cls.matchClassInterior1(string, i)
-				internals += internal
-		except nomatch:
-			pass
-		return internals, i
-
-	@classmethod
-	def matchClassInterior1(cls, string, i):
-
-		# Attempt 1: shorthand e.g. "\w"
-		for key in charclass.shorthand:
-			try:
-				return key, cls.matchStatic(string, i, charclass.shorthand[key])
-			except nomatch:
-				pass
-
-		# Attempt 2: a range e.g. "d-h"
-		try:
-			first, j = cls.matchInternalChar(string, i)
-			k = cls.matchStatic(string, j, "-")
-			last, k = cls.matchInternalChar(string, k)
-
-			for allowableRange in charclass.allowableRanges:
-				if first not in allowableRange:
-					continue
-
-				# last must be in the same character range as first
-				if last not in allowableRange:
-					continue
-
-				firstIndex = allowableRange.index(first)
-				lastIndex = allowableRange.index(last)
-
-				# and in order i.e. a < b
-				if firstIndex >= lastIndex:
-					continue
-
-				# OK
-				return allowableRange[firstIndex:lastIndex + 1], k
-
-			raise nomatch("Range '" + first + "' to '" + last + "' not allowed")
-		except nomatch:
-			pass
-
-		return cls.matchInternalChar(string, i)
-
-	@classmethod
-	def matchInternalChar(cls, string, i):
-
-		# e.g. if we see "\\t", return "\t"
-		for key in escapes.keys():
-			try:
-				return key, cls.matchStatic(string, i, escapes[key])
-			except nomatch:
-				pass
-
-		# special chars e.g. "\\-" returns "-"
-		for char in charclass.classSpecial:
-			try:
-				return char, cls.matchStatic(string, i, "\\" + char)
-			except nomatch:
-				pass
-
-		# single non-special character, not contained
-		# inside square brackets
-		char, j = cls.matchAny(string, i)
-		if char in charclass.classSpecial:
-			raise nomatch
-
-		return char, j
 
 	# self output methods:
 
@@ -768,19 +753,7 @@ class bound:
 			return self
 		return bound(self.v - other.v)
 
-	def common(self, other):
-		'''
-			Find the minimum of two bounds. This is the largest bound which can
-			be legally subtracted from both of the originals.
-			This could return bound(0) very easily.
-		'''
-		if self == inf:
-			return other
-		if other == inf:
-			return self
-		return bound(min(self.v, other.v))
-
-class multiplier(lego):
+class multiplier:
 	'''
 		A min and a max. The vast majority of characters in regular
 		expressions occur without a specific multiplier, which is implicitly
@@ -790,6 +763,7 @@ class multiplier(lego):
 		also permit a max of 0 (iff min is 0 too). This allows the multiplier
 		"zero" to exist, which actually are quite useful in their own special way.
 	'''
+
 	def __init__(self, min, max):
 		if min == inf:
 			raise Exception("Can't have an infinite lower bound")
@@ -810,8 +784,7 @@ class multiplier(lego):
 
 	def __eq__(self, other):
 		try:
-			return self.min == other.min \
-			and self.max == other.max
+			return self.min == other.min and self.max == other.max
 		except AttributeError:
 			return False
 
@@ -834,31 +807,56 @@ class multiplier(lego):
 
 	@classmethod
 	def match(cls, string, i):
+
+		def matchAnyOf(string, i, collection):
+			for char in collection:
+				try:
+					return char, static(string, i, char)
+				except nomatch:
+					pass
+			raise nomatch
+
+		def matchInteger(string, i):
+			try:
+				return 0, static(string, i, "0")
+			except nomatch:
+				pass
+
+			digit, i = matchAnyOf(string, i, "123456789")
+			integer = int(digit)
+			try:
+				while True:
+					digit, i = matchAnyOf(string, i, "0123456789")
+					integer *= 10
+					integer += int(digit)
+			except nomatch:
+				return integer, i
+
 		# {2,3}
 		try:
-			j = cls.matchStatic(string, i, "{")
-			min, j = cls.matchInteger(string, j)
-			j = cls.matchStatic(string, j, ",")
-			max, j = cls.matchInteger(string, j)
-			j = cls.matchStatic(string, j, "}")
+			j = static(string, i, "{")
+			min, j = matchInteger(string, j)
+			j = static(string, j, ",")
+			max, j = matchInteger(string, j)
+			j = static(string, j, "}")
 			return multiplier(bound(min), bound(max)), j
 		except nomatch:
 			pass
 
 		# {2,}
 		try:
-			j = cls.matchStatic(string, i, "{")
-			min, j = cls.matchInteger(string, j)
-			j = cls.matchStatic(string, j, ",}")
+			j = static(string, i, "{")
+			min, j = matchInteger(string, j)
+			j = static(string, j, ",}")
 			return multiplier(bound(min), inf), j
 		except nomatch:
 			pass
 
 		# {2}
 		try:
-			j = cls.matchStatic(string, i, "{")
-			min, j = cls.matchInteger(string, j)
-			j = cls.matchStatic(string, j, "}")
+			j = static(string, i, "{")
+			min, j = matchInteger(string, j)
+			j = static(string, j, "}")
 			return multiplier(bound(min), bound(min)), j
 		except nomatch:
 			pass
@@ -868,37 +866,11 @@ class multiplier(lego):
 		# that forces "" to be done last
 		for key in sorted(symbolic, key=lambda key: -len(symbolic[key])):
 			try:
-				return key, cls.matchStatic(string, i, symbolic[key])
+				return key, static(string, i, symbolic[key])
 			except nomatch:
 				pass
 
 		raise nomatch
-
-	@classmethod
-	def matchInteger(cls, string, i):
-		try:
-			return 0, cls.matchStatic(string, i, "0")
-		except nomatch:
-			pass
-
-		digit, i = cls.matchAnyOf(string, i, "123456789")
-		integer = int(digit)
-		try:
-			while True:
-				digit, i = cls.matchAnyOf(string, i, "0123456789")
-				integer *= 10
-				integer += int(digit)
-		except nomatch:
-			return integer, i
-
-	@classmethod
-	def matchAnyOf(cls, string, i, collection):
-		for char in collection:
-			try:
-				return char, cls.matchStatic(string, i, char)
-			except nomatch:
-				pass
-		raise nomatch("Can't find any of '" + str(collection) + "' at index " + str(i) + " in '" + string + "'")
 
 	def canmultiplyby(self, other):
 		'''
@@ -952,8 +924,8 @@ class multiplier(lego):
 			which can be safely subtracted from both the originals. This may
 			return the "zero" multiplier.
 		'''
-		mandatory = self.mandatory.common(other.mandatory)
-		optional = self.optional.common(other.optional)
+		mandatory = min(self.mandatory, other.mandatory)
+		optional = min(self.optional, other.optional)
 		return multiplier(mandatory, mandatory + optional)
 
 class mult(lego):
@@ -1008,7 +980,7 @@ class mult(lego):
 			e.g. a{4,5} - a{3} = a{1,2}
 		'''
 		if other.multiplicand != self.multiplicand:
-			raise Exception("Can't subtract " + str(other) + " from " + str(self))
+			raise Exception
 
 		return mult(self.multiplicand, self.multiplier - other.multiplier)
 
@@ -1026,7 +998,7 @@ class mult(lego):
 		return mult(nothing, zero)
 
 	def __and__(self, other):
-		if isinstance(other, charclass):
+		if hasattr(other, "chars"):
 			other = mult(other, one)
 
 		# If two mults are given which have a common multiplicand, the shortcut
@@ -1092,9 +1064,9 @@ class mult(lego):
 		# Try recursively reducing our internal.
 		reduced = self.multiplicand.reduce()
 		# "bulk up" smaller lego pieces to pattern if need be
-		if isinstance(reduced, mult):
+		if hasattr(reduced, "multiplicand"):
 			reduced = conc(reduced)
-		if isinstance(reduced, conc):
+		if hasattr(reduced, "mults"):
 			reduced = pattern(reduced)
 		if reduced != self.multiplicand:
 			return mult(reduced, self.multiplier).reduce()
@@ -1120,7 +1092,7 @@ class mult(lego):
 
 	def __str__(self):
 		# recurse into subpattern
-		if isinstance(self.multiplicand, pattern):
+		if hasattr(self.multiplicand, "concs"):
 			output = "(" + str(self.multiplicand) + ")"
 
 		else: 
@@ -1168,9 +1140,9 @@ class mult(lego):
 	@classmethod
 	def match(cls, string, i):
 		try:
-			j = cls.matchStatic(string, i, "(")
+			j = static(string, i, "(")
 			cand, j = pattern.match(string, j)
-			j = cls.matchStatic(string, j, ")")
+			j = static(string, j, ")")
 		except nomatch:
 			cand, j = charclass.match(string, i)
 
@@ -1214,9 +1186,9 @@ class conc(lego):
 
 	def __add__(self, other):
 		# other must be a conc too
-		if isinstance(other, multiplicand):
+		if hasattr(other, "chars") or hasattr(other, "concs"):
 			other = mult(other, one)
-		if isinstance(other, mult):
+		if hasattr(other, "multiplicand"):
 			other = conc(other)
 
 		return conc(*(self.mults + other.mults)).reduce()
@@ -1241,11 +1213,11 @@ class conc(lego):
 		reduced = [m.reduce() for m in self.mults]
 		# "bulk up" smaller lego pieces to concs if need be
 		reduced = [
-			pattern(x) if isinstance(x, conc) else x
+			pattern(x) if hasattr(x, "mults") else x
 			for x in reduced
 		]
 		reduced = [
-			mult(x, one) if isinstance(x, multiplicand) else x
+			mult(x, one) if hasattr(x, "chars") or hasattr(x, "concs") else x
 			for x in reduced
 		]
 		reduced = tuple(reduced)
@@ -1353,8 +1325,7 @@ class conc(lego):
 			mults.append(common)
 
 			# If we did not remove the entirety of both mults, we cannot continue.
-			if common != self.mults[i] \
-			or common != other.mults[i]:
+			if common != self.mults[i] or common != other.mults[i]:
 				break
 
 		if suffix:
@@ -1396,31 +1367,13 @@ class conc(lego):
 			As with __sub__ but the other way around. For example, if
 			ABC + DEF = ABCDEF, then ABCDEF.behead(AB) = CDEF.
 		'''
-
-		# e.g. self has mults at indices [0, 1, 2, 3, 4, 5, 6]
-		# e.g. other has mults at indices [0, 1, 2]
-		new = list(self.mults)
-		for i in range(len(other.mults)):
-			new[0] -= other.mults[i]
-
-			if new[0].multiplier == zero:
-				# omit that mult entirely since it has been factored out
-				new.pop(0)
-
-			# If the subtraction is incomplete but there is more to
-			# other.mults, then we have a problem. For example, "C{2}BA.behead(CB)"
-			# subtracts the C successfully but leaves something behind,
-			# then tries to subtract the B too, which isn't possible
-			else:
-				if i != len(other.mults) - 1:
-					raise Exception
-
-		return conc(*new)
+		# Observe that FEDCBA - BA = FEDC.
+		return reversed(reversed(self) - reversed(other))
 
 	def __reversed__(self):
 		return conc(*reversed([reversed(m) for m in self.mults]))
 
-class pattern(multiplicand):
+class pattern(lego):
 	'''
 		A pattern (also known as an "alt", short for "alternation") is a
 		set of concs. A pattern expresses multiple alternate possibilities.
@@ -1480,11 +1433,11 @@ class pattern(multiplicand):
 
 	def __or__(self, other):
 		# other must be a pattern too
-		if isinstance(other, charclass):
+		if hasattr(other, "chars"):
 			other = mult(other, one)
-		if isinstance(other, mult):
+		if hasattr(other, "multiplicand"):
 			other = conc(other)
-		if isinstance(other, conc):
+		if hasattr(other, "mults"):
 			other = pattern(other)
 
 		return pattern(*(self.concs | other.concs)).reduce()
@@ -1518,11 +1471,11 @@ class pattern(multiplicand):
 		reduced = [c.reduce() for c in self.concs]
 		# "bulk up" smaller lego pieces to concs if need be
 		reduced = [
-			mult(x, one) if isinstance(x, multiplicand) else x
+			mult(x, one) if hasattr(x, "chars") or hasattr(x, "concs") else x
 			for x in reduced
 		]
 		reduced = [
-			conc(x) if isinstance(x, mult) else x
+			conc(x) if hasattr(x, "multiplicand") else x
 			for x in reduced
 		]
 		reduced = frozenset(reduced)
@@ -1539,7 +1492,7 @@ class pattern(multiplicand):
 		for c in self.concs:
 			if len(c.mults) == 1 \
 			and c.mults[0].multiplier == one \
-			and isinstance(c.mults[0].multiplicand, charclass):
+			and hasattr(c.mults[0].multiplicand, "chars"):
 				if merger is None:
 					merger = c.mults[0].multiplicand
 				else:
@@ -1601,7 +1554,7 @@ class pattern(multiplicand):
 		# the rest
 		while True:
 			try:
-				i = cls.matchStatic(string, i, "|")
+				i = static(string, i, "|")
 				c, i = conc.match(string, i)
 				concs.append(c)
 			except nomatch:
@@ -1634,16 +1587,14 @@ class pattern(multiplicand):
 
 			If "suffix" is True, the same result but for suffixes.
 		'''
-		# There's probably a way to do this as a one-liner
-		result = None
-		for c in self.concs:
-			if result is None:
-				result = c
-			else:
-				result = result.common(c, suffix=suffix)
-		if result is None:
+		if len(self.concs) < 1:
 			raise Exception
-		return result
+
+		from functools import reduce
+		return reduce(
+			lambda x, y: x.common(y, suffix=suffix),
+			self.concs
+		)
 
 	def fsm(self, alphabet=None):
 		from fsm import null
@@ -2413,7 +2364,7 @@ if __name__ == '__main__':
 	try:
 		charclass.match("[", 0)
 		assert False
-	except nomatch:
+	except IndexError:
 		pass
 	try:
 		charclass.match("a", 1)
@@ -2969,8 +2920,8 @@ if __name__ == '__main__':
 
 	# bound class tests
 
-	assert bound(0).common(inf) == bound(0)
-	assert bound(1).common(inf) == bound(1)
+	assert min(bound(0), inf) == bound(0)
+	assert min(bound(1), inf) == bound(1)
 	assert qm.mandatory == bound(0)
 	assert qm.optional == bound(1)
 
@@ -4017,5 +3968,10 @@ if __name__ == '__main__':
 	assert next(gen) == "cb"
 	assert next(gen) == "cc"
 	assert next(gen) == "aaa"
+
+	# Problem relating to isinstance(). The class "mult" was occurring as both
+	# lego.mult and as __main__.mult and apparently these count as different
+	# classes for some reason, so isinstance(m, mult) was returning false.
+	starfree = (parse("").everythingbut() + parse("aa") + parse("").everythingbut()).everythingbut()
 
 	print("OK")
