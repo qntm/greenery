@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Copyright (C) 2012 by Sam Hughes
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -559,11 +560,11 @@ if __name__ == "__main__":
 
 	# Buggggs.
 	abstar = fsm(
-		{'a', None, 'b'},
-		{0, 1},
-		0,
-		{0},
-		{
+		alphabet = {'a', None, 'b'},
+		states	 = {0, 1},
+		initial	 = 0,
+		finals	 = {0},
+		map	 = {
 			0: {'a': 0, None: 1, 'b': 0},
 			1: {'a': 1, None: 1, 'b': 1}
 		}
@@ -571,11 +572,11 @@ if __name__ == "__main__":
 	assert str(abstar.lego()) == "[ab]*"
 
 	adotb = fsm(
-		{'a', None, 'b'},
-		{0, 1, 2, 3, 4},
-		0,
-		{4},
-		{
+		alphabet = {'a', None, 'b'},
+		states	 = {0, 1, 2, 3, 4},
+		initial	 = 0,
+		finals	 = {4},
+		map	 = {
 			0: {'a': 2, None: 1, 'b': 1},
 			1: {'a': 1, None: 1, 'b': 1},
 			2: {'a': 3, None: 3, 'b': 3},
@@ -658,7 +659,7 @@ if __name__ == "__main__":
 		states   = {0, 1, "ob"},
 		initial  = 0,
 		finals   = {1},
-		map = {
+		map      = {
 			0    : {"a" : "ob", "b" : 1   },
 			1    : {"a" : "ob", "b" : "ob"},
 			"ob" : {"a" : "ob", "b" : "ob"},
@@ -782,9 +783,9 @@ if __name__ == "__main__":
 	# FSM accepts no strings but has 3 states, needs only 1
 	asdf = fsm(
 		alphabet = {None},
-		states = {0, 1, 2},
-		initial = 0,
-		finals = {1},
+		states   = {0, 1, 2},
+		initial  = 0,
+		finals   = {1},
 		map = {
 			0 : {None : 2},
 			1 : {None : 2},
@@ -797,9 +798,9 @@ if __name__ == "__main__":
 	# FSM reversal
 	abc = fsm(
 		alphabet = {"a", "b", "c"},
-		states = {0, 1, 2, 3, None},
-		initial = 0,
-		finals = {3},
+		states   = {0, 1, 2, 3, None},
+		initial  = 0,
+		finals   = {3},
 		map = {
 			0    : {"a" : 1   , "b" : None, "c" : None},
 			1    : {"a" : None, "b" : 2   , "c" : None},
