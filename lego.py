@@ -658,7 +658,8 @@ class bound:
 
 	def __str__(self):
 		if self == inf:
-			# This only happens for an unlimited upper bound
+			# This happens for an unlimited upper bound, and for "never"
+                        # (unlimited lower bound)
 			return ""
 		return str(self.v)
 
@@ -705,19 +706,18 @@ class bound:
 
 	def __sub__(self, other):
 		'''
-			Subtract another bound from this one.
-			Caution: this operation is not meaningful for all bounds.
+			Subtract another bound from this one.  Caution: this operation is
+			not meaningful for all bounds.  Infinity minus infinity is
+			zero. This has to be true so that we can for example subtract
+			multiplier(bound(0), inf) from multiplier(bound(1), inf) to get
+			multiplier(bound(1), bound(1)) For anything - inf, or for finite
+			bounds, the lowest bound is zero.
 		'''
-		if other == inf:
-			assert self == inf
-
-			# Infinity minus infinity is zero. This has to be true so that
-			# we can for example subtract multiplier(bound(0), inf) from
-			# multiplier(bound(1), inf) to get multiplier(bound(1), bound(1))
+		if self <= other:		# handles inf-inf, finite-inf, finite-finite
 			return bound(0)
-		if self == inf:
+		if self == inf:			# inf-finite
 			return self
-		return bound(self.v - other.v)
+		return bound(self.v - other.v)	# finite/finite
 
 class multiplier:
 	'''
@@ -727,15 +727,24 @@ class multiplier:
 		multipliers like "*" (min = 0, max = inf) and so on.
 		Although it seems odd and can lead to some confusing edge cases, we do
 		also permit a max of 0 (iff min is 0 too). This allows the multiplier
-		"zero" to exist, which actually are quite useful in their own special way.
+		"zero" to exist, which actually are quite useful in their own special way, expressing
+                the concept of zero instances of something; matching the empty string.
+                Likewise, a min equal to inf (iff max is also inf) expresses the concept of
+	  	never; this is the result of the intersection of non-intersecting
+                multipliers; matches no string.
+                
 	'''
 
 	def __init__(self, min, max):
-		assert min != inf
-		assert min <= max
+		# Can't have an infinite lower bound w/o an infinite upper bound
+		assert not ( min == inf and max != inf )
+		# max must match or exceed min
+		assert not ( max < min )
 
-		# More useful than "min" and "max" in many situations
-		# are "mandatory" and "optional".
+		# More useful than "min" and "max" in many situations are "mandatory" and
+		# "optional".  Handles multiplier(inf,inf) ('never'), by ensuring that
+		# <bound> - <bound> yields mandatory: bound(None) ('inf'), optional:
+		# bound(0), and that <fsm> * None yields an FSM [] accepting nothing.
 		mandatory = min
 		optional = max - min
 
@@ -760,13 +769,15 @@ class multiplier:
 		return "multiplier(" + repr(self.min) + ", " + repr(self.max) + ")"
 
 	def __str__(self):
-		assert self.max != bound(0)
+		assert self.max != bound(0)                     # zero
+		assert self.min != inf                          # never
+
 		if self in symbolic.keys():
-			return symbolic[self]
-		if self.max == inf:
-			return "{" + str(self.min) + ",}"
+			return symbolic[self]                   # *, ?
 		if self.min == self.max:
-			return "{" + str(self.min) + "}"
+			return "{" + str(self.min) + "}"        # {5}, {0}, {} (never!)
+		if self.max == inf:
+			return "{" + str(self.min) + ",}"       # {5,}
 		return "{" + str(self.min) + "," + str(self.max) + "}"
 
 	@classmethod
@@ -858,7 +869,8 @@ class multiplier:
 		return multiplier(self.min * other.min, self.max * other.max)
 
 	def __add__(self, other):
-		'''Add two multipliers together'''
+		'''Add two multipliers together; ensure that
+                zero + <anything> == <anything>, never + <anything> == never'''
 		return multiplier(self.min + other.min, self.max + other.max)
 
 	def __sub__(self, other):
@@ -875,18 +887,24 @@ class multiplier:
 		'''
 			Find the intersection of two multipliers: that is, a third multiplier
 			expressing the range covered by both of the originals. This is not
-			defined for all multipliers.
+			defined for all multipliers; no overlap implies "never" matching anything.
 		'''
 		a = max(self.min, other.min)
 		b = min(self.max, other.max)
-		return multiplier(a, b)
+		if a <= b:
+			return multiplier(a, b)
+		else:
+			return never
 
 	def common(self, other):
 		'''
 			Find the shared part of two multipliers. This is the largest multiplier
 			which can be safely subtracted from both the originals. This may
-			return the "zero" multiplier.
+			return the "zero" multiplier (matching the empty string), or the "never"
+                        multiplier (matching nothing).
 		'''
+		if self.min == inf or other.min == inf:
+			return never
 		mandatory = min(self.mandatory, other.mandatory)
 		optional = min(self.optional, other.optional)
 		return multiplier(mandatory, mandatory + optional)
@@ -988,7 +1006,9 @@ class mult(lego):
 		return {otherchars} | self.multiplicand.alphabet()
 	
 	def empty(self):
-		return self.multiplicand.empty() and self.multiplier.min > bound(0)
+		''' An empty pattern, or a 'never' multiplier result in no matches at all '''
+		return self.multiplicand.empty() and self.multiplier.min > bound(0) \
+		or self.multiplier.min == inf
 
 	@reduce_after
 	def reduce(self):
@@ -1064,14 +1084,16 @@ class mult(lego):
 		if hasattr(self.multiplicand, "concs"):
 			output = "(" + str(self.multiplicand) + ")"
 
-		else: 
+		else:
 			output = str(self.multiplicand)
 
 		suffix = str(self.multiplier)
 
-		# Pick whatever is shorter/more comprehensible.
-		# e.g. "aa" beats "a{2}", "ababab" beats "(ab){3}"
+		# Pick whatever is shorter/more comprehensible.  e.g. "aa" beats "a{2}",
+		# "ababab" beats "(ab){3}".  Avoiding shortening never {} or zero {0}
+		# (which we should rarely see in actual output, as they should be reduced)
 		if self.multiplier.min == self.multiplier.max \
+                and self.multiplier.min.v \
 		and len(output) * self.multiplier.min.v <= len(output) + len(suffix):
 			return output * self.multiplier.min.v
 
@@ -1085,11 +1107,11 @@ class mult(lego):
 
 		# worked example: (min, max) = (5, 7) or (5, inf)
 		# (mandatory, optional) = (5, 2) or (5, inf)
-
+                        
 		unit = self.multiplicand.fsm(alphabet)
 		# accepts e.g. "ab"
 
-		# accepts "ababababab"
+		# accepts "ababababab"; To handle multipler == never, fsm * None
 		mandatory = unit * self.multiplier.mandatory.v
 
 		# unlimited additional copies
@@ -1639,6 +1661,7 @@ qm   = multiplier(bound(0), bound(1))
 one  = multiplier(bound(1), bound(1))
 star = multiplier(bound(0), inf)
 plus = multiplier(bound(1), inf)
+never= multiplier(inf,      inf)
 
 # Symbol lookup table for preset multipliers.
 symbolic = {
@@ -1841,13 +1864,23 @@ if __name__ == '__main__':
 		) # so neither can this conc
 	).reduce() == nothing
 
-	# Empty pattern suppression in mults
+	# Empty string pattern suppression in mults
 	assert mult(nothing, qm).reduce() == emptystring
 	assert mult(pattern(), qm).reduce() == emptystring
 
-	# empty pattern behaviour
-	assert pattern().reduce() == charclass()
+	# No match pattern behaviour.  
+	assert pattern().reduce() == nothing
+	assert mult(charclass("a"),never).reduce() == nothing
 
+        # Any regular expression concatenated with an no match must match nothing (since
+	# it only can accept precisely no input, which of course cannot follow any input)
+	assert pattern(
+		conc(
+			mult(charclass("a"),one),
+			pattern(),
+		)
+	).reduce() == nothing
+	
 	# pattern.fsm()
 
 	# "a[^a]"
@@ -2901,39 +2934,85 @@ if __name__ == '__main__':
 		), multiplier(bound(2), bound(3))
 	)
 
-	# bound class tests
 
+	# bound class tests
 	assert min(bound(0), inf) == bound(0)
 	assert min(bound(1), inf) == bound(1)
+	assert max(bound(1), inf) == inf
 	assert qm.mandatory == bound(0)
 	assert qm.optional == bound(1)
+	
+	assert not inf < inf
+	assert not inf > inf
+	assert inf > bound(1<<31)
+	assert inf <= inf                       # important for bound - bound
+	assert inf >= inf
+	assert inf == inf
+	assert inf + inf == inf
+
+	assert inf      - inf      == bound(0)
+	assert inf      - bound(1) == inf
+	assert bound(5) - bound(1) == bound(4)
+	assert bound(1) - inf      == bound(0)
 
 	# multiplier intersection operator tests
-	assert zero.common(zero) == zero
-	assert zero.common(qm  ) == zero
-	assert zero.common(one ) == zero
-	assert zero.common(star) == zero
-	assert zero.common(plus) == zero
-	assert qm  .common(zero) == zero
-	assert qm  .common(qm  ) == qm
-	assert qm  .common(one ) == zero
-	assert qm  .common(star) == qm
-	assert qm  .common(plus) == qm
-	assert one .common(zero) == zero
-	assert one .common(qm  ) == zero
-	assert one .common(one ) == one
-	assert one .common(star) == zero
-	assert one .common(plus) == one
-	assert star.common(zero) == zero
-	assert star.common(qm  ) == qm
-	assert star.common(one ) == zero
-	assert star.common(star) == star
-	assert star.common(plus) == star
-	assert plus.common(zero) == zero
-	assert plus.common(qm  ) == qm
-	assert plus.common(one ) == one
-	assert plus.common(star) == star
-	assert plus.common(plus) == plus
+	assert zero .common(zero ) == zero
+	assert zero .common(qm   ) == zero
+	assert zero .common(one  ) == zero
+	assert zero .common(star ) == zero
+	assert zero .common(plus ) == zero
+	assert zero .common(never) == never
+	assert qm   .common(zero ) == zero
+	assert qm   .common(qm   ) == qm
+	assert qm   .common(one  ) == zero
+	assert qm   .common(star ) == qm
+	assert qm   .common(plus ) == qm
+	assert qm   .common(never) == never
+	assert one  .common(zero ) == zero
+	assert one  .common(qm   ) == zero
+	assert one  .common(one  ) == one
+	assert one  .common(star ) == zero
+	assert one  .common(plus ) == one
+	assert one  .common(never ) == never
+	assert star .common(zero ) == zero
+	assert star .common(qm   ) == qm
+	assert star .common(one  ) == zero
+	assert star .common(star ) == star
+	assert star .common(plus ) == star
+	assert star .common(never) == never
+	assert plus .common(zero ) == zero
+	assert plus .common(qm   ) == qm
+	assert plus .common(one  ) == one
+	assert plus .common(star ) == star
+	assert plus .common(plus ) == plus
+	assert plus .common(never) == never
+	assert never.common(zero ) == never
+	assert never.common(qm   ) == never
+	assert never.common(star ) == never
+	assert never.common(plus ) == never
+	assert never.common(zero ) == never
+	assert never.common(never) == never
+
+	assert zero  + zero   == zero
+	assert zero  + qm     == qm
+	assert zero  + star   == star
+	assert zero  + plus   == plus
+	assert zero  + zero   == zero
+	assert zero  + never  == never
+
+	assert never + zero   == never
+	assert never + qm     == never
+	assert never + star   == never
+	assert never + plus   == never
+	assert never + zero   == never
+	assert never + never  == never
+
+	assert never - zero   == never
+	assert never - qm     == never
+	assert never - star   == never
+	assert never - plus   == never
+	assert never - zero   == never
+	assert never - never  == zero
 
 	# a{3,4}, a{2,5} -> a{2,3} (with a{1,1}, a{0,2} left over)
 	assert multiplier(bound(3), bound(4)).common(multiplier(bound(2), bound(5))) == multiplier(bound(2), bound(3))
@@ -2954,6 +3033,10 @@ if __name__ == '__main__':
 	assert multiplier(bound(3), inf).common(multiplier(bound(3), inf)) == multiplier(bound(3), inf)
 	assert multiplier(bound(3), inf) - multiplier(bound(3), inf) == zero
 
+	# a{2} & a{4} -> [] (never)
+	assert multiplier(bound(2), bound(2)) & multiplier(bound(4), bound(4)) == never
+	assert multiplier(bound(2), bound(2)) - multiplier(bound(4), bound(4)) == zero
+
 	# mult intersection ("&") tests
 	# a & b? = nothing
 	assert mult(charclass("a"), one) & mult(charclass("b"), qm) == charclass()
@@ -2965,6 +3048,10 @@ if __name__ == '__main__':
 	assert mult(charclass("a"), multiplier(bound(2), bound(2))) \
 	& mult(charclass("a"), multiplier(bound(2), inf)) \
 	== mult(charclass("a"), multiplier(bound(2), bound(2)))
+        # a{2} & a{4} = []
+	assert mult(charclass("a"), multiplier(bound(2), bound(2))) \
+	& mult(charclass("a"), multiplier(bound(4), bound(4))) \
+	== charclass()
 	# a & b -> no intersection.
 	assert mult(charclass("a"), one) & mult(charclass("b"), one) == nothing
 	# a & a -> a
@@ -3003,6 +3090,7 @@ if __name__ == '__main__':
 	) & mult(
 		charclass("a"), multiplier(bound(3), inf)
 	) == mult(charclass("a"), multiplier(bound(3), inf))
+
 
 	# pattern._commonconc(suffix=True) tests
 
