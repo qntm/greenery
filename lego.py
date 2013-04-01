@@ -55,6 +55,8 @@
 # http://qntm.org/lego
 # http://qntm.org/greenery
 
+from __future__ import absolute_import
+
 class nomatch(Exception):
 	'''Thrown when parsing fails. Almost always caught and almost never fatal'''
 	pass
@@ -411,7 +413,7 @@ class charclass(lego):
 		return output
 
 	def fsm(self, alphabet=None):
-		from fsm import fsm
+		from .fsm import fsm
 
 		if alphabet is None:
 			alphabet = self.alphabet()
@@ -1090,7 +1092,7 @@ class mult(lego):
 		return output + suffix
 
 	def fsm(self, alphabet=None):
-		from fsm import epsilon
+		from .fsm import epsilon
 
 		if alphabet is None:
 			alphabet = self.alphabet()
@@ -1245,7 +1247,7 @@ class conc(lego):
 		return self
 
 	def fsm(self, alphabet=None):
-		from fsm import epsilon
+		from .fsm import epsilon
 
 		if alphabet is None:
 			alphabet = self.alphabet()
@@ -1591,7 +1593,7 @@ class pattern(lego):
 		)
 
 	def fsm(self, alphabet=None):
-		from fsm import null
+		from .fsm import null
 
 		if alphabet is None:
 			alphabet = self.alphabet()
@@ -1665,6 +1667,14 @@ emptystring = conc()
 
 # Unit tests.
 if __name__ == '__main__':
+
+	# Allow relative imports when executing within package directory, for running tests
+	import sys, os
+	sys.path.insert( 0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+	import greenery
+	__package__ = str("greenery")
+	del sys, os
+
 
 	# "AAZY, BBZY" -> "ZY"
 	assert conc(
