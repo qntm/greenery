@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Copyright (C) 2012 by Sam Hughes
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -261,6 +262,9 @@ class charclass(lego):
 		except AttributeError:
 			return False
 
+	def __ne__(self, other):
+		return not self.__eq__(other)
+
 	def __hash__(self):
 		return hash((self.chars, self.negated))
 
@@ -336,19 +340,19 @@ class charclass(lego):
 			return char
 
 		def recordRange():
-			nonlocal currentRange
-			nonlocal output
-
 			# there's no point in putting a range when the whole thing is
 			# 3 characters or fewer.
-			if len(currentRange) in {0, 1, 2, 3}:
-				output += "".join(escapeChar(char) for char in currentRange)
+			if len(currentRange) < 4:
+				return "".join(escapeChar(char) for char in currentRange)
 			else:
-				output += escapeChar(currentRange[0]) + "-" + escapeChar(currentRange[-1])
-
-			currentRange = ""
+				return escapeChar(currentRange[0]) + "-" + escapeChar(currentRange[-1])
 
 		output = ""
+
+		# use shorthand for known character ranges
+		# note the nested processing order. DO NOT process \d before processing
+		# \w. if more character class constants arise which do not nest nicely,
+		# a problem will arise because there is no clear ordering to use...
 
 		# look for ranges
 		currentRange = ""
@@ -369,18 +373,19 @@ class charclass(lego):
 					# if this character doesn't appear above, then any existing
 					# currentRange should be sorted and filed now
 					# if there is one
-					recordRange()
-
+					output += recordRange()
+					currentRange=""
 				else:
 					i = superRange.index(char)
 
 					# char doesn't fit old range: restart
 					if i == 0 or superRange[i-1] != currentRange[-1]:
-						recordRange()
+						output += recordRange()
+						currentRange = ""
 
 			currentRange += char
 
-		recordRange()
+		output += recordRange()
 
 		return output
 
@@ -564,71 +569,6 @@ class charclass(lego):
 
 		return charclass(char), i
 
-	# self output methods:
-
-	def escape(self):
-
-		def escapeChar(char):
-			if char in charclass.classSpecial:
-				return "\\" + char
-			if char in escapes.keys():
-				return escapes[char]
-			return char
-
-		def recordRange():
-			nonlocal currentRange
-			nonlocal output
-
-			# there's no point in putting a range when the whole thing is
-			# 3 characters or fewer.
-			if len(currentRange) < 4:
-				output += "".join(escapeChar(char) for char in currentRange)
-			else:
-				output += escapeChar(currentRange[0]) + "-" + escapeChar(currentRange[-1])
-
-			currentRange = ""
-
-		output = ""
-
-		# use shorthand for known character ranges
-		# note the nested processing order. DO NOT process \d before processing
-		# \w. if more character class constants arise which do not nest nicely,
-		# a problem will arise because there is no clear ordering to use...
-
-		# look for ranges
-		currentRange = ""
-		for char in sorted(self.chars, key=str):
-
-			# range is not empty: new char must fit after previous one
-			if len(currentRange) > 0:
-
-				# find out if this character appears in any of the
-				# charclass.allowableRanges listed above.
-				superRange = None
-				for allowableRange in charclass.allowableRanges:
-					if char in allowableRange:
-						superRange = allowableRange
-						break
-
-				if superRange is None:
-					# if this character doesn't appear above, then any existing
-					# currentRange should be sorted and filed now
-					# if there is one
-					recordRange()
-
-				else:
-					i = superRange.index(char)
-
-					# char doesn't fit old range: restart
-					if i == 0 or superRange[i-1] != currentRange[-1]:
-						recordRange()
-
-			currentRange += char
-
-		recordRange()
-
-		return output
-
 	# set operations
 	def __invert__(self):
 		'''
@@ -705,11 +645,14 @@ class bound:
 		except AttributeError:
 			return False
 
+	def __ne__(self, other):
+		return not self.__eq__(other)
+
 	def __hash__(self):
 		return hash(self.v)
 
 	def __lt__(self, other):
-		if self == inf:  
+		if self == inf:
 			return False
 		if other == inf:
 			return True
@@ -787,6 +730,9 @@ class multiplier:
 			return self.min == other.min and self.max == other.max
 		except AttributeError:
 			return False
+
+	def __ne__(self, other):
+		return not self.__eq__(other)
 
 	def __hash__(self):
 		return hash((self.min, self.max))
@@ -949,6 +895,9 @@ class mult(lego):
 			and self.multiplier == other.multiplier
 		except AttributeError:
 			return False
+
+	def __ne__(self, other):
+		return not self.__eq__(other)
 
 	def __hash__(self):
 		return hash((self.multiplicand, self.multiplier))
@@ -1168,6 +1117,9 @@ class conc(lego):
 			return self.mults == other.mults
 		except AttributeError:
 			return False
+
+	def __ne__(self, other):
+		return not self.__eq__(other)
 
 	def __hash__(self):
 		return hash(self.mults)
@@ -1396,6 +1348,9 @@ class pattern(lego):
 			return self.concs == other.concs
 		except AttributeError:
 			return False
+
+	def __ne__(self, other):
+		return not self.__eq__(other)
 
 	def __hash__(self):
 		return hash(self.concs)
