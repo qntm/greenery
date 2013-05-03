@@ -871,12 +871,23 @@ class multiplier:
 		optional = self.optional - other.optional
 		return multiplier(mandatory, mandatory + optional)
 
+	def canintersect(self, other):
+		'''
+			Intersection is not well-defined for all pairs of multipliers.
+			For example:
+				{2,3} & {3,4} = {3}
+				{2,} & {1,7} = {2,7}
+				{2} & {5} = ERROR
+		'''
+		return not (self.max < other.min or other.max < self.min)
+
 	def __and__(self, other):
 		'''
 			Find the intersection of two multipliers: that is, a third multiplier
 			expressing the range covered by both of the originals. This is not
 			defined for all multipliers.
 		'''
+		assert self.canintersect(other)
 		a = max(self.min, other.min)
 		b = min(self.max, other.max)
 		return multiplier(a, b)
@@ -972,7 +983,8 @@ class mult(lego):
 		# If two mults are given which have a common multiplicand, the shortcut
 		# is just to take the intersection of the two multiplicands.
 		try:
-			if self.multiplicand == other.multiplicand:
+			if self.multiplicand == other.multiplicand \
+			and self.canintersect(other):
 				return mult(self.multiplicand, self.multiplier & other.multiplier)
 		except AttributeError:
 			# "other" isn't a mult; lacks either a multiplicand or a multiplier.
@@ -2975,6 +2987,10 @@ if __name__ == '__main__':
 	assert mult(charclass("a"), star) & mult(charclass("b"), star) == emptystring
 	# a* & a+ -> a+
 	assert mult(charclass("a"), star) & mult(charclass("a"), plus) == mult(charclass("a"), plus)
+	# aa & aaaa -> []
+	assert mult(charclass("a"), multiplier(bound(2), bound(2))) \
+	& mult(charclass("a"), multiplier(bound(4), bound(4))) \
+	== nothing
 
 	# a{3,4} & a{2,5} -> a{2,3}
 	assert mult(
