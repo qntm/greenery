@@ -224,8 +224,14 @@ class fsm:
 
 	def __mul__(self, multiplier):
 		'''
-			Given an FSM and a multiplier, return the multiplied FSM.
+			Given an FSM and a multiplier, return the multiplied
+			FSM.  Handles None (accepts nothing), 0 (accepts the
+			empty string), and +'ve finite values (accepts a
+			sequence of the underlying FSM)
 		'''
+		if multiplier is None:
+			return null(self.alphabet)
+
 		assert multiplier >= 0
 
 		if multiplier == 0:
@@ -399,7 +405,7 @@ class fsm:
 		'''
 		from lego import nothing, charclass, emptystring, star, otherchars
 
-		outside = 0
+		outside = len(self.states)
 		while outside in self.states:
 			outside += 1
 
@@ -711,8 +717,14 @@ if __name__ == "__main__":
 	assert not twoA.accepts("aaa")
 
 	zeroA = a * 0
+	assert str(zeroA.lego()) == ""
 	assert zeroA.accepts("")
 	assert not zeroA.accepts("a")
+
+	neverA = a * None
+	assert str(neverA.lego()) == "[]"
+	assert not neverA.accepts("")
+	assert not neverA.accepts("a")
 
 	# intersection simple test
 	intAB = a & b
