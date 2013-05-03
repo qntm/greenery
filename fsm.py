@@ -38,7 +38,7 @@ class fsm:
 	'''
 	def __setattr__(self, name, value):
 		'''Immutability prevents some potential problems.'''
-		raise Exception("Can't set " + str(self) + " attribute " + str(name) + " to " + str(value))
+		raise Exception("This object is immutable.")
 
 	def __init__(self, alphabet, states, initial, finals, map):
 		'''Initialise the hard way due to immutability.'''
@@ -49,18 +49,13 @@ class fsm:
 		self.__dict__["map"     ] = map
 
 		# Validation. Thanks to immutability, this only needs to be carried out once.
-		if self.initial not in self.states:
-			raise Exception("Initial state " + str(self.initial) + " not in " + str(self.states))
-		if not self.finals.issubset(self.states):
-			raise Exception("Final states " + str(self.finals) + " not in " + str(self.states))
+		assert self.initial in self.states
+		assert self.finals.issubset(self.states)
 		for state in self.states:
-			if state not in self.map.keys():
-				raise Exception("State " + str(state) + " not in " + str(self.map.keys()))
+			assert state in self.map.keys()
 			for symbol in self.alphabet:
-				if symbol not in self.map[state]:
-					raise Exception("Symbol " + str(symbol) + " not in " + str(self.map[state]))
-				if self.map[state][symbol] not in self.states:
-					raise Exception("State " + str(self.map[state][symbol]) + " not in " + str(self.states))
+				assert symbol in self.map[state]
+				assert self.map[state][symbol] in self.states
 
 	def accepts(self, input):
 		'''This is actually only used for unit testing purposes'''
@@ -134,8 +129,7 @@ class fsm:
 			Call using "fsm3 = fsm1 + fsm2"
 		'''
 		# alphabets must be equal
-		if other.alphabet != self.alphabet:
-			raise Exception("Alphabet " + str(other.alphabet) + " must be " + str(self.alphabet))
+		assert other.alphabet == self.alphabet
 
 		# We start at the start of self. If this starting state happens to be
 		# final in self, we also start at the start of other.
@@ -232,8 +226,7 @@ class fsm:
 		'''
 			Given an FSM and a multiplier, return the multiplied FSM.
 		'''
-		if multiplier < 0:
-			raise Exception("Can't multiply an FSM by a number less than 0.")
+		assert multiplier >= 0
 
 		if multiplier == 0:
 			return epsilon(self.alphabet)
@@ -257,8 +250,7 @@ class fsm:
 		'''
 
 		# alphabets must be equal
-		if other.alphabet != self.alphabet:
-			raise Exception("Alphabet " + str(other.alphabet) + " must be " + str(self.alphabet))
+		assert other.alphabet == self.alphabet
 
 		initial = (self.initial, other.initial)
 
@@ -283,8 +275,7 @@ class fsm:
 		'''
 
 		# alphabets must be equal
-		if other.alphabet != self.alphabet:
-			raise Exception("Alphabet " + str(other.alphabet) + " must be " + str(self.alphabet))
+		assert other.alphabet == self.alphabet
 
 		initial = (self.initial, other.initial)
 
@@ -867,15 +858,15 @@ if __name__ == "__main__":
 
 	# Bug fix. This is a(a{2})* (i.e. accepts an odd number of "a" chars in a
 	# row), but when .lego() is called, the result is "a+". Turned out to be
-	# a fault in the lego.multiplier __mul__() routine
+	# a fault in the lego.multiplier.__mul__() routine
 	elesscomplex = fsm(
 		alphabet = {"a"},
 		states = {0, 1},
 		initial = 0,
 		finals = {1},
 		map = {
-			0    : {"a" : 1},
-			1    : {"a" : 0},
+			0 : {"a" : 1},
+			1 : {"a" : 0},
 		},
 	)
 	assert not elesscomplex.accepts("")
@@ -894,5 +885,86 @@ if __name__ == "__main__":
 	assert next(gen) == ["a", "a", "a"]
 	assert next(gen) == ["a", "a", "a", "a", "a"]
 	assert next(gen) == ["a", "a", "a", "a", "a", "a", "a"]
+
+	# Binary numbers divisible by 3.
+	# Disallows the empty string
+	# Allows "0" on its own, but not leading zeroes.
+	div3 = fsm(
+		alphabet = {"0", "1"},
+		states = {"initial", "zero", 0, 1, 2, None},
+		initial = "initial",
+		finals = {"zero", 0},
+		map = {
+			"initial" : {"0" : "zero", "1" : 1   },
+			"zero"    : {"0" : None  , "1" : None},
+			0         : {"0" : 0     , "1" : 1   },
+			1         : {"0" : 2     , "1" : 0   },
+			2         : {"0" : 1     , "1" : 2   },
+			None      : {"0" : None  , "1" : None},
+		},
+	)
+	assert not div3.accepts("")
+	assert div3.accepts("0")
+	assert not div3.accepts("1")
+	assert not div3.accepts("00")
+	assert not div3.accepts("01")
+	assert not div3.accepts("10")
+	assert div3.accepts("11")
+	assert not div3.accepts("000")
+	assert not div3.accepts("001")
+	assert not div3.accepts("010")
+	assert not div3.accepts("011")
+	assert not div3.accepts("100")
+	assert not div3.accepts("101")
+	assert div3.accepts("110")
+	assert not div3.accepts("111")
+	assert not div3.accepts("0000")
+	assert not div3.accepts("0001")
+	assert not div3.accepts("0010")
+	assert not div3.accepts("0011")
+	assert not div3.accepts("0100")
+	assert not div3.accepts("0101")
+	assert not div3.accepts("0110")
+	assert not div3.accepts("0111")
+	assert not div3.accepts("1000")
+	assert div3.accepts("1001")
+	div3 = div3.lego()
+	assert str(div3) == "0|1(01*0|10*1)*10*"
+	gen = div3.strings()
+	assert next(gen) == "0"
+	assert next(gen) == "11"
+	assert next(gen) == "110"
+	assert next(gen) == "1001"
+	assert next(gen) == "1100"
+
+	# Machine accepts only numbers in selected base (e.g. 2, 10) that are
+	# divisible by N (e.g. 3, 7).
+	# "0" alone is acceptable, but leading zeroes (e.g. "00", "07") are not
+	base = 2
+	N = 3
+	assert base <= 10
+	divN = fsm(
+		alphabet = set(str(i) for i in range(base)),
+		states = set(range(N)) | {"initial", "zero", None},
+		initial = "initial",
+		finals = {"zero", 0},
+		map = dict(
+			[
+				("initial", dict([(str(j), j              % N) for j in range(1, base)] + [("0", "zero")])),
+				("zero"   , dict([(str(j), None              ) for j in range(   base)]                  )),
+				(None     , dict([(str(j), None              ) for j in range(   base)]                  )),
+			] + [
+				(i        , dict([(str(j), (i * base + j) % N) for j in range(   base)]                  ))
+				for i in range(N)
+			]
+		),
+	)
+	gen = divN.lego().strings()
+	a = next(gen)
+	assert a == "0"
+	for i in range(7):
+		b = next(gen)
+		assert int(a, base) + N == int(b, base)
+		a = b
 
 	print("OK")

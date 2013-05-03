@@ -57,19 +57,32 @@
 
 class nomatch(Exception):
 	'''Thrown when parsing fails. Almost always caught and almost never fatal'''
+	pass
 
+def reduce_after(method):
+	'''reduce() the result of this method call (unless you already reduced it).'''
+	def new_method(self, *args, **kwargs):
+		result = method(self, *args, **kwargs)
+		if method.__name__ == "reduce" and result == self:
+			return result
+		return result.reduce()
+	return new_method
+
+@reduce_after
 def parse(string):
-	'''Parse a full string and return a lego piece. Fail if the whole string
-	wasn't parsed'''
+	'''
+		Parse a full string and return a lego piece. Fail if the whole string
+		wasn't parsed
+	'''
 	p, i = pattern.match(string, 0)
 	if i != len(string):
 		raise Exception("Could not parse '" + string + "' beyond index " + str(i))
-	
-	return p.reduce()
+	return p
 
 def static(string, i, static):
-	if string[i:i+len(static)] == static:
-		return i+len(static)
+	j = i+len(static)
+	if string[i:j] == static:
+		return j
 	raise nomatch
 
 class lego:
@@ -84,7 +97,7 @@ class lego:
 			Lego pieces are immutable. It caused some pretty serious problems when
 			I didn't have this.
 		'''
-		raise Exception("Can't set " + str(self) + " attribute " + str(name) + " to " + str(value))
+		raise Exception("This object is immutable.")
 
 	def fsm(self, alphabet):
 		'''
@@ -122,6 +135,7 @@ class lego:
 		'''
 		raise Exception("Not implemented")
 
+	@reduce_after
 	def reduce(self):
 		'''
 			The most important and algorithmically complex method. Takes the current
@@ -136,6 +150,7 @@ class lego:
 		'''
 		raise Exception("Not implemented")
 
+	@reduce_after
 	def __add__(self, other):
 		'''
 			Concatenate any two lego pieces, regardless of differing classes. Because
@@ -145,6 +160,7 @@ class lego:
 		'''
 		raise Exception("Not implemented")
 
+	@reduce_after
 	def __mul__(self, multiplier):
 		'''
 			Equivalent to repeated concatenation. Multiplier consists of a minimum
@@ -154,14 +170,18 @@ class lego:
 		'''
 		raise Exception("Not implemented")
 
+	@reduce_after
 	def __or__(self, other):
 		'''
 			Alternate between any two lego pieces, regardless of differing classes.
 			Again, reduce() is called afterwards, usually with excellent results.
-			Call using "a = b | c"
+			Call using "a = b | c".
+			This method MUST NOT call the fsm() method, because this method is used
+			in turn when converting an FSM back to a regex.
 		'''
 		raise Exception("Not implemented")
 
+	@reduce_after
 	def __and__(self, other):
 		'''
 			Intersection function. Return a lego piece that can match any string
@@ -185,6 +205,7 @@ class lego:
 		'''
 		raise Exception("Not implemented")
 
+	@reduce_after
 	def everythingbut(self):
 		'''
 			Return a lego object which will match any string not matched by self,
@@ -193,12 +214,12 @@ class lego:
 			utter garbage when actually printed), but becomes trivial to code
 			thanks to FSM routines.
 		'''
-		return self.fsm().everythingbut().lego().reduce()
+		return self.fsm().everythingbut().lego()
 
 	def __reversed__(self):
 		'''
 			Return a lego object which will match any string which, when reversed,
-			would match self. E.g. if self matches "beer" then reversed(self) will
+			self would match. E.g. if self matches "beer" then reversed(self) will
 			match "reeb".
 		'''
 		raise Exception("Not implemented")
@@ -251,8 +272,7 @@ class charclass(lego):
 
 	def __init__(self, chars=set(), negateMe=False):
 		# chars should consist only of chars
-		if otherchars in set(chars):
-			raise Exception("Can't put non-character 'otherchars' in a charclass")
+		assert otherchars not in set(chars)
 		self.__dict__["chars"]   = frozenset(chars)
 		self.__dict__["negated"] = negateMe
 
@@ -268,11 +288,12 @@ class charclass(lego):
 	def __hash__(self):
 		return hash((self.chars, self.negated))
 
+	@reduce_after
 	def __mul__(self, ier):
 		# e.g. "a" * {0,1} = "a?"
 		if ier == one:
-			return self.reduce()
-		return mult(self, ier).reduce()
+			return self
+		return mult(self, ier)
 
 	# These are the characters carrying special meanings when they appear "outdoors"
 	# within a regular expression. To be interpreted literally, they must be
@@ -431,12 +452,14 @@ class charclass(lego):
 		string += ")"
 		return string
 
+	@reduce_after
 	def reduce(self):
-		# Charclasses cannot be reduced()
+		# Charclasses cannot be reduced().
 		return self
 
+	@reduce_after
 	def __add__(self, other):
-		return (mult(self, one) + other).reduce()
+		return mult(self, one) + other
 
 	def alphabet(self):
 		return {otherchars} | self.chars
@@ -577,6 +600,7 @@ class charclass(lego):
 		'''
 		return charclass(self.chars, negateMe=not self.negated)
 
+	@reduce_after
 	def __or__(self, other):
 		try:
 			# ¬A OR ¬B = ¬(A AND B)
@@ -597,6 +621,7 @@ class charclass(lego):
 		except AttributeError:
 			return mult(self, one) | other
 
+	@reduce_after
 	def __and__(self, other):
 		try:
 			# ¬A AND ¬B = ¬(A OR B)
@@ -615,7 +640,7 @@ class charclass(lego):
 		# "other" is not a charclass
 		# Never mind!
 		except AttributeError:
-			return (mult(self, one) & other).reduce()
+			return mult(self, one) & other
 
 	def __reversed__(self):
 		return self
@@ -623,9 +648,7 @@ class charclass(lego):
 class bound:
 	'''An integer but sometimes also possibly infinite (None)'''
 	def __init__(self, v):
-		if v is not None and v < 0:
-			raise Exception("Value must be >= 0 or None")
-
+		assert v is None or v >= 0
 		self.__dict__['v'] = v
 
 	def __repr__(self):
@@ -686,12 +709,12 @@ class bound:
 			Caution: this operation is not meaningful for all bounds.
 		'''
 		if other == inf:
-			if self == inf:
-				# Infinity minus infinity is zero. This has to be true so that
-				# we can for example subtract multiplier(bound(0), inf) from
-				# multiplier(bound(1), inf) to get multiplier(bound(1), bound(1))
-				return bound(0)
-			raise Exception("Can't subtract " + str(other) + " from " + str(self))
+			assert self == inf
+
+			# Infinity minus infinity is zero. This has to be true so that
+			# we can for example subtract multiplier(bound(0), inf) from
+			# multiplier(bound(1), inf) to get multiplier(bound(1), bound(1))
+			return bound(0)
 		if self == inf:
 			return self
 		return bound(self.v - other.v)
@@ -708,12 +731,8 @@ class multiplier:
 	'''
 
 	def __init__(self, min, max):
-		if min == inf:
-			raise Exception("Can't have an infinite lower bound")
-		if max < min:
-			raise Exception(
-				"max '" + str(max) + "' must match or exceed min '" + str(min) + "'"
-			)
+		assert min != inf
+		assert min <= max
 
 		# More useful than "min" and "max" in many situations
 		# are "mandatory" and "optional".
@@ -741,8 +760,7 @@ class multiplier:
 		return "multiplier(" + repr(self.min) + ", " + repr(self.max) + ")"
 
 	def __str__(self):
-		if self.max == bound(0):
-			raise Exception("No regex available for " + repr(self))
+		assert self.max != bound(0)
 		if self in symbolic.keys():
 			return symbolic[self]
 		if self.max == inf:
@@ -836,8 +854,7 @@ class multiplier:
 
 	def __mul__(self, other):
 		'''Multiply this multiplier by another'''
-		if not self.canmultiplyby(other):
-			raise Exception("Can't multiply " + repr(self) + " by " + repr(other))
+		assert self.canmultiplyby(other)
 		return multiplier(self.min * other.min, self.max * other.max)
 
 	def __add__(self, other):
@@ -909,18 +926,21 @@ class mult(lego):
 		string += ")"
 		return string
 
+	@reduce_after
 	def __mul__(self, multiplier):
 		if multiplier == one:
-			return self.reduce()
+			return self
 		if self.multiplier.canmultiplyby(multiplier):
-			return mult(self.multiplicand, self.multiplier * multiplier).reduce()
+			return mult(self.multiplicand, self.multiplier * multiplier)
 		return mult(pattern(conc(self)), multiplier)
 
+	@reduce_after
 	def __add__(self, other):
-		return (conc(self) + other).reduce()
+		return conc(self) + other
 
+	@reduce_after
 	def __or__(self, other):
-		return (conc(self) | other).reduce()
+		return conc(self) | other
 
 	def __sub__(self, other):
 		'''
@@ -928,9 +948,7 @@ class mult(lego):
 			The reverse of concatenation. This is a lot trickier.
 			e.g. a{4,5} - a{3} = a{1,2}
 		'''
-		if other.multiplicand != self.multiplicand:
-			raise Exception
-
+		assert other.multiplicand == self.multiplicand
 		return mult(self.multiplicand, self.multiplier - other.multiplier)
 
 	def common(self, other):
@@ -946,6 +964,7 @@ class mult(lego):
 		# Multiplicands disagree, no common part at all.
 		return mult(nothing, zero)
 
+	@reduce_after
 	def __and__(self, other):
 		if hasattr(other, "chars"):
 			other = mult(other, one)
@@ -954,7 +973,7 @@ class mult(lego):
 		# is just to take the intersection of the two multiplicands.
 		try:
 			if self.multiplicand == other.multiplicand:
-				return mult(self.multiplicand, self.multiplier & other.multiplier).reduce()
+				return mult(self.multiplicand, self.multiplier & other.multiplier)
 		except AttributeError:
 			# "other" isn't a mult; lacks either a multiplicand or a multiplier.
 			# Never mind!
@@ -963,7 +982,7 @@ class mult(lego):
 		# This situation is substantially more complicated if the multiplicand is,
 		# for example, a pattern. It's difficult to reason sensibly about this
 		# kind of thing.
-		return (conc(self) & other).reduce()
+		return conc(self) & other
 
 	def alphabet(self):
 		return {otherchars} | self.multiplicand.alphabet()
@@ -971,10 +990,11 @@ class mult(lego):
 	def empty(self):
 		return self.multiplicand.empty() and self.multiplier.min > bound(0)
 
+	@reduce_after
 	def reduce(self):
 		# Can't match anything: reduce to nothing
 		if self.empty():
-			return nothing.reduce()
+			return nothing
 
 		# If our multiplicand is a pattern containing an empty conc()
 		# we can pull that "optional" bit out into our own multiplier
@@ -989,7 +1009,7 @@ class mult(lego):
 						*self.multiplicand.concs.difference({emptystring})
 					),
 					self.multiplier * qm,
-				).reduce()
+				)
 		except AttributeError:
 			# self.multiplicand has no attribute "concs"; isn't a pattern; never mind
 			pass
@@ -998,17 +1018,17 @@ class mult(lego):
 		# zero times
 		if self.multiplicand.empty() \
 		and self.multiplier.min == bound(0):
-			return emptystring.reduce()
+			return emptystring
 
 		# Failing that, we have a positive multiplicand which we
 		# intend to match zero times. In this case the only possible
 		# match is the empty string.
 		if self.multiplier == zero:
-			return emptystring.reduce()
+			return emptystring
 
 		# no point multiplying in the singular
 		if self.multiplier == one:
-			return self.multiplicand.reduce()
+			return self.multiplicand
 	
 		# Try recursively reducing our internal.
 		reduced = self.multiplicand.reduce()
@@ -1018,7 +1038,7 @@ class mult(lego):
 		if hasattr(reduced, "mults"):
 			reduced = pattern(reduced)
 		if reduced != self.multiplicand:
-			return mult(reduced, self.multiplier).reduce()
+			return mult(reduced, self.multiplier)
 
 		# If our multiplicand is a pattern containing a single conc
 		# containing a single mult, we can separate that out a lot
@@ -1032,7 +1052,7 @@ class mult(lego):
 						return mult(
 							singlemult.multiplicand,
 							singlemult.multiplier * self.multiplier
-						).reduce()
+						)
 		except AttributeError:
 			# self.multiplicand has no attribute "concs"; isn't a pattern; never mind
 			pass
@@ -1130,12 +1150,14 @@ class conc(lego):
 		string += ")"
 		return string
 
+	@reduce_after
 	def __mul__(self, multiplier):
 		if multiplier == one:
 			return self
 		# Have to replace self with a pattern unfortunately
 		return pattern(self) * multiplier
 
+	@reduce_after
 	def __add__(self, other):
 		# other must be a conc too
 		if hasattr(other, "chars") or hasattr(other, "concs"):
@@ -1143,23 +1165,26 @@ class conc(lego):
 		if hasattr(other, "multiplicand"):
 			other = conc(other)
 
-		return conc(*(self.mults + other.mults)).reduce()
+		return conc(*(self.mults + other.mults))
 
+	@reduce_after
 	def __or__(self, other):
-		return (pattern(self) | other).reduce()
+		return pattern(self) | other
 
+	@reduce_after
 	def __and__(self, other):
-		return (pattern(self) & other).reduce()
+		return pattern(self) & other
 
+	@reduce_after
 	def reduce(self):
 		# Can't match anything
 		if self.empty():
-			return nothing.reduce()
+			return nothing
 
 		# no point concatenating one thing (note: concatenating 0 things is
 		# entirely valid)
 		if len(self.mults) == 1:
-			return self.mults[0].reduce()
+			return self.mults[0]
 
 		# Try recursively reducing our internals
 		reduced = [m.reduce() for m in self.mults]
@@ -1174,7 +1199,7 @@ class conc(lego):
 		]
 		reduced = tuple(reduced)
 		if reduced != self.mults:
-			return conc(*reduced).reduce()
+			return conc(*reduced)
 
 		# multiple mults with identical multiplicands in a row?
 		# squish those together
@@ -1187,7 +1212,7 @@ class conc(lego):
 						self.mults[i].multiplier + self.mults[i+1].multiplier
 					)
 					new = self.mults[:i] + (squished,) + self.mults[i+2:]
-					return conc(*new).reduce()
+					return conc(*new)
 
 		# Conc contains (among other things) a *singleton* mult containing a pattern
 		# with only one internal conc? Flatten out.
@@ -1200,7 +1225,7 @@ class conc(lego):
 				if m.multiplier == one and len(m.multiplicand.concs) == 1:
 					single = [c for c in m.multiplicand.concs][0]
 					new = self.mults[:i] + single.mults + self.mults[i+1:]
-					return conc(*new).reduce()
+					return conc(*new)
 			except AttributeError:
 				# m.multiplicand has no attribute "concs"; isn't a pattern; never mind
 				pass
@@ -1309,8 +1334,7 @@ class conc(lego):
 			# subtracts the C successfully but leaves something behind,
 			# then tries to subtract the B too, which isn't possible
 			else:
-				if i != 0:
-					raise Exception
+				assert i == 0
 
 		return conc(*new)
 
@@ -1361,11 +1385,13 @@ class pattern(lego):
 		string += ")"
 		return string
 
+	@reduce_after
 	def __mul__(self, multiplier):
 		if multiplier == one:
 			return self
-		return mult(self, multiplier).reduce()
+		return mult(self, multiplier)
 
+	@reduce_after
 	def __add__(self, other):
 		return mult(self, one) + other
 
@@ -1378,14 +1404,16 @@ class pattern(lego):
 				return False
 		return True
 
+	@reduce_after
 	def __and__(self, other):
 		# A deceptively simple method for an astoundingly difficult operation
 		alphabet = self.alphabet() | other.alphabet()
 	
 		# Which means that we can build finite state machines sharing that alphabet
 		combined = self.fsm(alphabet) & other.fsm(alphabet)
-		return combined.lego().reduce()
+		return combined.lego()
 
+	@reduce_after
 	def __or__(self, other):
 		# other must be a pattern too
 		if hasattr(other, "chars"):
@@ -1395,11 +1423,10 @@ class pattern(lego):
 		if hasattr(other, "mults"):
 			other = pattern(other)
 
-		return pattern(*(self.concs | other.concs)).reduce()
+		return pattern(*(self.concs | other.concs))
 
 	def __str__(self):
-		if len(self.concs) < 1:
-			raise Exception("Can't print an empty pattern.")
+		assert len(self.concs) >= 1
 
 		# take the alternation of the input collection of regular expressions.
 		# i.e. jam "|" between each element
@@ -1407,20 +1434,21 @@ class pattern(lego):
 		# 1+ elements.
 		return "|".join(sorted(str(c) for c in self.concs))
 
+	@reduce_after
 	def reduce(self):
 		# emptiness
 		if self.empty():
-			return nothing.reduce()
+			return nothing
 
 		# If one of our internal concs is empty, remove it
 		for c in self.concs:
 			if c.empty():
 				new = self.concs - {c}
-				return pattern(*new).reduce()
+				return pattern(*new)
 
 		# no point alternating among one possibility
 		if len(self.concs) == 1:
-			return [e for e in self.concs][0].reduce()
+			return [e for e in self.concs][0]
 
 		# Try recursively reducing our internals first.
 		reduced = [c.reduce() for c in self.concs]
@@ -1435,7 +1463,7 @@ class pattern(lego):
 		]
 		reduced = frozenset(reduced)
 		if reduced != self.concs:
-			return pattern(*reduced).reduce()
+			return pattern(*reduced)
 
 		# If this pattern contains several concs each containing just 1 mult
 		# each containing just a charclass, with a multiplier of 1,
@@ -1457,7 +1485,7 @@ class pattern(lego):
 				rest.append(c)
 		if changed:
 			rest.append(conc(mult(merger, one)))
-			return pattern(*rest).reduce()
+			return pattern(*rest)
 
 		# If one of the present pattern's concs is the empty string, and
 		# there is another conc with a single mult whose lower bound is 0, we
@@ -1473,10 +1501,10 @@ class pattern(lego):
 				m = c.mults[0]
 				if m.multiplier.min == bound(0):
 					rest = self.concs - {conc()}
-					return pattern(*rest).reduce()
+					return pattern(*rest)
 				if m.multiplier.min == bound(1):
 					rest = self.concs - {conc(), c} | {m * qm}
-					return pattern(*rest).reduce()
+					return pattern(*rest)
 
 		# If the present pattern's concs all have a common prefix, split
 		# that out. This increases the depth of the object
@@ -1486,7 +1514,7 @@ class pattern(lego):
 		if prefix != emptystring:
 			leftovers = self.behead(prefix)
 			mults = prefix.mults + (mult(leftovers, one),)
-			return conc(*mults).reduce()
+			return conc(*mults)
 
 		# Same but for suffixes.
 		# e.g. "xyz|stz -> (xy|st)z"
@@ -1494,7 +1522,7 @@ class pattern(lego):
 		if suffix != emptystring:
 			leftovers = self - suffix
 			mults = (mult(leftovers, one),) + suffix.mults
-			return conc(*mults).reduce()
+			return conc(*mults)
 
 		return self
 
@@ -1542,8 +1570,7 @@ class pattern(lego):
 
 			If "suffix" is True, the same result but for suffixes.
 		'''
-		if len(self.concs) < 1:
-			raise Exception
+		assert len(self.concs) >= 1
 
 		from functools import reduce
 		return reduce(
@@ -2488,6 +2515,7 @@ if __name__ == '__main__':
 	).reduce() == mult(charclass("c"), multiplier(bound(3), bound(8)))
 
 	# recursive mult reduction
+	# (a|b)* -> [ab]*
 	assert mult(
 		pattern(
 			conc(mult(charclass("a"), one)),
@@ -2931,6 +2959,7 @@ if __name__ == '__main__':
 	assert mult(charclass("a"), one) & mult(charclass("b"), qm) == charclass()
 	assert mult(charclass("a"), one) & mult(charclass("b"), qm) == nothing
 	# a & a? = nothing
+	assert mult(charclass('a'), one).reduce() == charclass("a")
 	assert mult(charclass("a"), one) & mult(charclass("a"), qm) == charclass("a")
 	# a{2} & a{2,} = a{2}
 	assert mult(charclass("a"), multiplier(bound(2), bound(2))) \
