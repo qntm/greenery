@@ -22,6 +22,8 @@
 # http://qntm.org/fsm
 # http://qntm.org/greenery
 
+from __future__ import absolute_import
+
 class fsm:
 	'''
 		A Finite State Machine or FSM has an alphabet and a set of states. At any
@@ -189,8 +191,8 @@ class fsm:
 			dives into the FSM and from which all exits return.
 		'''
 
-		# We need a new state not already used
-		omega = 0
+		# We need a new state not already used; guess first beyond current len
+		omega = len(self.states)
 		while omega in self.states:
 			omega += 1
 
@@ -397,9 +399,10 @@ class fsm:
 			expression object, as imported from the lego module. This is accomplished
 			using the Brzozowski algebraic method.
 		'''
-		from lego import nothing, charclass, emptystring, star, otherchars
+		from .lego import nothing, charclass, emptystring, star, otherchars
 
-		outside = 0
+		# We need a new state not already used; guess first beyond current len
+		outside = len(self.states)
 		while outside in self.states:
 			outside += 1
 
@@ -549,6 +552,13 @@ def crawl(alphabet, initial, final, follow):
 # Unit tests.
 if __name__ == "__main__":
 
+	# Allow relative imports when executing within package directory, for running tests
+	import sys, os
+	sys.path.insert( 0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+	import greenery
+	__package__ = str("greenery")
+	del sys, os
+
 	# Buggggs.
 	abstar = fsm(
 		alphabet = {'a', None, 'b'},
@@ -577,7 +587,7 @@ if __name__ == "__main__":
 	)
 	assert str(adotb.lego()) == "a.b"
 
-	from lego import otherchars
+	from .lego import otherchars
 
 	# Odd bug with fsm.__add__(), exposed by "[bc]*c"
 	int5A = fsm(

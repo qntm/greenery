@@ -2,8 +2,13 @@
 
 # http://qntm.org/greenery
 
-import sys
-from lego import parse
+from __future__ import print_function
+
+# Allow import of package from executable within its directory
+import sys, os
+sys.path.insert( 0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from greenery import parse
 
 regexes = sys.argv[1:]
 
