@@ -1,14 +1,14 @@
-from distutils.core import setup
+from setuptools import setup
 
 from _version import __version__
 
 setup(
     name = "greenery",
     version = __version__,
-    packages = [''],
-    package_dir = {'': '.'},
-    extra_path = 'greenery',
+    packages = [ "greenery" ],
+    package_dir = { "greenery": "."},
     author = "Sam Hughes",
+    author_email = "qntm <qntm@ferno>",
     description = "Greenery allows manipulation of Regular Expressions as Finite State Machines",
     license = "MIT License",
     keywords = "greenery regex fsm",
