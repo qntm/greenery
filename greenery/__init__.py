@@ -19,9 +19,4 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-# Pull all top-level submodule names into module namespace
-from __future__ import absolute_import
-
-from ._version import __version__
-from .fsm      import *                         # fsm
-from .lego     import *                         # parse, lego, ...
+pass
