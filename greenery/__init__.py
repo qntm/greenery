@@ -19,4 +19,5 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-pass
+__all__ = ["fsm", "lego"]
+from ._version import __version__
