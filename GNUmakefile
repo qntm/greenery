@@ -19,7 +19,8 @@ help:
 
 # Test on all supported/available Pythons, using py.test or direct testing
 TESTS	= greenery/lego_test.py						\
-	  greenery/fsm_test.py
+	  greenery/fsm_test.py						\
+	  greenery/v1_test.py
 test: clean
 	@for py in $(PYTHONS); do					\
 	    if ! $$py -V 2>/dev/null; then				\

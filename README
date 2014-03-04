@@ -1,1 +1,41 @@
 See http://qntm.org/fsm, http://qntm.org/lego, http://qntm.org/greenery
+
+Implements tools for parsing and manipulating regular expressions and their sub-components
+(greenery.lego), and for producing finite-state machines that implement them (greenery.fsm).
+
+
+USAGE
+
+Import the parts of the greenery subsystem that you wish to use, eg:
+
+    from greenery.lego import (parse, lego)
+    regex = parse( "a*b" )
+    assert isinstance( regex, lego )
+
+This style will work with either version 1.x or version 2.0+ of greenery installed; both versions
+contain the greenery.fsm and greenery.lego packages.
+
+
+COMPATIBILITY
+
+Version 2.0 provides exactly the same functionality as 1.x, but restores the ability to import and
+use greenery.lego and greenery.fsm separately as the default.  In the 1.x versions, executing:
+
+    import greenery
+    regex = greenery.parse( "a*b" )
+
+would import all of greenery.fsm.* and greenery.lego.* into the greenery namespace.
+
+To restore version 1.0 behavior for legacy code, use the greenery.v1 compatibility interface:
+
+    import greenery.v1 as greenery
+    regex = greenery.parse( "a*b" )
+
+To make version 1.x style code work with either version 1.x or version 2.x, use:
+
+   try:
+       import greenery.v1 as greenery
+   except ImportError:
+       import greenery
+   # ...greenery version 1 code...
+
