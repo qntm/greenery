@@ -81,7 +81,7 @@ class fsm:
 		string += ", map = " + repr(self.map)
 		string += ")"
 		return string
-	
+
 	def __str__(self):
 		rows = []
 
@@ -104,7 +104,7 @@ class fsm:
 				row.append("False")
 			row.extend(str(self.map[state][symbol]) for symbol in sorted(self.alphabet, key=str))
 			rows.append(row)
-		
+
 		# column widths
 		colwidths = []
 		for x in range(len(rows[0])):
@@ -362,7 +362,7 @@ class fsm:
 				i += 1
 			return False
 
-		livestates = {state for state in self.states if islive(state)}
+		livestates = set(state for state in self.states if islive(state))
 
 		# We store a list of tuples. Each tuple consists of an input string and the
 		# state that this input string leads to. This means we don't have to run the
@@ -431,7 +431,7 @@ class fsm:
 		brz = {}
 		for a in self.states:
 			brz[a] = {}
-			for b in self.states | {outside}:
+			for b in self.states | set([outside]):
 				brz[a][b] = nothing
 
 		# Populate it with some initial data.
@@ -439,9 +439,9 @@ class fsm:
 			for symbol in self.map[a]:
 				b = self.map[a][symbol]
 				if symbol == otherchars:
-					brz[a][b] |= ~charclass(self.alphabet - {otherchars})
+					brz[a][b] |= ~charclass(self.alphabet - set([otherchars]))
 				else:
-					brz[a][b] |= charclass({symbol})
+					brz[a][b] |= charclass(set([symbol]))
 			if a in self.finals:
 				brz[a][outside] |= emptystring
 
@@ -485,7 +485,7 @@ def null(alphabet):
 	'''
 	return fsm(
 		alphabet = alphabet,
-		states   = {0},
+		states   = set([0]),
 		initial  = 0,
 		finals   = set(),
 		map      = {
@@ -500,9 +500,9 @@ def epsilon(alphabet):
 	'''
 	return fsm(
 		alphabet = alphabet,
-		states   = {0, 1},
+		states   = set([0, 1]),
 		initial  = 0,
-		finals   = {0},
+		finals   = set([0]),
 		map      = {
 			0: dict([(symbol, 1) for symbol in alphabet]),
 			1: dict([(symbol, 1) for symbol in alphabet]),

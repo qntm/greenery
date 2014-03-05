@@ -33,10 +33,10 @@ from greenery.fsm import *
 def test_fsm():
 	# Buggggs.
 	abstar = fsm(
-		alphabet = {'a', None, 'b'},
-		states	 = {0, 1},
+		alphabet = set(['a', None, 'b']),
+		states	 = set([0, 1]),
 		initial	 = 0,
-		finals	 = {0},
+		finals	 = set([0]),
 		map	 = {
 			0: {'a': 0, None: 1, 'b': 0},
 			1: {'a': 1, None: 1, 'b': 1}
@@ -45,10 +45,10 @@ def test_fsm():
 	assert str(abstar.lego()) == "[ab]*"
 
 	adotb = fsm(
-		alphabet = {'a', None, 'b'},
-		states	 = {0, 1, 2, 3, 4},
+		alphabet = set(['a', None, 'b']),
+		states	 = set([0, 1, 2, 3, 4]),
 		initial	 = 0,
-		finals	 = {4},
+		finals	 = set([4]),
 		map	 = {
 			0: {'a': 2, None: 1, 'b': 1},
 			1: {'a': 1, None: 1, 'b': 1},
@@ -63,10 +63,10 @@ def test_fsm():
 
 	# Odd bug with fsm.__add__(), exposed by "[bc]*c"
 	int5A = fsm(
-		alphabet = {"a", "b", "c", otherchars},
-		states   = {0, 1},
+		alphabet = set(["a", "b", "c", otherchars]),
+		states   = set([0, 1]),
 		initial  = 1,
-		finals   = {1},
+		finals   = set([1]),
 		map      = {
 			0: {otherchars: 0, "a": 0, "b": 0, "c": 0},
 			1: {otherchars: 0, "a": 0, "b": 1, "c": 1},
@@ -75,10 +75,10 @@ def test_fsm():
 	assert int5A.accepts("")
 
 	int5B = fsm(
-		alphabet = {"a", "b", "c", otherchars},
-		states   = {0, 1, 2},
+		alphabet = set(["a", "b", "c", otherchars]),
+		states   = set([0, 1, 2]),
 		initial  = 1,
-		finals   = {0},
+		finals   = set([0]),
 		map      = {
 			0: {otherchars: 2, "a": 2, "b": 2, "c": 2},
 			1: {otherchars: 2, "a": 2, "b": 2, "c": 0},
@@ -95,10 +95,10 @@ def test_fsm():
 
 	# Catch a recursion error
 	assert str(fsm(
-		alphabet = {"0", "1"},
-		states   = {0, 1, 2, 3},
+		alphabet = set(["0", "1"]),
+		states   = set([0, 1, 2, 3]),
 		initial  = 3,
-		finals   = {1},
+		finals   = set([1]),
 		map      = {
 			0: {"0": 1, "1": 1},
 			1: {"0": 2, "1": 2},
@@ -113,10 +113,10 @@ def test_fsm():
 	assert not epsilon("a").accepts("a")
 
 	a = fsm(
-		alphabet = {"a", "b"},
-		states   = {0, 1, "ob"},
+		alphabet = set(["a", "b"]),
+		states   = set([0, 1, "ob"]),
 		initial  = 0,
-		finals   = {1},
+		finals   = set([1]),
 		map      = {
 			0    : {"a" : 1   , "b" : "ob"},
 			1    : {"a" : "ob", "b" : "ob"},
@@ -128,10 +128,10 @@ def test_fsm():
 	assert not a.accepts("b")
 
 	b = fsm(
-		alphabet = {"a", "b"},
-		states   = {0, 1, "ob"},
+		alphabet = set(["a", "b"]),
+		states   = set([0, 1, "ob"]),
 		initial  = 0,
-		finals   = {1},
+		finals   = set([1]),
 		map      = {
 			0    : {"a" : "ob", "b" : 1   },
 			1    : {"a" : "ob", "b" : "ob"},
@@ -149,7 +149,7 @@ def test_fsm():
 	assert concAA.accepts("aa")
 	assert not concAA.accepts("aaa")
 
-	concAA = epsilon({"a", "b"}) + a + a
+	concAA = epsilon(set(["a", "b"])) + a + a
 	assert not concAA.accepts("")
 	assert not concAA.accepts("a")
 	assert concAA.accepts("aa")
@@ -165,7 +165,7 @@ def test_fsm():
 	assert not concAB.accepts("bb")
 
 	# alternation simple test
-	altA = a | null({"a", "b"})
+	altA = a | null(set(["a", "b"]))
 	assert not altA.accepts("")
 	assert altA.accepts("a")
 
@@ -214,10 +214,10 @@ def test_fsm():
 	# states 1 and 2&3 also behave identically, so they, too should be resolved
 	# (this is impossible to spot before 2 and 3 have been combined).
 	merged = fsm(
-		alphabet = {"0", "1"},
-		states   = {1, 2, 3, 4, "oblivion"},
+		alphabet = set(["0", "1"]),
+		states   = set([1, 2, 3, 4, "oblivion"]),
 		initial  = 1,
-		finals   = {4},
+		finals   = set([4]),
 		map      = {
 			1          : {"0" : 2         , "1" : 4         },
 			2          : {"0" : 3         , "1" : 4         },
@@ -230,10 +230,10 @@ def test_fsm():
 
 	# this is (a*ba)*
 	starred = fsm(
-		alphabet = {"a", "b"},
-		states   = {0, 1, 2, "oblivion"},
+		alphabet = set(["a", "b"]),
+		states   = set([0, 1, 2, "oblivion"]),
 		initial  = 0,
-		finals   = {2},
+		finals   = set([2]),
 		map      = {
 			0          : {"a" : 0         , "b" : 1         },
 			1          : {"a" : 2         , "b" : "oblivion"},
@@ -255,10 +255,10 @@ def test_fsm():
 	# reduce() behaviour test
 	# FSM accepts no strings but has 3 states, needs only 1
 	asdf = fsm(
-		alphabet = {None},
-		states   = {0, 1, 2},
+		alphabet = set([None]),
+		states   = set([0, 1, 2]),
 		initial  = 0,
-		finals   = {1},
+		finals   = set([1]),
 		map = {
 			0 : {None : 2},
 			1 : {None : 2},
@@ -270,10 +270,10 @@ def test_fsm():
 
 	# FSM reversal
 	abc = fsm(
-		alphabet = {"a", "b", "c"},
-		states   = {0, 1, 2, 3, None},
+		alphabet = set(["a", "b", "c"]),
+		states   = set([0, 1, 2, 3, None]),
 		initial  = 0,
-		finals   = {3},
+		finals   = set([3]),
 		map = {
 			0    : {"a" : 1   , "b" : None, "c" : None},
 			1    : {"a" : None, "b" : 2   , "c" : None},
@@ -287,10 +287,10 @@ def test_fsm():
 
 	# This is (a|b)*a(a|b)
 	brzozowski = fsm(
-		alphabet = {"a", "b"},
-		states = {"A", "B", "C", "D", "E"},
+		alphabet = set(["a", "b"]),
+		states = set(["A", "B", "C", "D", "E"]),
 		initial = "A",
-		finals = {"C", "E"},
+		finals = set(["C", "E"]),
 		map = {
 			"A" : {"a" : "B", "b" : "D"},
 			"B" : {"a" : "C", "b" : "E"},
@@ -342,10 +342,10 @@ def test_fsm():
 	# row), but when .lego() is called, the result is "a+". Turned out to be
 	# a fault in the lego.multiplier.__mul__() routine
 	elesscomplex = fsm(
-		alphabet = {"a"},
-		states = {0, 1},
+		alphabet = set(["a"]),
+		states = set([0, 1]),
 		initial = 0,
-		finals = {1},
+		finals = set([1]),
 		map = {
 			0 : {"a" : 1},
 			1 : {"a" : 0},
@@ -356,7 +356,7 @@ def test_fsm():
 	assert not elesscomplex.accepts("aa")
 	assert elesscomplex.accepts("aaa")
 	elesscomplex = elesscomplex.lego()
-	assert str(elesscomplex) in {"a(aa)*", "(aa)*a"}
+	assert str(elesscomplex) in set(["a(aa)*", "(aa)*a"])
 	elesscomplex = elesscomplex.fsm()
 	assert not elesscomplex.accepts("")
 	assert elesscomplex.accepts("a")
@@ -372,10 +372,10 @@ def test_fsm():
 	# Disallows the empty string
 	# Allows "0" on its own, but not leading zeroes.
 	div3 = fsm(
-		alphabet = {"0", "1"},
-		states = {"initial", "zero", 0, 1, 2, None},
+		alphabet = set(["0", "1"]),
+		states = set(["initial", "zero", 0, 1, 2, None]),
 		initial = "initial",
-		finals = {"zero", 0},
+		finals = set(["zero", 0]),
 		map = {
 			"initial" : {"0" : "zero", "1" : 1   },
 			"zero"    : {"0" : None  , "1" : None},
@@ -427,9 +427,9 @@ def test_fsm():
 	assert base <= 10
 	divN = fsm(
 		alphabet = set(str(i) for i in range(base)),
-		states = set(range(N)) | {"initial", "zero", None},
+		states = set(range(N)) | set(["initial", "zero", None]),
 		initial = "initial",
-		finals = {"zero", 0},
+		finals = set(["zero", 0]),
 		map = dict(
 			[
 				("initial", dict([(str(j), j              % N) for j in range(1, base)] + [("0", "zero")])),

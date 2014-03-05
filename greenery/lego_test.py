@@ -109,7 +109,7 @@ def test_lego():
 		),
 		suffix=True
 	) == emptystring
-	
+
 	# Conc subtraction
 
 	# AZ - Z = A
@@ -180,9 +180,9 @@ def test_lego():
 	)
 
 	# Odd bug with ([bc]*c)?[ab]*
-	int5A = mult(charclass("bc"), star).fsm({"a", "b", "c", otherchars})
+	int5A = mult(charclass("bc"), star).fsm(set(["a", "b", "c", otherchars]))
 	assert int5A.accepts("")
-	int5B = mult(charclass("c"), one).fsm({"a", "b", "c", otherchars})
+	int5B = mult(charclass("c"), one).fsm(set(["a", "b", "c", otherchars]))
 	assert int5B.accepts("c")
 	int5C = int5A + int5B
 	assert (int5A + int5B).accepts("c")
@@ -237,7 +237,7 @@ def test_lego():
 	assert anota.accepts("ab")
 	assert not anota.accepts("ba")
 	assert not anota.accepts("bb")
-	
+
 	# "0\\d"
 	zeroD = pattern(
 		conc(
@@ -729,7 +729,7 @@ def test_lego():
 		pass
 
 	# charclass set operations
-	
+
 	# charclass negation
 	assert ~~charclass("a") == charclass("a")
 	assert charclass("a") == ~~charclass("a")
@@ -1543,7 +1543,7 @@ def test_lego():
 		mult(charclass("a"), one),
 		mult(charclass("a"), one),
 	)
-	
+
 	# (aa) - aa = ()
 	assert pattern(
 		conc(
@@ -2121,7 +2121,7 @@ def test_lego():
 	assert str(parse("\\d{2}") & parse("19.*")) == "19"
 	assert str(parse("\\d{3}") & parse("19.*")) == "19\\d"
 	assert str(parse("abc...") & parse("...def")) == "abcdef"
-	assert str(parse("[bc]*[ab]*") & parse("[ab]*[bc]*")) in {"([ab]*a|[bc]*c)?b*", "b*(a[ab]*|c[bc]*)?"}
+	assert str(parse("[bc]*[ab]*") & parse("[ab]*[bc]*")) in set(["([ab]*a|[bc]*c)?b*", "b*(a[ab]*|c[bc]*)?"])
 	assert str(parse("\\W*") & parse("[a-g0-8$%\\^]+") & parse("[^d]{2,8}")) == "[$%\\^]{2,8}"
 	assert str(parse("\\d{4}-\\d{2}-\\d{2}") & parse("19.*")) == "19\\d\\d-\\d\\d-\\d\\d"
 
@@ -2142,14 +2142,14 @@ def test_lego():
 	assert str(parse(".*") & parse(short).reduce()) == "[ab]*"
 
 	# DEFECT: "0{2}|1{2}" was erroneously reduced() to "[01]{2}"
-	bad = parse("0{2}|1{2}").fsm({"0", "1", otherchars})
+	bad = parse("0{2}|1{2}").fsm(set(["0", "1", otherchars]))
 	assert bad.accepts("00")
 	assert bad.accepts("11")
 	assert not bad.accepts("01")
 	assert str(parse("0|[1-9]|ab")) == "\d|ab"
 
 	# lego.alphabet() should include "otherchars"
-	assert parse("").alphabet() == {otherchars}
+	assert parse("").alphabet() == set([otherchars])
 
 	# You should be able to fsm() a single lego piece without supplying a specific
 	# alphabet. That should be determinable from context.
@@ -2185,7 +2185,7 @@ def test_lego():
 	assert parse("|(ab)*|def").reduce() == parse("(ab)*|def")
 	assert parse("|(ab)+|def").reduce() == parse("(ab)*|def")
 	assert parse("|.+").reduce() == parse(".*")
-	assert parse("|a+|b+") in {parse("a+|b*"), parse("a*|b+")}
+	assert parse("|a+|b+") in set([parse("a+|b*"), parse("a*|b+")])
 
 	# Regex reversal
 	assert reversed(parse("b")) == parse("b")
