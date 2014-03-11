@@ -1,12 +1,13 @@
 from setuptools import setup
 
-from _version import __version__
+from greenery import __version__
 
 setup(
     name = "greenery",
     version = __version__,
+    tests_require = [ "pytest" ],
     packages = [ "greenery" ],
-    package_dir = { "greenery": "."},
+    package_dir = { "greenery": "greenery" },
     author = "Sam Hughes",
     author_email = "qntm <qntm@ferno>",
     description = "Greenery allows manipulation of Regular Expressions as Finite State Machines",
