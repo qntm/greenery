@@ -1,7 +1,3 @@
-# This code is in the public domain.
-
-# http://qntm.org/greenery
-
 import sys
 from greenery.lego import parse
 
