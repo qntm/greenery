@@ -288,14 +288,6 @@ class charclass(lego):
 	# hyphen and caret do NOT appear above.
 	classSpecial = set("\\[]^-")
 
-	# these are the character ranges which can be used inside square brackets e.g.
-	# "[a-z]", "[F-J]". These ranges should be disjoint.
-	allowableRanges = set([
-		"ABCDEFGHIJKLMNOPQRSTUVWXYZ",
-		"abcdefghijklmnopqrstuvwxyz",
-		"0123456789",
-	])
-
 	# Shorthand codes for use inside charclasses e.g. [abc\d]
 	w = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz"
 	d = "0123456789"
@@ -327,6 +319,12 @@ class charclass(lego):
 			if char in charclass.allSpecial:
 				return "\\" + char
 
+			# If char is an ASCII control character, don't print it directly,
+			# return a hex escape sequence e.g. "\\x00". Note that this includes
+			# tab and other characters already handled above
+			if 0 <= ord(char) <= 0x1F or ord(char) == 0x7f:
+				return "\\x" + "{0:02x}".format(ord(char))
+
 			return char
 
 		# multiple characters (or possibly 0 characters)
@@ -339,6 +337,13 @@ class charclass(lego):
 				return "\\" + char
 			if char in escapes.keys():
 				return escapes[char]
+
+			# If char is an ASCII control character, don't print it directly,
+			# return a hex escape sequence e.g. "\\x00". Note that this includes
+			# tab and other characters already handled above
+			if 0 <= ord(char) <= 0x1F or ord(char) == 0x7f:
+				return "\\x" + "{0:02x}".format(ord(char))
+
 			return char
 
 		def recordRange():
@@ -358,32 +363,17 @@ class charclass(lego):
 
 		# look for ranges
 		currentRange = ""
-		for char in sorted(self.chars, key=str):
+		for char in sorted(self.chars, key=ord):
 
 			# range is not empty: new char must fit after previous one
 			if len(currentRange) > 0:
 
-				# find out if this character appears in any of the
-				# charclass.allowableRanges listed above.
-				superRange = None
-				for allowableRange in charclass.allowableRanges:
-					if char in allowableRange:
-						superRange = allowableRange
-						break
+				i = ord(char)
 
-				if superRange is None:
-					# if this character doesn't appear above, then any existing
-					# currentRange should be sorted and filed now
-					# if there is one
+				# char doesn't fit old range: restart
+				if i != ord(currentRange[-1]) + 1:
 					output += recordRange()
-					currentRange=""
-				else:
-					i = superRange.index(char)
-
-					# char doesn't fit old range: restart
-					if i == 0 or superRange[i-1] != currentRange[-1]:
-						output += recordRange()
-						currentRange = ""
+					currentRange = ""
 
 			currentRange += char
 
@@ -453,6 +443,26 @@ class charclass(lego):
 		if i >= len(string):
 			raise nomatch
 
+		# Turn e.g. "\\x40" into "@". Exactly two hex digits
+		def unescapeHex(string, i):
+			hex_digits = "0123456789AaBbCcDdEeFf"
+
+			j = static(string, i, "\\x")
+
+			hex1 = string[j] # e.g. "4"
+			if not hex1 in hex_digits:
+				raise nomatch
+			j += len(hex1)
+
+			hex2 = string[j] # e.g. "0"
+			if not hex2 in hex_digits:
+				raise nomatch
+			j += len(hex2)
+
+			codepoint = int(hex1 + hex2, 16) # e.g. 64
+			char = chr(codepoint) # "@"
+			return char, j
+
 		def matchInternalChar(string, i):
 
 			# e.g. if we see "\\t", return "\t"
@@ -468,6 +478,12 @@ class charclass(lego):
 					return char, static(string, i, "\\" + char)
 				except nomatch:
 					pass
+
+			# hex escape e.g. "\\x40" returns "@"
+			try:
+				return unescapeHex(string, i)
+			except nomatch:
+				pass
 
 			# single non-special character, not contained
 			# inside square brackets
@@ -488,29 +504,21 @@ class charclass(lego):
 
 			# Attempt 2: a range e.g. "d-h"
 			try:
-				first, j = matchInternalChar(string, i)
+				first, j = matchInternalChar(string, i) # `first` is "d"
 				k = static(string, j, "-")
-				last, k = matchInternalChar(string, k)
+				last, k = matchInternalChar(string, k) # `last` is "h"
 
-				for allowableRange in charclass.allowableRanges:
-					if first not in allowableRange:
-						continue
+				firstIndex = ord(first) # 100
+				lastIndex = ord(last) # 104
 
-					# last must be in the same character range as first
-					if last not in allowableRange:
-						continue
+				# Be strict here, "d-d" is not allowed
+				if firstIndex >= lastIndex:
+					raise nomatch("Range '" + first + "' to '" + last + "' not allowed")
 
-					firstIndex = allowableRange.index(first)
-					lastIndex = allowableRange.index(last)
-
-					# and in order i.e. a < b
-					if firstIndex >= lastIndex:
-						continue
-
-					# OK
-					return allowableRange[firstIndex:lastIndex + 1], k
-
-				raise nomatch("Range '" + first + "' to '" + last + "' not allowed")
+				chars = "".join([
+					chr(i) for i in range(firstIndex, lastIndex + 1)
+				])
+				return chars, k
 			except nomatch:
 				pass
 
@@ -565,6 +573,13 @@ class charclass(lego):
 				return charclass(char), static(string, i, "\\" + char)
 			except nomatch:
 				pass
+
+		# e.g. if seeing "\\x40", return "@"
+		try:
+			char, j = unescapeHex(string, i)
+			return charclass(char), j
+		except nomatch:
+			pass
 
 		# single non-special character, not contained inside square brackets
 		char, i = string[i], i+1
@@ -1101,15 +1116,32 @@ class mult(lego):
 
 	@classmethod
 	def match(cls, string, i):
-		try:
-			j = static(string, i, "(")
-			cand, j = pattern.match(string, j)
-			j = static(string, j, ")")
-		except nomatch:
-			cand, j = charclass.match(string, i)
 
-		ier, j = multiplier.match(string, j)
-		return mult(cand, ier), j
+		def matchMultiplicand(string, i):
+			# explicitly non-capturing "(?:...)" syntax. No special significance
+			try:
+				j = static(string, i, "(?:")
+				multiplicand, j = pattern.match(string, j)
+				j = static(string, j, ")")
+				return multiplicand, j
+			except nomatch:
+				pass
+
+			# normal "(...)" syntax
+			try:
+				j = static(string, i, "(")
+				multiplicand, j = pattern.match(string, j)
+				j = static(string, j, ")")
+				return multiplicand, j
+			except nomatch:
+				pass
+
+			# Just a charclass on its own
+			return charclass.match(string, i)
+
+		multiplicand, j = matchMultiplicand(string, i)
+		multiplier_, j = multiplier.match(string, j)
+		return mult(multiplicand, multiplier_), j
 
 	def __reversed__(self):
 		return mult(reversed(self.multiplicand), self.multiplier)

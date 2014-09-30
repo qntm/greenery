@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
 if __name__ == "__main__":
-        import os
-        import sys
-        # If you run tests in-place (instead of using py.test), ensure local version is tested!
-        sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+	import os
+	import sys
+	# If you run tests in-place (instead of using py.test), ensure local version is tested!
+	sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from greenery.fsm import *
 
@@ -428,4 +428,4 @@ def test_fsm():
 		a = b
 
 if __name__ == "__main__":
-        test_fsm()
+	test_fsm()

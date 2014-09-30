@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
 if __name__ == "__main__":
-        import os
-        import sys
-        # If you run tests in-place (instead of using py.test), ensure local version is tested!
-        sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+	import os
+	import sys
+	# If you run tests in-place (instead of using py.test), ensure local version is tested!
+	sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from greenery.lego import *
 
@@ -681,7 +681,9 @@ def test_lego():
 	assert str(charclass("\\")) == "\\\\"
 	assert str(charclass("a^")) == "[\\^a]"
 	assert str(charclass("0123456789a")) == "[0-9a]"
-	assert str(charclass("\t\n\v\f\r A")) == "[\\t\\n\\v\\f\\r A]"
+	assert str(charclass("\t\v\r A")) == "[\\t\\v\\r A]"
+	assert str(charclass("\n\f A")) == "[\\n\\f A]"
+	assert str(charclass("\t\n\v\f\r A")) == "[\\t-\\r A]"
 	assert str(charclass("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz|")) == "[0-9A-Z_a-z|]"
 	assert str(W) == "\\W"
 	assert str(D) == "\\D"
@@ -2319,5 +2321,27 @@ def test_lego():
 
 	assert repr(~charclass("a")) == "~charclass('a')"
 
+	# Should be able to parse e.g. "\\x40"
+	assert parse("\\x00") == parse("\x00")
+	assert parse("\\x40") == parse("@")
+	assert parse("[\\x40]") == parse("[@]")
+	assert parse("[\\x41-\\x5a]") == parse("[A-Z]")
+	assert str(parse("\\x09")) == "\\t" # escape sequences are not preserved
+
+	# Printing ASCII control characters? You should get hex escapes
+	assert str(parse("\\x00")) == "\\x00"
+
+	# Should accept arbitrary ranges of characters in charclasses. No longer
+	# limited to alphanumerics. (User beware...)
+	assert parse("[z{|}~]") == parse("[z-~]")
+	assert str(parse("[\w:;<=>?@\\[\\\\\]\\^`]")) == "[0-z]"
+	assert parse("[A-z]") & parse("[^g]") == parse("[A-fh-z]")
+
+	# Accept the "non-capturing group" syntax, "(?: ... )" but give it no
+	# special significance
+	assert parse("(?:)") == parse("()")
+	assert parse("(?:abc|def)") == parse("(abc|def)")
+	parse("(:abc)") # should give no problems
+
 if __name__ == "__main__":
-        test_lego()
+	test_lego()
