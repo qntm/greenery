@@ -30,7 +30,7 @@
 	Most important are the reduce() methods present in charclass, mult, conc and
 	pattern. While there is no such thing as a canonical form for a given regex
 	pattern, these procedures can drastically simplify a regex structure for
-	readability. They're also pretty easy to extend.
+	readability. They're also pretty extensible.
 '''
 
 # http://qntm.org/lego

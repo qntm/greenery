@@ -1,33 +1,33 @@
 # -*- coding: utf-8 -*-
 
 if __name__ == "__main__":
-	import os
-	import sys
-	# If you run tests in-place (instead of using py.test), ensure local version is tested!
-	sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+	raise Exception("Test files can't be run directly. Use `python -m pytest greenery`")
 
-from greenery.fsm import *
+import pytest
+from greenery.fsm import fsm, null, epsilon
+from greenery.lego import otherchars
 
-def test_fsm():
+def test_abstar():
 	# Buggggs.
 	abstar = fsm(
 		alphabet = set(['a', None, 'b']),
-		states	 = set([0, 1]),
-		initial	 = 0,
-		finals	 = set([0]),
-		map	 = {
+		states   = set([0, 1]),
+		initial  = 0,
+		finals   = set([0]),
+		map      = {
 			0: {'a': 0, None: 1, 'b': 0},
 			1: {'a': 1, None: 1, 'b': 1}
 		}
 	)
 	assert str(abstar.lego()) == "[ab]*"
 
+def test_adotb():
 	adotb = fsm(
 		alphabet = set(['a', None, 'b']),
-		states	 = set([0, 1, 2, 3, 4]),
-		initial	 = 0,
-		finals	 = set([4]),
-		map	 = {
+		states   = set([0, 1, 2, 3, 4]),
+		initial  = 0,
+		finals   = set([4]),
+		map      = {
 			0: {'a': 2, None: 1, 'b': 1},
 			1: {'a': 1, None: 1, 'b': 1},
 			2: {'a': 3, None: 3, 'b': 3},
@@ -37,8 +37,7 @@ def test_fsm():
 	)
 	assert str(adotb.lego()) == "a.b"
 
-	from greenery.lego import otherchars
-
+def test_addbug():
 	# Odd bug with fsm.__add__(), exposed by "[bc]*c"
 	int5A = fsm(
 		alphabet = set(["a", "b", "c", otherchars]),
@@ -69,8 +68,7 @@ def test_fsm():
 	assert int5C.accepts("c")
 	# assert int5C.initial == 0
 
-	# fsm.lego()
-
+def test_lego_recursion_error():
 	# Catch a recursion error
 	assert str(fsm(
 		alphabet = set(["0", "1"]),
@@ -85,11 +83,13 @@ def test_fsm():
 		}
 	).lego()) == "0[01]"
 
-	# built-ins testing
+def test_builtins():
 	assert not null("a").accepts("a")
 	assert epsilon("a").accepts("")
 	assert not epsilon("a").accepts("a")
 
+@pytest.fixture
+def a():
 	a = fsm(
 		alphabet = set(["a", "b"]),
 		states   = set([0, 1, "ob"]),
@@ -101,10 +101,15 @@ def test_fsm():
 			"ob" : {"a" : "ob", "b" : "ob"},
 		},
 	)
+	return a
+
+def test_a(a):
 	assert not a.accepts("")
 	assert a.accepts("a")
 	assert not a.accepts("b")
 
+@pytest.fixture
+def b():
 	b = fsm(
 		alphabet = set(["a", "b"]),
 		states   = set([0, 1, "ob"]),
@@ -116,11 +121,14 @@ def test_fsm():
 			"ob" : {"a" : "ob", "b" : "ob"},
 		},
 	)
+	return b
+
+def test_b(b):
 	assert not b.accepts("")
 	assert not b.accepts("a")
 	assert b.accepts("b")
 
-	# concatenation simple test
+def test_concatenation_aa(a):
 	concAA = a + a
 	assert not concAA.accepts("")
 	assert not concAA.accepts("a")
@@ -133,6 +141,7 @@ def test_fsm():
 	assert concAA.accepts("aa")
 	assert not concAA.accepts("aaa")
 
+def test_concatenation_ab(a, b):
 	concAB = a + b
 	assert not concAB.accepts("")
 	assert not concAB.accepts("a")
@@ -142,11 +151,12 @@ def test_fsm():
 	assert not concAB.accepts("ba")
 	assert not concAB.accepts("bb")
 
-	# alternation simple test
+def test_alternation_a(a):
 	altA = a | null(set(["a", "b"]))
 	assert not altA.accepts("")
 	assert altA.accepts("a")
 
+def test_alternation_ab(a, b):
 	altAB = a | b
 	assert not altAB.accepts("")
 	assert altAB.accepts("a")
@@ -156,30 +166,32 @@ def test_fsm():
 	assert not altAB.accepts("ba")
 	assert not altAB.accepts("bb")
 
-	# fsmstar simple test
+def test_star(a):
 	starA = a.star()
 	assert starA.accepts("")
 	assert starA.accepts("a")
 	assert not starA.accepts("b")
 	assert starA.accepts("aaaaaaaaa")
 
-	# multiplication simple test
+def test_multiply_2(a):
 	twoA = a * 2
 	assert not twoA.accepts("")
 	assert not twoA.accepts("a")
 	assert twoA.accepts("aa")
 	assert not twoA.accepts("aaa")
 
+def test_multiply_0(a):
 	zeroA = a * 0
 	assert zeroA.accepts("")
 	assert not zeroA.accepts("a")
 
-	# intersection simple test
+def test_intersection_ab(a, b):
 	intAB = a & b
 	assert not intAB.accepts("")
 	assert not intAB.accepts("a")
 	assert not intAB.accepts("b")
 
+def test_negation(a):
 	everythingbutA = a.everythingbut()
 	assert everythingbutA.accepts("")
 	assert not everythingbutA.accepts("a")
@@ -187,6 +199,7 @@ def test_fsm():
 	assert everythingbutA.accepts("aa")
 	assert everythingbutA.accepts("ab")
 
+def test_crawl_reduction():
 	# this is "0*1" in heavy disguise. crawl should resolve this duplication
 	# Notice how states 2 and 3 behave identically. When resolved together,
 	# states 1 and 2&3 also behave identically, so they, too should be resolved
@@ -206,6 +219,7 @@ def test_fsm():
 	).reduce()
 	assert len(merged.states) == 3
 
+def test_star_advanced():
 	# this is (a*ba)*
 	starred = fsm(
 		alphabet = set(["a", "b"]),
@@ -230,7 +244,7 @@ def test_fsm():
 	assert not starred.accepts("aabb")
 	assert starred.accepts("abababa")
 
-	# reduce() behaviour test
+def test_reduce():
 	# FSM accepts no strings but has 3 states, needs only 1
 	asdf = fsm(
 		alphabet = set([None]),
@@ -246,7 +260,7 @@ def test_fsm():
 	asdf = asdf.reduce()
 	assert len(asdf.states) == 1
 
-	# FSM reversal
+def test_reverse_abc():
 	abc = fsm(
 		alphabet = set(["a", "b", "c"]),
 		states   = set([0, 1, 2, 3, None]),
@@ -263,6 +277,7 @@ def test_fsm():
 	cba = reversed(abc)
 	assert cba.accepts("cba")
 
+def test_reverse_brzozowski():
 	# This is (a|b)*a(a|b)
 	brzozowski = fsm(
 		alphabet = set(["a", "b"]),
@@ -313,9 +328,11 @@ def test_fsm():
 	assert next(gen) == ["b", "a", "b"]
 	assert next(gen) == ["a", "a", "a", "a"]
 
+def test_reverse_epsilon():
 	# epsilon reversed is epsilon
 	assert reversed(epsilon("a")).accepts("")
 
+def test_even_star_bug():
 	# Bug fix. This is a(a{2})* (i.e. accepts an odd number of "a" chars in a
 	# row), but when .lego() is called, the result is "a+". Turned out to be
 	# a fault in the lego.multiplier.__mul__() routine
@@ -346,6 +363,7 @@ def test_fsm():
 	assert next(gen) == ["a", "a", "a", "a", "a"]
 	assert next(gen) == ["a", "a", "a", "a", "a", "a", "a"]
 
+def test_binary_3():
 	# Binary numbers divisible by 3.
 	# Disallows the empty string
 	# Allows "0" on its own, but not leading zeroes.
@@ -397,6 +415,7 @@ def test_fsm():
 	assert next(gen) == "1001"
 	assert next(gen) == "1100"
 
+def test_base_N():
 	# Machine accepts only numbers in selected base (e.g. 2, 10) that are
 	# divisible by N (e.g. 3, 7).
 	# "0" alone is acceptable, but leading zeroes (e.g. "00", "07") are not
@@ -426,6 +445,3 @@ def test_fsm():
 		b = next(gen)
 		assert int(a, base) + N == int(b, base)
 		a = b
-
-if __name__ == "__main__":
-	test_fsm()

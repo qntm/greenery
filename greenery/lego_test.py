@@ -1,14 +1,11 @@
 # -*- coding: utf-8 -*-
 
 if __name__ == "__main__":
-	import os
-	import sys
-	# If you run tests in-place (instead of using py.test), ensure local version is tested!
-	sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+	raise Exception("Test files can't be run directly. Use `python -m pytest greenery`")
 
-from greenery.lego import *
+from greenery.lego import conc, mult, charclass, one, emptystring, star, plus, otherchars, nothing, pattern, qm, d, multiplier, bound, w, s, W, D, S, dot, nomatch, inf, zero, parse
 
-def test_lego():
+def test_conc_common():
 	# "AAZY, BBZY" -> "ZY"
 	assert conc(
 		mult(charclass("A"), one),
@@ -91,8 +88,7 @@ def test_lego():
 		suffix=True
 	) == emptystring
 
-	# Conc subtraction
-
+def test_conc_subtraction():
 	# AZ - Z = A
 	assert conc(
 		mult(charclass("A"), one),
@@ -160,6 +156,7 @@ def test_lego():
 		mult(charclass("A"), one),
 	)
 
+def test_odd_bug():
 	# Odd bug with ([bc]*c)?[ab]*
 	int5A = mult(charclass("bc"), star).fsm(set(["a", "b", "c", otherchars]))
 	assert int5A.accepts("")
@@ -168,7 +165,7 @@ def test_lego():
 	int5C = int5A + int5B
 	assert (int5A + int5B).accepts("c")
 
-	# Empty mult suppression
+def test_empty_mult_suppression():
 	assert conc(
 		mult(nothing, one), # this mult can never actually match anything
 		mult(charclass("0"), one),
@@ -180,7 +177,7 @@ def test_lego():
 		mult(charclass("0123456789"), one),
 	).reduce() == nothing
 
-	# Empty conc suppression in patterns.
+def test_empty_conc_suppression():
 	assert pattern(
 		conc(
 			mult(nothing, one), # this mult can never actually match anything
@@ -196,15 +193,14 @@ def test_lego():
 		) # so neither can this conc
 	).reduce() == nothing
 
-	# Empty pattern suppression in mults
+def test_empty_pattern_suppression():
 	assert mult(nothing, qm).reduce() == emptystring
 	assert mult(pattern(), qm).reduce() == emptystring
 
-	# empty pattern behaviour
+def test_empty_pattern_reduction():
 	assert pattern().reduce() == charclass()
 
-	# pattern.fsm()
-
+def test_pattern_fsm():
 	# "a[^a]"
 	anota = pattern(
 		conc(
@@ -276,6 +272,7 @@ def test_lego():
 	assert conventional.accepts("defghi")
 	assert conventional.accepts("defjkl")
 
+def test_mult_reduction_rule_order():
 	# A subtlety in mult reduction.
 	# ([$%\^]|){1} should become ([$%\^])? then [$%\^]?,
 	# ([$%\^]|){1} should NOT become ([$%\^]|) (the pattern alone)
@@ -288,7 +285,7 @@ def test_lego():
 		), one
 	).reduce() == mult(charclass("$%^"), qm)
 
-	# nested pattern reduction in a conc
+def test_nested_pattern_reduction():
 	# a(d(ab|a*c)) -> ad(ab|a*c)
 	assert conc(
 		mult(charclass("a"), one),
@@ -330,6 +327,7 @@ def test_lego():
 		),
 	)
 
+def test_pattern_beheading():
 	# "(aa)".behead("a") = "a"
 	assert pattern(
 		conc(
@@ -382,8 +380,7 @@ def test_lego():
 		),
 	)
 
-	# pattern._commonconc() tests
-
+def test_pattern_commonconc():
 	# aa, aa -> aa
 	assert pattern(
 		conc(
@@ -644,6 +641,7 @@ def test_lego():
 		),
 	)
 
+def test_reduce_boom():
 	# make sure recursion problem in reduce()
 	# has gone away
 	emptystring + mult(
@@ -654,13 +652,13 @@ def test_lego():
 		one
 	)
 
-	# charclass equality
+def test_charclass_equality():
 	assert charclass("a") == charclass("a")
 	assert ~charclass("a") == ~charclass("a")
 	assert ~charclass("a") != charclass("a")
 	assert charclass("ab") == charclass("ba")
 
-	# str(charclass)
+def test_charclass_str():
 	assert str(w) == "\\w"
 	assert str(d) == "\\d"
 	assert str(s) == "\\s"
@@ -695,7 +693,7 @@ def test_lego():
 	assert str(~charclass("\t")) == "[^\\t]"
 	assert str(~charclass("^")) == "[^\\^]"
 
-	# charclass parsing
+def test_charclass_parsing():
 	assert charclass.match("a", 0) == (charclass("a"), 1)
 	assert charclass.match("aa", 1) == (charclass("a"), 2)
 	assert charclass.match("a$", 1) == (charclass("$"), 2)
@@ -711,13 +709,13 @@ def test_lego():
 	except nomatch:
 		pass
 
-	# charclass set operations
+# charclass set operations
 
-	# charclass negation
+def test_charclass_negation():
 	assert ~~charclass("a") == charclass("a")
 	assert charclass("a") == ~~charclass("a")
 
-	# charclass union
+def test_charclass_union():
 	# [ab] u [bc] = [abc]
 	assert charclass("ab") | charclass("bc") == charclass("abc")
 	# [ab] u [^bc] = [^c]
@@ -727,7 +725,7 @@ def test_lego():
 	# [^ab] u [^bc] = [^b]
 	assert ~charclass("ab") | ~charclass("bc") == ~charclass("b")
 
-	# charclass intersection
+def test_charclass_intersection():
 	# [ab] n [bc] = [b]
 	assert charclass("ab") & charclass("bc") == charclass("b")
 	# [ab] n [^bc] = [a]
@@ -737,13 +735,13 @@ def test_lego():
 	# [^ab] n [^bc] = [^abc]
 	assert ~charclass("ab") & ~charclass("bc") == ~charclass("abc")
 
-	# mult equality
+def test_mult_equality():
 	assert mult(charclass("a"), one) == mult(charclass("a"), one)
 	assert mult(charclass("a"), one) != mult(charclass("b"), one)
 	assert mult(charclass("a"), one) != mult(charclass("a"), qm)
 	assert mult(charclass("a"), one) != mult(charclass("a"), multiplier(bound(1), bound(2)))
 
-	# str(mult) tests
+def test_mult_str():
 	a = charclass("a")
 	assert str(mult(a, one)) == "a"
 	assert str(mult(a, multiplier(bound(2), bound(2)))) == "aa"
@@ -762,7 +760,7 @@ def test_lego():
 	assert str(mult(d, multiplier(bound(2), bound(2)))) == "\\d\\d"
 	assert str(mult(d, multiplier(bound(3), bound(3)))) == "\\d{3}"
 
-	# mult parsing
+def test_mult_parsing():
 	assert mult.match("[a-g]+", 0) == (
 		mult(charclass("abcdefg"), plus),
 		6
@@ -792,8 +790,9 @@ def test_lego():
 		26
 	)
 
-	# mult.reduce() tests
+# mult.reduce() tests
 
+def test_mult_reduction_easy():
 	# mult -> mult
 	# mult -> charclass
 	assert mult(charclass("a"), one).reduce() == charclass("a")
@@ -808,6 +807,7 @@ def test_lego():
 	assert mult(pattern(), zero).reduce() == emptystring
 	assert mult(pattern(), multiplier(bound(0), bound(5))).reduce() == emptystring
 
+def test_mult_factor_out_qm():
 	# mult contains a pattern containing an empty conc? Pull the empty
 	# part out where it's external
 	# e.g. (a|b*|) -> (a|b*)?
@@ -844,7 +844,6 @@ def test_lego():
 		mult(charclass("c"), one),
 	)
 
-
 	# This happens even if emptystring is the only thing left inside the mult
 	assert mult(
 		pattern(
@@ -852,6 +851,7 @@ def test_lego():
 		), one
 	).reduce() == emptystring
 
+def test_remove_unnecessary_parens():
 	# mult contains a pattern containing a single conc containing a single mult?
 	# that can be reduced greatly
 	# e.g. "([ab])*" -> "[ab]*"
@@ -862,6 +862,7 @@ def test_lego():
 			)
 		), star
 	).reduce() == mult(charclass("ab"), star)
+
 	# e.g. "(c{1,2}){3,4}" -> "c{3,8}"
 	assert mult(
 		pattern(
@@ -871,6 +872,7 @@ def test_lego():
 		), multiplier(bound(3), bound(4))
 	).reduce() == mult(charclass("c"), multiplier(bound(3), bound(8)))
 
+def test_obvious_reduction():
 	# recursive mult reduction
 	# (a|b)* -> [ab]*
 	assert mult(
@@ -880,7 +882,7 @@ def test_lego():
 		), star
 	).reduce() == mult(charclass("ab"), star)
 
-	# mult subtraction
+def test_mult_subtraction():
 	# a{4,5} - a{3} = a{1,2}
 	assert mult(
 		charclass("a"),
@@ -893,14 +895,14 @@ def test_lego():
 		multiplier(bound(1), bound(2))
 	)
 
-	# conc equality
+def test_conc_equality():
 	assert conc(mult(charclass("a"), one)) == conc(mult(charclass("a"), one))
 	assert conc(mult(charclass("a"), one)) != conc(mult(charclass("b"), one))
 	assert conc(mult(charclass("a"), one)) != conc(mult(charclass("a"), qm))
 	assert conc(mult(charclass("a"), one)) != conc(mult(charclass("a"), multiplier(bound(1), bound(2))))
 	assert conc(mult(charclass("a"), one)) != emptystring
 
-	# str(conc) tests
+def test_conc_str():
 	assert str(conc(
 		mult(charclass("a"), one),
 		mult(charclass("b"), one),
@@ -912,7 +914,7 @@ def test_lego():
 		mult(charclass("abcdefghijklmnopqrstuvwxyz"), plus),
 	)) == "abcde[^fg]*h{5}[a-z]+"
 
-	# conc parsing
+def test_conc_parsing():
 	assert conc.match("abcde[^fg]*h{5}[a-z]+", 0) == (
 		conc(
 			mult(charclass("a"), one),
@@ -954,12 +956,13 @@ def test_lego():
 		17
 	)
 
-	# conc.reduce()
+def test_conc_reduction_basic():
 	assert conc(
 		mult(charclass("a"), one),
 		mult(charclass(), one),
 		mult(charclass("b"), one),
 	).reduce() == nothing
+
 	# conc -> conc
 	assert conc(
 		mult(charclass("a"), one),
@@ -968,15 +971,18 @@ def test_lego():
 		mult(charclass("a"), one),
 		mult(charclass("b"), one),
 	)
+
 	# conc -> mult
 	assert conc(
 		mult(charclass("a"), multiplier(bound(3), bound(4))),
 	).reduce() == mult(charclass("a"), multiplier(bound(3), bound(4)))
+
 	# conc -> charclass
 	assert conc(
 		mult(charclass("a"), one),
 	).reduce() == charclass("a")
 
+def test_mult_squoosh():
 	# sequence squooshing of mults within a conc
 	# e.g. "[$%\\^]?[$%\\^]" -> "[$%\\^]{1,2}"
 	assert conc(
@@ -990,6 +996,7 @@ def test_lego():
 		mult(charclass("b"), one)
 	)
 
+def test_conc_reduce_advanced():
 	# recursive conc reduction
 	# (a){2}b -> a{2}b
 	assert conc(
@@ -1006,7 +1013,7 @@ def test_lego():
 		mult(charclass("b"), one)
 	).reduce()
 
-	# pattern equality
+def test_pattern_equality():
 	assert pattern(
 		conc(mult(charclass("a"), one)),
 		conc(mult(charclass("b"), one)),
@@ -1021,7 +1028,7 @@ def test_lego():
 		conc(mult(charclass("a"), one)),
 	)
 
-	# str(pattern)
+def test_pattern_str():
 	assert str(pattern(
 		conc(mult(charclass("a"), one)),
 		conc(mult(charclass("b"), one)),
@@ -1057,8 +1064,7 @@ def test_lego():
 		),
 	)) == "abc|def(ghi|jkl)"
 
-	# pattern.reduce() tests
-
+def test_pattern_reduce_basic():
 	# pattern -> pattern
 	# (ab|cd) -> (ab|cd)
 	assert pattern(
@@ -1106,7 +1112,7 @@ def test_lego():
 		),
 	).reduce() == charclass("a")
 
-	# special pattern reduction technique.
+def test_special_pattern_reduction():
 	# 0|[1-9]|a{5,7} -> [0-9]|a{5,7}
 	assert pattern(
 		conc(mult(charclass("0"), one)),
@@ -1117,7 +1123,7 @@ def test_lego():
 		conc(mult(charclass("a"), multiplier(bound(5), bound(7)))),
 	)
 
-	# recursive pattern reduction
+def test_recursive_pattern_reduction():
 	assert pattern(
 		conc(mult(charclass("0"), one)),
 		conc(
@@ -1141,7 +1147,7 @@ def test_lego():
 		)
 	)
 
-	# common prefix reduction of pattern
+def test_common_prefix_pattern_reduction():
 	# a{2}b|a+c -> a{2}(ab|a*c)
 	assert pattern(
 		conc(
@@ -1168,7 +1174,7 @@ def test_lego():
 		)
 	)
 
-	# pattern parsing
+def test_pattern_parsing():
 	assert pattern.match("abc|def(ghi|jkl)", 0) == (
 		pattern(
 			conc(
@@ -1198,7 +1204,7 @@ def test_lego():
 		), 16
 	)
 
-	# charclass multiplication
+def test_charclass_multiplication():
 	# a * 1 = a
 	assert charclass("a") * one == charclass("a")
 	# a * {1,3} = a{1,3}
@@ -1206,7 +1212,7 @@ def test_lego():
 	# a * {4,} = a{4,}
 	assert charclass("a") * multiplier(bound(4), inf) == mult(charclass("a"), multiplier(bound(4), inf))
 
-	# mult multiplication
+def test_mult_multiplication():
 	# a{2,3} * 1 = a{2,3}
 	assert mult(
 		charclass("a"), multiplier(bound(2), bound(3))
@@ -1220,7 +1226,7 @@ def test_lego():
 		charclass("a"), multiplier(bound(2), inf)
 	) * multiplier(bound(2), inf) == mult(charclass("a"), multiplier(bound(4), inf))
 
-	# conc multiplication
+def test_conc_multiplication():
 	# ab? * {0,1} = (ab?)?
 	assert conc(
 		mult(charclass("a"), one),
@@ -1234,7 +1240,7 @@ def test_lego():
 		), qm
 	)
 
-	# pattern multiplication
+def test_pattern_multiplication():
 	# (ab?|ba?) * {2,3} = (ab?|ba?){2,3}
 	assert pattern(
 		conc(
@@ -1258,14 +1264,13 @@ def test_lego():
 		), multiplier(bound(2), bound(3))
 	)
 
-	# bound class tests
-
+def test_bound():
 	assert min(bound(0), inf) == bound(0)
 	assert min(bound(1), inf) == bound(1)
 	assert qm.mandatory == bound(0)
 	assert qm.optional == bound(1)
 
-	# multiplier intersection operator tests
+def test_bound_common():
 	assert zero.common(zero) == zero
 	assert zero.common(qm  ) == zero
 	assert zero.common(one ) == zero
@@ -1292,6 +1297,7 @@ def test_lego():
 	assert plus.common(star) == star
 	assert plus.common(plus) == plus
 
+def test_multiplier_common():
 	# a{3,4}, a{2,5} -> a{2,3} (with a{1,1}, a{0,2} left over)
 	assert multiplier(bound(3), bound(4)).common(multiplier(bound(2), bound(5))) == multiplier(bound(2), bound(3))
 	assert multiplier(bound(3), bound(4)) - multiplier(bound(2), bound(3)) == one
@@ -1311,27 +1317,35 @@ def test_lego():
 	assert multiplier(bound(3), inf).common(multiplier(bound(3), inf)) == multiplier(bound(3), inf)
 	assert multiplier(bound(3), inf) - multiplier(bound(3), inf) == zero
 
-	# mult intersection ("&") tests
+def test_mult_intersection():
 	# a & b? = nothing
 	assert mult(charclass("a"), one) & mult(charclass("b"), qm) == charclass()
 	assert mult(charclass("a"), one) & mult(charclass("b"), qm) == nothing
+
 	# a & a? = nothing
 	assert mult(charclass('a'), one).reduce() == charclass("a")
 	assert mult(charclass("a"), one) & mult(charclass("a"), qm) == charclass("a")
+
 	# a{2} & a{2,} = a{2}
 	assert mult(charclass("a"), multiplier(bound(2), bound(2))) \
 	& mult(charclass("a"), multiplier(bound(2), inf)) \
 	== mult(charclass("a"), multiplier(bound(2), bound(2)))
+
 	# a & b -> no intersection.
 	assert mult(charclass("a"), one) & mult(charclass("b"), one) == nothing
+
 	# a & a -> a
 	assert mult(charclass("a"), one) & mult(charclass("a"), one) == charclass("a")
+
 	# a* & a -> no intersection
 	assert mult(charclass("a"), star) & mult(charclass("a"), one) == charclass("a")
+
 	# a* & b* -> emptystring
 	assert mult(charclass("a"), star) & mult(charclass("b"), star) == emptystring
+
 	# a* & a+ -> a+
 	assert mult(charclass("a"), star) & mult(charclass("a"), plus) == mult(charclass("a"), plus)
+
 	# aa & aaaa -> []
 	assert mult(charclass("a"), multiplier(bound(2), bound(2))) \
 	& mult(charclass("a"), multiplier(bound(4), bound(4))) \
@@ -1365,6 +1379,7 @@ def test_lego():
 		charclass("a"), multiplier(bound(3), inf)
 	) == mult(charclass("a"), multiplier(bound(3), inf))
 
+def test_pattern_commonconc_suffix():
 	# pattern._commonconc(suffix=True) tests
 
 	# a | bc -> emptystring
@@ -1538,7 +1553,7 @@ def test_lego():
 		mult(charclass("a"), one),
 	) == pattern(emptystring)
 
-	# concatenation tests (__add__())
+def test_concatenation():
 
 	# empty conc + empty conc
 	assert emptystring + emptystring == emptystring
@@ -2081,6 +2096,7 @@ def test_lego():
 		), multiplier(bound(2), bound(2))
 	)
 
+def test_empty():
 	assert nothing.empty()
 	assert charclass().empty()
 	assert not dot.empty()
@@ -2093,10 +2109,11 @@ def test_lego():
 	assert not pattern(conc(mult(charclass("a"), zero))).empty()
 	assert not pattern(conc(mult(charclass(), qm))).empty()
 
+def test_parse_str_round_trip():
 	assert str(parse("a.b")) == "a.b" # not "a[ab]b"
 	assert str(parse("\\d{4}")) == "\\d{4}"
 
-	# Intersection tests
+def test_parse_regex_intersection():
 	assert str(parse("a*") & parse("b*")) == ""
 	assert str(parse("a") & parse("b")) == "[]"
 	assert str(parse("\\d") & parse(".")) == "\\d"
@@ -2108,10 +2125,11 @@ def test_lego():
 	assert str(parse("\\W*") & parse("[a-g0-8$%\\^]+") & parse("[^d]{2,8}")) == "[$%\\^]{2,8}"
 	assert str(parse("\\d{4}-\\d{2}-\\d{2}") & parse("19.*")) == "19\\d\\d-\\d\\d-\\d\\d"
 
-	# Reduction tests
+def test_heavy_reduction():
 	assert str(parse("(|(|(|(|(|(|[$%\^])[$%\^])[$%\^])[$%\^])[$%\^])[$%\^])[$%\^][$%\^]")) == "[$%\^]{2,8}"
 	assert str(parse("[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]")) == "[0-9A-Fa-f]{3}"
 
+def test_silly_reduction():
 	# This one is horrendous and we have to jump through some hoops to get to
 	# a sensible result. Probably not a good unit test actually.
 	long = \
@@ -2124,6 +2142,7 @@ def test_lego():
 	short = "[ab]*a?b*|[ab]*b?a*"
 	assert str(parse(".*") & parse(short).reduce()) == "[ab]*"
 
+def test_bad_reduction_bug():
 	# DEFECT: "0{2}|1{2}" was erroneously reduced() to "[01]{2}"
 	bad = parse("0{2}|1{2}").fsm(set(["0", "1", otherchars]))
 	assert bad.accepts("00")
@@ -2131,9 +2150,11 @@ def test_lego():
 	assert not bad.accepts("01")
 	assert str(parse("0|[1-9]|ab")) == "\d|ab"
 
+def test_alphabet():
 	# lego.alphabet() should include "otherchars"
 	assert parse("").alphabet() == set([otherchars])
 
+def test_fsm():
 	# You should be able to fsm() a single lego piece without supplying a specific
 	# alphabet. That should be determinable from context.
 	assert str(parse("a.b").fsm().lego()) == "a.b" # not "a[ab]b"
@@ -2145,7 +2166,7 @@ def test_lego():
 	assert not bad.accepts("01")
 	assert str(parse("0|[1-9]|ab")) == "\d|ab"
 
-	# everythingbut().
+def test_everythingbut():
 	# Regexes are usually gibberish but we make a few claims
 	a = parse("a")
 	notA = a.everythingbut().fsm()
@@ -2164,13 +2185,13 @@ def test_lego():
 	assert str(everything.everythingbut()) == str(nothing)
 	assert str(nothing.everythingbut()) == str(everything)
 
-	# epsilon reduction in patterns.
+def test_epsilon_reduction():
 	assert parse("|(ab)*|def").reduce() == parse("(ab)*|def")
 	assert parse("|(ab)+|def").reduce() == parse("(ab)*|def")
 	assert parse("|.+").reduce() == parse(".*")
 	assert parse("|a+|b+") in set([parse("a+|b*"), parse("a*|b+")])
 
-	# Regex reversal
+def test_regex_reversal():
 	assert reversed(parse("b")) == parse("b")
 	assert reversed(parse("e*")) == parse("e*")
 	assert reversed(parse("bear")) == parse("raeb")
@@ -2178,17 +2199,19 @@ def test_lego():
 	assert reversed(parse("abc|def|ghi")) == parse("cba|fed|ihg")
 	assert reversed(parse("(abc)*d")) == parse("d(cba)*")
 
+def test_even_star_bug():
 	# Defect: (a{2})* should NOT reduce to a*
 	a2 = mult(charclass("a"), multiplier(bound(2), bound(2)))
 	a2star = a2 * star
 	assert a2star == mult(pattern(conc(a2)), star)
 
+def test_wildcards_in_charclasses():
 	# Allow "\w", "\d" and "\s" in charclasses
 	assert parse("[\w~]*").fsm().accepts("a0~")
 	assert parse("[\da]*").fsm().accepts("0129a")
 	assert parse("[\s]+").fsm().accepts(" \t \t ")
 
-	# String generators: charclass
+def test_charclass_gen():
 	gen = charclass("xyz").strings()
 	assert next(gen) == "x"
 	assert next(gen) == "y"
@@ -2199,7 +2222,7 @@ def test_lego():
 	except StopIteration:
 		assert True
 
-	# Generators: mult
+def test_mult_gen():
 	# One term
 	gen = mult(charclass("ab"), one).strings()
 	assert next(gen) == "a"
@@ -2231,7 +2254,7 @@ def test_lego():
 	assert next(gen) == "bb"
 	assert next(gen) == "aaa"
 
-	# Generators: conc
+def test_conc_generator():
 	# [ab][cd]
 	gen = conc(mult(charclass("ab"), one), mult(charclass("cd"), one)).strings()
 	assert next(gen) == "ac"
@@ -2244,8 +2267,8 @@ def test_lego():
 	except StopIteration:
 		assert True
 
-	# Generators: pattern
-	# [ab]|[cd]
+def test_pattern_generator():
+	# [ab]|[cde]
 	gen = pattern(
 		conc(mult(charclass("ab"), one)),
 		conc(mult(charclass("cde"), one)),
@@ -2272,6 +2295,7 @@ def test_lego():
 	assert next(gen) == "001"
 	assert next(gen) == "002"
 
+def test_infinite_generation():
 	# Infinite generator, flummoxes both depth-first and breadth-first searches
 	gen = parse("a*b*").strings()
 	assert next(gen) == ""
@@ -2286,6 +2310,7 @@ def test_lego():
 	assert next(gen) == "bbb"
 	assert next(gen) == "aaaa"
 
+def test_wildcard_generator():
 	# Generator needs to handle wildcards as well
 	gen = parse("a.b").strings(otherchar="*")
 	assert next(gen) == "a*b"
@@ -2297,6 +2322,7 @@ def test_lego():
 	except StopIteration:
 		assert True
 
+def test_complexify():
 	# Complexify!
 	gen = (parse("[bc]*[ab]*") & parse("[ab]*[bc]*")).strings()
 	assert next(gen) == ""
@@ -2314,13 +2340,16 @@ def test_lego():
 	assert next(gen) == "cc"
 	assert next(gen) == "aaa"
 
+def test_isinstance_bug():
 	# Problem relating to isinstance(). The class "mult" was occurring as both
 	# lego.mult and as __main__.mult and apparently these count as different
 	# classes for some reason, so isinstance(m, mult) was returning false.
 	starfree = (parse("").everythingbut() + parse("aa") + parse("").everythingbut()).everythingbut()
 
+def test_repr():
 	assert repr(~charclass("a")) == "~charclass('a')"
 
+def test_hex_escapes():
 	# Should be able to parse e.g. "\\x40"
 	assert parse("\\x00") == parse("\x00")
 	assert parse("\\x40") == parse("@")
@@ -2331,17 +2360,16 @@ def test_lego():
 	# Printing ASCII control characters? You should get hex escapes
 	assert str(parse("\\x00")) == "\\x00"
 
+def test_charclass_ranges():
 	# Should accept arbitrary ranges of characters in charclasses. No longer
 	# limited to alphanumerics. (User beware...)
 	assert parse("[z{|}~]") == parse("[z-~]")
 	assert str(parse("[\w:;<=>?@\\[\\\\\]\\^`]")) == "[0-z]"
 	assert parse("[A-z]") & parse("[^g]") == parse("[A-fh-z]")
 
+def test_non_capturing_groups():
 	# Accept the "non-capturing group" syntax, "(?: ... )" but give it no
 	# special significance
 	assert parse("(?:)") == parse("()")
 	assert parse("(?:abc|def)") == parse("(abc|def)")
 	parse("(:abc)") # should give no problems
-
-if __name__ == "__main__":
-	test_lego()
