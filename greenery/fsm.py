@@ -453,7 +453,7 @@ class fsm:
 				for right in brz[a]:
 					brz[b][right] |= univ + brz[a][right]
 
-		return brz[self.initial][outside]
+		return brz[self.initial][outside].reduce()
 
 def null(alphabet):
 	'''

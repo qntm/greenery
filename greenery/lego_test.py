@@ -5,6 +5,33 @@ if __name__ == "__main__":
 
 from greenery.lego import conc, mult, charclass, one, emptystring, star, plus, otherchars, nothing, pattern, qm, d, multiplier, bound, w, s, W, D, S, dot, nomatch, inf, zero, parse
 
+def test_new_reduce():
+	# The @reduce_after decorator has been removed from many methods since it
+	# takes unnecessary time which the user may not wish to spend.
+	# This alters the behaviour of several methods and also exposes a new
+	# opportunity for conc.reduce()
+	assert conc(
+		mult(charclass("a"), one),
+		mult(pattern(emptystring), one),
+	).reduce() == charclass("a")
+	assert conc(
+		mult(charclass("a"), one),
+		mult(pattern(emptystring), one),
+		mult(pattern(emptystring), one),
+	).reduce() == charclass("a")
+	assert conc(
+		mult(charclass("a"), one),
+		mult(dot, one),
+		mult(charclass("b"), one),
+		mult(pattern(emptystring), one),
+		mult(pattern(emptystring), one),
+	).reduce() == conc(
+		mult(charclass("a"), one),
+		mult(dot, one),
+		mult(charclass("b"), one),
+	)
+	assert str(parse("a.b()()")) == "a.b"
+
 def test_conc_common():
 	# "AAZY, BBZY" -> "ZY"
 	assert conc(
@@ -1565,15 +1592,15 @@ def test_concatenation():
 		mult(charclass("b"), one),
 	)
 	# a + a = a{2}
-	assert charclass("a") + charclass("a") == mult(charclass("a"), multiplier(bound(2), bound(2)))
+	assert (charclass("a") + charclass("a")).reduce() == mult(charclass("a"), multiplier(bound(2), bound(2)))
 
 	# charclass + mult
 	# a + a = a{2}
-	assert charclass("a") + mult(charclass("a"), one) == mult(charclass("a"), multiplier(bound(2), bound(2)))
+	assert (charclass("a") + mult(charclass("a"), one)).reduce() == mult(charclass("a"), multiplier(bound(2), bound(2)))
 	# a + a{2,} = a{3,}
-	assert charclass("a") + mult(charclass("a"), multiplier(bound(2), inf)) == mult(charclass("a"), multiplier(bound(3), inf))
+	assert (charclass("a") + mult(charclass("a"), multiplier(bound(2), inf))).reduce() == mult(charclass("a"), multiplier(bound(3), inf))
 	# a + a{,8} = a{1,9}
-	assert charclass("a") + mult(charclass("a"), multiplier(bound(0), bound(8))) == mult(charclass("a"), multiplier(bound(1), bound(9)))
+	assert (charclass("a") + mult(charclass("a"), multiplier(bound(0), bound(8)))).reduce() == mult(charclass("a"), multiplier(bound(1), bound(9)))
 	# a + b{,8} = ab{,8}
 	assert charclass("a") + mult(charclass("b"), multiplier(bound(0), bound(8))) == conc(
 		mult(charclass("a"), one),
@@ -1582,11 +1609,11 @@ def test_concatenation():
 
 	# mult + charclass
 	# b + b = b{2}
-	assert mult(charclass("b"), one) + charclass("b") == mult(charclass("b"), multiplier(bound(2), bound(2)))
+	assert (mult(charclass("b"), one) + charclass("b")).reduce() == mult(charclass("b"), multiplier(bound(2), bound(2)))
 	# b* + b = b+
-	assert mult(charclass("b"), star) + charclass("b") == mult(charclass("b"), plus)
+	assert (mult(charclass("b"), star) + charclass("b")).reduce() == mult(charclass("b"), plus)
 	 # b{,8} + b = b{1,9}
-	assert mult(charclass("b"), multiplier(bound(0), bound(8))) + charclass("b") == mult(charclass("b"), multiplier(bound(1), bound(9)))
+	assert (mult(charclass("b"), multiplier(bound(0), bound(8))) + charclass("b")).reduce() == mult(charclass("b"), multiplier(bound(1), bound(9)))
 	# b{,8} + c = b{,8}c
 	assert mult(charclass("b"), multiplier(bound(0), bound(8))) + charclass("c") == conc(
 		mult(charclass("b"), multiplier(bound(0), bound(8))),
@@ -1595,7 +1622,7 @@ def test_concatenation():
 
 	# charclass + conc
 	# a + nothing = a
-	assert charclass("a") + emptystring == charclass("a")
+	assert (charclass("a") + emptystring).reduce() == charclass("a")
 	# a + bc = abc
 	assert charclass("a") + conc(
 		mult(charclass("b"), one),
@@ -1606,17 +1633,18 @@ def test_concatenation():
 		mult(charclass("c"), one),
 	)
 	# a + ab = a{2}b
-	assert charclass("a") + conc(
+	assert (charclass("a") + conc(
 		mult(charclass("a"), one),
 		mult(charclass("b"), one),
-	) == conc(
+	)).reduce() == conc(
 		mult(charclass("a"), multiplier(bound(2), bound(2))),
 		mult(charclass("b"), one),
 	)
 
 	# conc + charclass
+
 	# nothing + a = a
-	assert emptystring + charclass("a") == charclass("a")
+	assert (emptystring + charclass("a")).reduce() == charclass("a")
 	# ab + c = abc
 	assert conc(
 		mult(charclass("a"), one),
@@ -1627,10 +1655,10 @@ def test_concatenation():
 		mult(charclass("c"), one),
 	)
 	# ab + b = ab{2}
-	assert conc(
+	assert (conc(
 		mult(charclass("a"), one),
 		mult(charclass("b"), one),
-	) + charclass("b") == conc(
+	) + charclass("b")).reduce() == conc(
 		mult(charclass("a"), one),
 		mult(charclass("b"), multiplier(bound(2), bound(2))),
 	)
@@ -1660,7 +1688,7 @@ def test_concatenation():
 		mult(charclass("c"), one),
 	)
 	# (ac{2}|bc+) + c = (ac|bc*)c{2}
-	assert pattern(
+	assert (pattern(
 		conc(
 			mult(charclass("a"), one),
 			mult(charclass("c"), multiplier(bound(2), bound(2))),
@@ -1669,7 +1697,7 @@ def test_concatenation():
 			mult(charclass("b"), one),
 			mult(charclass("c"), plus),
 		),
-	) + charclass("c") == conc(
+	) + charclass("c")).reduce() == conc(
 		mult(
 			pattern(
 				conc(
@@ -1710,7 +1738,7 @@ def test_concatenation():
 		)
 	)
 	# a + (a{2}b|a+c) = a{2}(ab|a*c)
-	assert charclass("a") + pattern(
+	assert (charclass("a") + pattern(
 		conc(
 			mult(charclass("a"), multiplier(bound(2), bound(2))),
 			mult(charclass("b"), one),
@@ -1719,7 +1747,7 @@ def test_concatenation():
 			mult(charclass("a"), plus),
 			mult(charclass("c"), one),
 		),
-	) == conc(
+	)).reduce() == conc(
 		mult(charclass("a"), multiplier(bound(2), bound(2))),
 		mult(
 			pattern(
@@ -1742,7 +1770,7 @@ def test_concatenation():
 		mult(charclass("b"), qm),
 	)
 	# a* + a{2} = a{2,}
-	assert mult(charclass("a"), star) + mult(charclass("a"), multiplier(bound(2), bound(2))) == mult(charclass("a"), multiplier(bound(2), inf))
+	assert (mult(charclass("a"), star) + mult(charclass("a"), multiplier(bound(2), bound(2)))).reduce() == mult(charclass("a"), multiplier(bound(2), inf))
 
 	# mult + conc
 	# a{2} + bc = a{2}bc
@@ -1755,10 +1783,10 @@ def test_concatenation():
 		mult(charclass("c"), one),
 	)
 	# a? + ab = a{1,2}b
-	assert mult(charclass("a"), qm) + conc(
+	assert (mult(charclass("a"), qm) + conc(
 		mult(charclass("a"), one),
 		mult(charclass("b"), one),
-	) == conc(
+	)).reduce() == conc(
 		mult(charclass("a"), multiplier(bound(1), bound(2))),
 		mult(charclass("b"), one),
 	)
@@ -1774,10 +1802,10 @@ def test_concatenation():
 		mult(charclass("c"), star),
 	)
 	# ab + b* = ab+
-	assert conc(
+	assert (conc(
 		mult(charclass("a"), one),
 		mult(charclass("b"), one),
-	) + mult(charclass("b"), star) == conc(
+	) + mult(charclass("b"), star)).reduce() == conc(
 		mult(charclass("a"), one),
 		mult(charclass("b"), plus),
 	)
@@ -1807,7 +1835,7 @@ def test_concatenation():
 		)
 	)
 	# a{2,3} + (a{2}b|a+c) = a{3,4}(ab|a*c)
-	assert mult(charclass("a"), multiplier(bound(2), bound(3))) + pattern(
+	assert (mult(charclass("a"), multiplier(bound(2), bound(3))) + pattern(
 		conc(
 			mult(charclass("a"), multiplier(bound(2), bound(2))),
 			mult(charclass("b"), one),
@@ -1816,7 +1844,7 @@ def test_concatenation():
 			mult(charclass("a"), plus),
 			mult(charclass("c"), one),
 		),
-	) == conc(
+	)).reduce() == conc(
 		mult(charclass("a"), multiplier(bound(3), bound(4))),
 		mult(
 			pattern(
@@ -1857,7 +1885,7 @@ def test_concatenation():
 		mult(charclass("a"), multiplier(bound(2), bound(3))),
 	)
 	# (ba{2}|ca+) + a{2,3} = (ba|ca*)a{3,4}
-	assert pattern(
+	assert (pattern(
 		conc(
 			mult(charclass("b"), one),
 			mult(charclass("a"), multiplier(bound(2), bound(2))),
@@ -1866,7 +1894,7 @@ def test_concatenation():
 			mult(charclass("c"), one),
 			mult(charclass("a"), plus),
 		),
-	) + mult(charclass("a"), multiplier(bound(2), bound(3))) == conc(
+	) + mult(charclass("a"), multiplier(bound(2), bound(3)))).reduce() == conc(
 		mult(
 			pattern(
 				conc(
@@ -1897,13 +1925,13 @@ def test_concatenation():
 		mult(charclass("d"), one),
 	)
 	# ab + bc = ab{2}c
-	assert conc(
+	assert (conc(
 		mult(charclass("a"), one),
 		mult(charclass("b"), one),
 	) + conc(
 		mult(charclass("b"), one),
 		mult(charclass("c"), one),
-	) == conc(
+	)).reduce() == conc(
 		mult(charclass("a"), one),
 		mult(charclass("b"), multiplier(bound(2), bound(2))),
 		mult(charclass("c"), one),
@@ -1938,7 +1966,7 @@ def test_concatenation():
 		)
 	)
 	# za{2,3} + (a{2}b|a+c) = za{3,4}(ab|a*c)
-	assert conc(
+	assert (conc(
 		mult(charclass("z"), one),
 		mult(charclass("a"), multiplier(bound(2), bound(3))),
 	) + pattern(
@@ -1950,7 +1978,7 @@ def test_concatenation():
 			mult(charclass("a"), plus),
 			mult(charclass("c"), one),
 		),
-	) == conc(
+	)).reduce() == conc(
 		mult(charclass("z"), one),
 		mult(charclass("a"), multiplier(bound(3), bound(4))),
 		mult(
@@ -1996,7 +2024,7 @@ def test_concatenation():
 		mult(charclass("a"), multiplier(bound(2), bound(3))),
 	)
 	# (ba{2}|ca+) + a{2,3}z = (ba|ca*)a{3,4}z
-	assert pattern(
+	assert (pattern(
 		conc(
 			mult(charclass("b"), one),
 			mult(charclass("a"), multiplier(bound(2), bound(2))),
@@ -2008,7 +2036,7 @@ def test_concatenation():
 	) + conc(
 		mult(charclass("a"), multiplier(bound(2), bound(3))),
 		mult(charclass("z"), one),
-	) == conc(
+	)).reduce() == conc(
 		mult(
 			pattern(
 				conc(
@@ -2068,7 +2096,7 @@ def test_concatenation():
 		),
 	)
 	# (a|bc) + (a|bc) = (a|b){2}
-	assert pattern(
+	assert (pattern(
 		conc(
 			mult(charclass("a"), one),
 		),
@@ -2084,7 +2112,7 @@ def test_concatenation():
 			mult(charclass("b"), one),
 			mult(charclass("c"), one),
 		),
-	) == mult(
+	)).reduce() == mult(
 		pattern(
 			conc(
 				mult(charclass("a"), one),
@@ -2365,7 +2393,7 @@ def test_charclass_ranges():
 	# limited to alphanumerics. (User beware...)
 	assert parse("[z{|}~]") == parse("[z-~]")
 	assert str(parse("[\w:;<=>?@\\[\\\\\]\\^`]")) == "[0-z]"
-	assert parse("[A-z]") & parse("[^g]") == parse("[A-fh-z]")
+	assert (parse("[A-z]") & parse("[^g]")).reduce() == parse("[A-fh-z]").reduce()
 
 def test_non_capturing_groups():
 	# Accept the "non-capturing group" syntax, "(?: ... )" but give it no

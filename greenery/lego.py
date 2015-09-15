@@ -107,7 +107,7 @@ class lego:
 		'''
 		raise Exception("Not implemented")
 
-	def match(cls, string, i):
+	def match(cls, string, i = 0):
 		'''
 			Start at index i in the supplied string and try to match one of the
 			present class. Elementary recursive descent parsing with very little
@@ -131,7 +131,6 @@ class lego:
 		'''
 		raise Exception("Not implemented")
 
-	@reduce_after
 	def __add__(self, other):
 		'''
 			Concatenate any two lego pieces, regardless of differing classes. Because
@@ -141,7 +140,6 @@ class lego:
 		'''
 		raise Exception("Not implemented")
 
-	@reduce_after
 	def __mul__(self, multiplier):
 		'''
 			Equivalent to repeated concatenation. Multiplier consists of a minimum
@@ -151,7 +149,6 @@ class lego:
 		'''
 		raise Exception("Not implemented")
 
-	@reduce_after
 	def __or__(self, other):
 		'''
 			Alternate between any two lego pieces, regardless of differing classes.
@@ -162,7 +159,6 @@ class lego:
 		'''
 		raise Exception("Not implemented")
 
-	@reduce_after
 	def __and__(self, other):
 		'''
 			Intersection function. Return a lego piece that can match any string
@@ -186,7 +182,6 @@ class lego:
 		'''
 		raise Exception("Not implemented")
 
-	@reduce_after
 	def everythingbut(self):
 		'''
 			Return a lego object which will match any string not matched by self,
@@ -269,7 +264,6 @@ class charclass(lego):
 	def __hash__(self):
 		return hash((self.chars, self.negated))
 
-	@reduce_after
 	def __mul__(self, ier):
 		# e.g. "a" * {0,1} = "a?"
 		if ier == one:
@@ -428,7 +422,6 @@ class charclass(lego):
 		# Charclasses cannot be reduced().
 		return self
 
-	@reduce_after
 	def __add__(self, other):
 		return mult(self, one) + other
 
@@ -439,7 +432,7 @@ class charclass(lego):
 		return len(self.chars) == 0 and self.negated == False
 
 	@classmethod
-	def match(cls, string, i):
+	def match(cls, string, i = 0):
 		if i >= len(string):
 			raise nomatch
 
@@ -596,7 +589,6 @@ class charclass(lego):
 		'''
 		return charclass(self.chars, negateMe=not self.negated)
 
-	@reduce_after
 	def __or__(self, other):
 		try:
 			# ¬A OR ¬B = ¬(A AND B)
@@ -617,7 +609,6 @@ class charclass(lego):
 		except AttributeError:
 			return mult(self, one) | other
 
-	@reduce_after
 	def __and__(self, other):
 		try:
 			# ¬A AND ¬B = ¬(A OR B)
@@ -648,9 +639,7 @@ class bound:
 		self.__dict__['v'] = v
 
 	def __repr__(self):
-		if self == inf:
-			return "inf"
-		return repr(self.v)
+		return "bound(" + repr(self.v) + ")"
 
 	def __str__(self):
 		if self == inf:
@@ -766,7 +755,7 @@ class multiplier:
 		return "{" + str(self.min) + "," + str(self.max) + "}"
 
 	@classmethod
-	def match(cls, string, i):
+	def match(cls, string, i = 0):
 
 		def matchAnyOf(string, i, collection):
 			for char in collection:
@@ -933,7 +922,6 @@ class mult(lego):
 		string += ")"
 		return string
 
-	@reduce_after
 	def __mul__(self, multiplier):
 		if multiplier == one:
 			return self
@@ -941,11 +929,9 @@ class mult(lego):
 			return mult(self.multiplicand, self.multiplier * multiplier)
 		return mult(pattern(conc(self)), multiplier)
 
-	@reduce_after
 	def __add__(self, other):
 		return conc(self) + other
 
-	@reduce_after
 	def __or__(self, other):
 		return conc(self) | other
 
@@ -971,7 +957,6 @@ class mult(lego):
 		# Multiplicands disagree, no common part at all.
 		return mult(nothing, zero)
 
-	@reduce_after
 	def __and__(self, other):
 		if hasattr(other, "chars"):
 			other = mult(other, one)
@@ -1115,7 +1100,7 @@ class mult(lego):
 		return mandatory + optional
 
 	@classmethod
-	def match(cls, string, i):
+	def match(cls, string, i = 0):
 
 		def matchMultiplicand(string, i):
 			# explicitly non-capturing "(?:...)" syntax. No special significance
@@ -1175,14 +1160,12 @@ class conc(lego):
 		string += ")"
 		return string
 
-	@reduce_after
 	def __mul__(self, multiplier):
 		if multiplier == one:
 			return self
 		# Have to replace self with a pattern unfortunately
 		return pattern(self) * multiplier
 
-	@reduce_after
 	def __add__(self, other):
 		# other must be a conc too
 		if hasattr(other, "chars") or hasattr(other, "concs"):
@@ -1192,11 +1175,9 @@ class conc(lego):
 
 		return conc(*(self.mults + other.mults))
 
-	@reduce_after
 	def __or__(self, other):
 		return pattern(self) | other
 
-	@reduce_after
 	def __and__(self, other):
 		return pattern(self) & other
 
@@ -1225,6 +1206,13 @@ class conc(lego):
 		reduced = tuple(reduced)
 		if reduced != self.mults:
 			return conc(*reduced)
+
+		# Conc contains "()" (i.e. a mult containing only a pattern containing the
+		# empty string)? That can be removed e.g. "a()b" -> "ab"
+		for i in range(len(self.mults)):
+			if self.mults[i].multiplicand == pattern(emptystring):
+				new = self.mults[:i] + self.mults[i+1:]
+				return conc(*new)
 
 		# multiple mults with identical multiplicands in a row?
 		# squish those together
@@ -1282,7 +1270,7 @@ class conc(lego):
 		return "".join(str(m) for m in self.mults)
 
 	@classmethod
-	def match(cls, string, i):
+	def match(cls, string, i = 0):
 		mults = list()
 		try:
 			while True:
@@ -1410,13 +1398,11 @@ class pattern(lego):
 		string += ")"
 		return string
 
-	@reduce_after
 	def __mul__(self, multiplier):
 		if multiplier == one:
 			return self
 		return mult(self, multiplier)
 
-	@reduce_after
 	def __add__(self, other):
 		return mult(self, one) + other
 
@@ -1429,7 +1415,6 @@ class pattern(lego):
 				return False
 		return True
 
-	@reduce_after
 	def __and__(self, other):
 		# A deceptively simple method for an astoundingly difficult operation
 		alphabet = self.alphabet() | other.alphabet()
@@ -1438,7 +1423,6 @@ class pattern(lego):
 		combined = self.fsm(alphabet) & other.fsm(alphabet)
 		return combined.lego()
 
-	@reduce_after
 	def __or__(self, other):
 		# other must be a pattern too
 		if hasattr(other, "chars"):
@@ -1552,7 +1536,7 @@ class pattern(lego):
 		return self
 
 	@classmethod
-	def match(cls, string, i):
+	def match(cls, string, i = 0):
 		concs = list()
 
 		# first one
