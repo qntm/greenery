@@ -11,15 +11,15 @@ else:
 	p = parse(regexes[0])
 	for regex in regexes[1:]:
 		p &= parse(regex)
-	print("Intersection:  %s" % ( p ))
+	print("Intersection:  %s" % ( p.reduce() ))
 
 	p = parse(regexes[0])
 	for regex in regexes[1:]:
 		p |= parse(regex)
-	print("Union:         %s" % ( p ))
+	print("Union:         %s" % ( p.reduce() ))
 
 	p = parse(regexes[0])
 	for regex in regexes[1:]:
 		p += parse(regex)
-	print("Concatenation: %s" % ( p ))
+	print("Concatenation: %s" % ( p.reduce() ))
 

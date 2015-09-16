@@ -256,9 +256,11 @@ class charclass(lego):
 	'''
 
 	def __init__(self, chars=set(), negateMe=False):
+		chars = frozenset(chars)
 		# chars should consist only of chars
-		assert otherchars not in set(chars)
-		self.__dict__["chars"]   = frozenset(chars)
+		if otherchars in chars:
+			raise Exception("Can't put " + repr(otherchars) + " in a charclass")
+		self.__dict__["chars"]   = chars
 		self.__dict__["negated"] = negateMe
 
 	def __eq__(self, other):
@@ -644,7 +646,8 @@ class charclass(lego):
 class bound:
 	'''An integer but sometimes also possibly infinite (None)'''
 	def __init__(self, v):
-		assert v is None or v >= 0
+		if not v is None and v < 0:
+			raise Exception("Invalid bound: " + repr(v))
 		self.__dict__['v'] = v
 
 	def __repr__(self):
@@ -703,7 +706,8 @@ class bound:
 			Caution: this operation is not meaningful for all bounds.
 		'''
 		if other == inf:
-			assert self == inf
+			if self != inf:
+				raise Exception("Can't subtract " + repr(other) + " from " + repr(self))
 
 			# Infinity minus infinity is zero. This has to be true so that
 			# we can for example subtract multiplier(bound(0), inf) from
@@ -725,8 +729,10 @@ class multiplier:
 	'''
 
 	def __init__(self, min, max):
-		assert min != inf
-		assert min <= max
+		if min == inf:
+			raise Exception("Minimum bound of a multiplier can't be " + repr(inf))
+		if min > max:
+			raise Exception("Invalid multiplier bounds: " + repr(min) + " and " + repr(max))
 
 		# More useful than "min" and "max" in many situations
 		# are "mandatory" and "optional".
@@ -754,7 +760,8 @@ class multiplier:
 		return "multiplier(" + repr(self.min) + ", " + repr(self.max) + ")"
 
 	def __str__(self):
-		assert self.max != bound(0)
+		if self.max == bound(0):
+			raise Exception("Can't serialise a multiplier with bound " + repr(self.max))
 		if self in symbolic.keys():
 			return symbolic[self]
 		if self.max == inf:
@@ -848,7 +855,8 @@ class multiplier:
 
 	def __mul__(self, other):
 		'''Multiply this multiplier by another'''
-		assert self.canmultiplyby(other)
+		if not self.canmultiplyby(other):
+			raise Exception("Can't multiply " + repr(self) + " by " + repr(other))
 		return multiplier(self.min * other.min, self.max * other.max)
 
 	def __add__(self, other):
@@ -879,11 +887,28 @@ class multiplier:
 		'''
 			Find the intersection of two multipliers: that is, a third multiplier
 			expressing the range covered by both of the originals. This is not
-			defined for all multipliers.
+			defined for all multipliers since they may not overlap.
 		'''
-		assert self.canintersect(other)
+		if not self.canintersect(other):
+			raise Exception("Can't compute intersection of " + repr(self) + " and " + repr(other))
 		a = max(self.min, other.min)
 		b = min(self.max, other.max)
+		return multiplier(a, b)
+
+	def canunion(self, other):
+		'''Union is not defined for all pairs of multipliers. e.g. {0,1} | {3,4}'''
+		return not (self.max + bound(1) < other.min or other.max + bound(1) < self.min)
+
+	def __or__(self, other):
+		'''
+			Find the union of two multipliers: that is, a third multiplier expressing
+			the range covered by either of the originals. This is not defined for
+			all multipliers since they may not intersect.
+		'''
+		if not self.canunion(other):
+			raise Exception("Can't compute the union of " + repr(self) + " and " + repr(other))
+		a = min(self.min, other.min)
+		b = max(self.max, other.max)
 		return multiplier(a, b)
 
 	def common(self, other):
@@ -950,7 +975,8 @@ class mult(lego):
 			The reverse of concatenation. This is a lot trickier.
 			e.g. a{4,5} - a{3} = a{1,2}
 		'''
-		assert other.multiplicand == self.multiplicand
+		if other.multiplicand != self.multiplicand:
+			raise Exception("Can't subtract " + repr(other) + " from " + repr(self))
 		return mult(self.multiplicand, self.multiplier - other.multiplier)
 
 	def common(self, other):
@@ -1356,7 +1382,8 @@ class conc(lego):
 			# subtracts the C successfully but leaves something behind,
 			# then tries to subtract the B too, which isn't possible
 			else:
-				assert i == 0
+				if i != 0:
+					raise Exception("Can't subtract " + repr(other) + " from " + repr(self))
 
 		return conc(*new)
 
@@ -1444,7 +1471,8 @@ class pattern(lego):
 		return pattern(*(self.concs | other.concs))
 
 	def __str__(self):
-		assert len(self.concs) >= 1
+		if len(self.concs) == 0:
+			raise Exception("Can't serialise " + repr(self))
 
 		# take the alternation of the input collection of regular expressions.
 		# i.e. jam "|" between each element
@@ -1482,6 +1510,35 @@ class pattern(lego):
 		reduced = frozenset(reduced)
 		if reduced != self.concs:
 			return pattern(*reduced)
+
+		# If this pattern contains several concs each containing just 1 mult and
+		# their multiplicands agree, we may be able to merge the multipliers
+		# e.g. "a{1,2}|a{3,4}|bc" -> "a{1,4}|bc"
+		oldconcs = list(self.concs) # so we can index the things
+		for i in range(len(oldconcs)):
+			conc1 = oldconcs[i]
+			if len(conc1.mults) != 1:
+				continue
+			multiplicand1 = conc1.mults[0].multiplicand
+			for j in range(i + 1, len(oldconcs)):
+				conc2 = oldconcs[j]
+				if len(conc2.mults) != 1:
+					continue
+				multiplicand2 = conc2.mults[0].multiplicand
+				if multiplicand2 != multiplicand1:
+					continue
+				multiplicand = multiplicand1
+				multiplier1 = conc1.mults[0].multiplier
+				multiplier2 = conc2.mults[0].multiplier
+				if not multiplier1.canunion(multiplier2):
+					continue
+				multiplier = multiplier1 | multiplier2
+				newconcs = \
+					oldconcs[:i] + \
+					oldconcs[i + 1:j] + \
+					oldconcs[j + 1:] + \
+					[conc(mult(multiplicand, multiplier))]
+				return pattern(*newconcs)
 
 		# If this pattern contains several concs each containing just 1 mult
 		# each containing just a charclass, with a multiplier of 1,
@@ -1588,7 +1645,8 @@ class pattern(lego):
 
 			If "suffix" is True, the same result but for suffixes.
 		'''
-		assert len(self.concs) >= 1
+		if len(self.concs) == 0:
+			raise Exception("Can't call _commonconc on " + repr(self))
 
 		from functools import reduce
 		return reduce(

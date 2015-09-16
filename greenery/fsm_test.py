@@ -445,3 +445,102 @@ def test_base_N():
 		b = next(gen)
 		assert int(a, base) + N == int(b, base)
 		a = b
+
+def test_invalid_fsms():
+	# initial state 1 is not a state
+	try:
+		fsm(
+			alphabet = {},
+			states = {},
+			initial = 1,
+			finals = set(),
+			map = {}
+		)
+		assert False
+	except Exception:
+		pass
+
+	# final state 2 not a state
+	try:
+		fsm(
+			alphabet = {},
+			states = {1},
+			initial = 1,
+			finals = {2},
+			map = {}
+		)
+		assert False
+	except Exception:
+		pass
+
+	# no transitions for state 1
+	try:
+		fsm(
+			alphabet = {},
+			states = {1},
+			initial = 1,
+			finals = set(),
+			map = {}
+		)
+		assert False
+	except Exception:
+		pass
+
+	# no transitions for state 1, symbol "a"
+	try:
+		fsm(
+			alphabet = {"a"},
+			states = {1},
+			initial = 1,
+			finals = set(),
+			map = {
+				1 : {}
+			}
+		)
+		assert False
+	except Exception:
+		pass
+
+	# invalid transition for state 1, symbol "a"
+	try:
+		fsm(
+			alphabet = {"a"},
+			states = {1},
+			initial = 1,
+			finals = set(),
+			map = {
+				1 : {"a" : 2}
+			}
+		)
+		assert False
+	except Exception:
+		pass
+
+def test_alphabet_disagreements():
+	a = fsm(alphabet = {"a"}, states = {1}, initial = 1, finals = set(), map = {1 : {"a" : 1}})
+	b = fsm(alphabet = {"b"}, states = {1}, initial = 1, finals = set(), map = {1 : {"b" : 1}})
+
+	try:
+		c = a + b
+		assert False
+	except Exception:
+		pass
+
+	try:
+		c = a | b
+		assert False
+	except Exception:
+		pass
+
+	try:
+		c = a & b
+		assert False
+	except Exception:
+		pass
+
+def test_bad_multiplier(a):
+	try:
+		x = a * -1
+		assert False
+	except Exception:
+		pass

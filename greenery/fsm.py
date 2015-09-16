@@ -20,20 +20,25 @@ class fsm:
 
 	def __init__(self, alphabet, states, initial, finals, map):
 		'''Initialise the hard way due to immutability.'''
+		# Validation. Thanks to immutability, this only needs to be carried out once.
+		if not initial in states:
+			raise Exception("Initial state " + repr(initial) + " must be one of " + repr(states))
+		if not finals.issubset(states):
+			raise Exception("Final states " + repr(finals) + " must be a subset of " + repr(states))
+		for state in states:
+			if not state in map.keys():
+				raise Exception("Need transition map for state " + repr(state))
+			for symbol in alphabet:
+				if not symbol in map[state]:
+					raise Exception("Need transition for state " + repr(state) + " and symbol " + repr(symbol))
+				if not map[state][symbol] in states:
+					raise Exception("Transition for state " + repr(state) + " and symbol " + repr(symbol) + " leads to " + repr(map[state][symbol]) + ", which is not a state")
+
 		self.__dict__["alphabet"] = alphabet
 		self.__dict__["states"  ] = set(states)
 		self.__dict__["initial" ] = initial
 		self.__dict__["finals"  ] = set(finals)
 		self.__dict__["map"     ] = map
-
-		# Validation. Thanks to immutability, this only needs to be carried out once.
-		assert self.initial in self.states
-		assert self.finals.issubset(self.states)
-		for state in self.states:
-			assert state in self.map.keys()
-			for symbol in self.alphabet:
-				assert symbol in self.map[state]
-				assert self.map[state][symbol] in self.states
 
 	def accepts(self, input):
 		'''This is actually only used for unit testing purposes'''
@@ -107,7 +112,8 @@ class fsm:
 			Call using "fsm3 = fsm1 + fsm2"
 		'''
 		# alphabets must be equal
-		assert other.alphabet == self.alphabet
+		if other.alphabet != self.alphabet:
+			raise Exception("Alphabets " + repr(self.alphabet) + " and " + repr(other.alphabet) + " disagree")
 
 		# We start at the start of self. If this starting state happens to be
 		# final in self, we also start at the start of other.
@@ -204,7 +210,8 @@ class fsm:
 		'''
 			Given an FSM and a multiplier, return the multiplied FSM.
 		'''
-		assert multiplier >= 0
+		if multiplier < 0:
+			raise Exception("Can't multiply an FSM by " + repr(multiplier))
 
 		if multiplier == 0:
 			return epsilon(self.alphabet)
@@ -228,7 +235,8 @@ class fsm:
 		'''
 
 		# alphabets must be equal
-		assert other.alphabet == self.alphabet
+		if other.alphabet != self.alphabet:
+			raise Exception("Alphabets " + repr(self.alphabet) + " and " + repr(other.alphabet) + " disagree")
 
 		initial = (self.initial, other.initial)
 
@@ -253,7 +261,8 @@ class fsm:
 		'''
 
 		# alphabets must be equal
-		assert other.alphabet == self.alphabet
+		if other.alphabet != self.alphabet:
+			raise Exception("Alphabets " + repr(self.alphabet) + " and " + repr(other.alphabet) + " disagree")
 
 		initial = (self.initial, other.initial)
 

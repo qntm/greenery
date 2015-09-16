@@ -173,7 +173,7 @@ def test_conc_subtraction():
 				mult(charclass("Y"), plus),
 			)
 		)
-		assert(False)
+		assert False
 	except:
 		pass
 
@@ -2381,3 +2381,51 @@ def test_non_capturing_groups():
 	assert parse("(?:)") == parse("()")
 	assert parse("(?:abc|def)") == parse("(abc|def)")
 	parse("(:abc)") # should give no problems
+
+def test_multiplier_union():
+	assert zero | zero == zero
+	assert zero | qm   == qm
+	assert zero | one  == qm
+	assert zero | star == star
+	assert zero | plus == star
+	assert qm   | zero == qm
+	assert qm   | qm   == qm
+	assert qm   | one  == qm
+	assert qm   | star == star
+	assert qm   | plus == star
+	assert one  | zero == qm
+	assert one  | qm   == qm
+	assert one  | one  == one
+	assert one  | star == star
+	assert one  | plus == plus
+	assert star | zero == star
+	assert star | qm   == star
+	assert star | one  == star
+	assert star | star == star
+	assert star | plus == star
+	assert plus | zero == star
+	assert plus | qm   == star
+	assert plus | one  == plus
+	assert plus | star == star
+	assert plus | plus == plus
+	assert not zero.canunion(multiplier(bound(2), inf))
+	assert not one.canunion(multiplier(bound(3), bound(4)))
+	assert not multiplier(bound(8), inf).canunion(multiplier(bound(3), bound(4)))
+	try:
+		zero | multiplier(bound(7), bound(8))
+		assert False
+	except:
+		pass
+
+def test_main_bug():
+	# A new reduction. a|a* -> a*
+	assert parse("a*").reduce() == mult(charclass("a"), star)
+	assert parse("a|a*").reduce() == mult(charclass("a"), star)
+	assert parse("a{1,2}|a{3,4}|bc").reduce() == parse("a{1,4}|bc")
+	assert parse("a{1,2}|bc|a{3,4}").reduce() == parse("a{1,4}|bc")
+	assert parse("a{1,2}|a{3,4}|a{5,6}|bc").reduce() == parse("a{1,6}|bc")
+	assert parse("a{1,2}|a{3}|a{5,6}").reduce() == parse("a{1,3}|a{5,6}").reduce()
+	assert parse("a{1,2}|a{3}|a{5,6}|bc").reduce() == parse("a{1,3}|a{5,6}|bc")
+	assert parse("a{1,2}|a{4}|a{5,6}").reduce() == parse("a{1,2}|a{4,6}").reduce()
+	assert parse("a{1,2}|a{4}|a{5,6}|bc").reduce() == parse("a{1,2}|a{4,6}|bc")
+	assert (parse("a") | parse("a*")).reduce() == parse("a*").reduce()
