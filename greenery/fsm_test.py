@@ -544,3 +544,15 @@ def test_bad_multiplier(a):
 		assert False
 	except Exception:
 		pass
+
+def test_otherchars_acceptance():
+	a = fsm(
+		alphabet = {"a", "b", "c", otherchars},
+		states = {1},
+		initial = 1,
+		finals = {1},
+		map = {
+			1 : {"a" : 1, "b" : 1, "c" : 1, otherchars : 1}
+		},
+	)
+	assert a.accepts("d")

@@ -34,16 +34,23 @@ class fsm:
 				if not map[state][symbol] in states:
 					raise Exception("Transition for state " + repr(state) + " and symbol " + repr(symbol) + " leads to " + repr(map[state][symbol]) + ", which is not a state")
 
-		self.__dict__["alphabet"] = alphabet
+		self.__dict__["alphabet"] = set(alphabet)
 		self.__dict__["states"  ] = set(states)
 		self.__dict__["initial" ] = initial
 		self.__dict__["finals"  ] = set(finals)
 		self.__dict__["map"     ] = map
 
 	def accepts(self, input):
-		'''This is actually only used for unit testing purposes'''
+		'''
+			This is actually mainly used for unit testing purposes.
+			If lego.otherchars (i.e. "anything else") is in your alphabet, then any
+			symbol not in your alphabet will be converted to lego.otherchars.
+		'''
+		from greenery.lego import otherchars # todo: this is really for FSMs
 		state = self.initial
 		for symbol in input:
+			if otherchars in self.alphabet and not symbol in self.alphabet:
+				symbol = otherchars
 			state = self.map[state][symbol]
 		return state in self.finals
 
