@@ -2,10 +2,11 @@
 
 SHELL	= bash
 PY2	= python
-PY2_5	= python2.5
 PY2_6	= python2.6
+PY2_7	= python2.7
 PY3	= python3
-PYTHONS	= $(PY2) $(PY2_6) $(PY3) 
+PY3_3	= python3.3
+PYTHONS	= $(PY2) $(PY2_6) $(PY3) $(PY3_3)
 PYTEST	= -m pytest -v --capture=no
 
 all: help
