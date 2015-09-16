@@ -44,21 +44,17 @@ def reduce_after(method):
 	'''reduce() the result of this method call (unless you already reduced it).'''
 	def new_method(self, *args, **kwargs):
 		result = method(self, *args, **kwargs)
-		if method.__name__ == "reduce" and result == self:
+		if result == self:
 			return result
 		return result.reduce()
 	return new_method
 
-@reduce_after
 def parse(string):
 	'''
 		Parse a full string and return a lego piece. Fail if the whole string
 		wasn't parsed
 	'''
-	p, i = pattern.match(string, 0)
-	if i != len(string):
-		raise Exception("Could not parse '" + string + "' beyond index " + str(i))
-	return p
+	return pattern.parse(string)
 
 def static(string, i, static):
 	j = i+len(static)
@@ -107,6 +103,7 @@ class lego:
 		'''
 		raise Exception("Not implemented")
 
+	@classmethod
 	def match(cls, string, i = 0):
 		'''
 			Start at index i in the supplied string and try to match one of the
@@ -115,6 +112,18 @@ class lego:
 			Throws a nomatch in the event of failure.
 		'''
 		raise Exception("Not implemented")
+
+	@classmethod
+	def parse(cls, string):
+		'''
+			Parse the entire supplied string as an instance of the present class.
+			Mainly for internal use in unit tests because it drops through to match()
+			in a convenient way.
+		'''
+		obj, i = cls.match(string, 0)
+		if i != len(string):
+			raise Exception("Could not parse '" + string + "' beyond index " + str(i))
+		return obj
 
 	@reduce_after
 	def reduce(self):

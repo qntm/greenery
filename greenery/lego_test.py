@@ -30,7 +30,8 @@ def test_new_reduce():
 		mult(dot, one),
 		mult(charclass("b"), one),
 	)
-	assert str(parse("a.b()()")) == "a.b"
+	assert str(parse("a.b()()")) == "a.b()()"
+	assert str(parse("a.b()()").reduce()) == "a.b"
 
 def test_conc_common():
 	# "AAZY, BBZY" -> "ZY"
@@ -722,6 +723,7 @@ def test_charclass_str():
 
 def test_charclass_parsing():
 	assert charclass.match("a", 0) == (charclass("a"), 1)
+	assert charclass.parse("a") == charclass("a")
 	assert charclass.match("aa", 1) == (charclass("a"), 2)
 	assert charclass.match("a$", 1) == (charclass("$"), 2)
 	assert charclass.match(".", 0) == (dot, 1)
@@ -788,18 +790,9 @@ def test_mult_str():
 	assert str(mult(d, multiplier(bound(3), bound(3)))) == "\\d{3}"
 
 def test_mult_parsing():
-	assert mult.match("[a-g]+", 0) == (
-		mult(charclass("abcdefg"), plus),
-		6
-	)
-	assert mult.match("[a-g0-8$%]+", 0) == (
-		mult(charclass("abcdefg012345678$%"), plus),
-		11
-	)
-	assert mult.match("[a-g0-8$%\\^]+", 0) == (
-		mult(charclass("abcdefg012345678$%^"), plus),
-		13
-	)
+	assert mult.parse("[a-g]+") == mult(charclass("abcdefg"), plus)
+	assert mult.parse("[a-g0-8$%]+") == mult(charclass("abcdefg012345678$%"), plus)
+	assert mult.parse("[a-g0-8$%\\^]+") == mult(charclass("abcdefg012345678$%^"), plus)
 	assert mult.match("abcde[^fg]*", 5) == (
 		mult(~charclass("fg"), star),
 		11
@@ -942,45 +935,34 @@ def test_conc_str():
 	)) == "abcde[^fg]*h{5}[a-z]+"
 
 def test_conc_parsing():
-	assert conc.match("abcde[^fg]*h{5}[a-z]+", 0) == (
-		conc(
-			mult(charclass("a"), one),
-			mult(charclass("b"), one),
-			mult(charclass("c"), one),
-			mult(charclass("d"), one),
-			mult(charclass("e"), one),
-			mult(~charclass("fg"), star),
-			mult(charclass("h"), multiplier(bound(5), bound(5))),
-			mult(charclass("abcdefghijklmnopqrstuvwxyz"), plus),
-		), 21
+	assert conc.parse("abcde[^fg]*h{5}[a-z]+") == conc(
+		mult(charclass("a"), one),
+		mult(charclass("b"), one),
+		mult(charclass("c"), one),
+		mult(charclass("d"), one),
+		mult(charclass("e"), one),
+		mult(~charclass("fg"), star),
+		mult(charclass("h"), multiplier(bound(5), bound(5))),
+		mult(charclass("abcdefghijklmnopqrstuvwxyz"), plus),
 	)
-	assert conc.match("[bc]*[ab]*", 0) == (
-		conc(
-			mult(charclass("bc"), star),
-			mult(charclass("ab"), star),
-		),
-		10
+	assert conc.parse("[bc]*[ab]*") == conc(
+		mult(charclass("bc"), star),
+		mult(charclass("ab"), star),
 	)
-	assert conc.match("abc...", 0) == (
-		conc(
-			mult(charclass("a"), one),
-			mult(charclass("b"), one),
-			mult(charclass("c"), one),
-			mult(dot, one),
-			mult(dot, one),
-			mult(dot, one),
-		),
-		6
+	assert conc.parse("abc...") == conc(
+		mult(charclass("a"), one),
+		mult(charclass("b"), one),
+		mult(charclass("c"), one),
+		mult(dot, one),
+		mult(dot, one),
+		mult(dot, one),
 	)
-	assert conc.match("\\d{4}-\\d{2}-\\d{2}", 0) == (
-		conc(
-			mult(charclass("0123456789"), multiplier(bound(4), bound(4))),
-			mult(charclass("-"), one),
-			mult(charclass("0123456789"), multiplier(bound(2), bound(2))),
-			mult(charclass("-"), one),
-			mult(charclass("0123456789"), multiplier(bound(2), bound(2))),
-		),
-		17
+	assert conc.parse("\\d{4}-\\d{2}-\\d{2}") == conc(
+		mult(charclass("0123456789"), multiplier(bound(4), bound(4))),
+		mult(charclass("-"), one),
+		mult(charclass("0123456789"), multiplier(bound(2), bound(2))),
+		mult(charclass("-"), one),
+		mult(charclass("0123456789"), multiplier(bound(2), bound(2))),
 	)
 
 def test_conc_reduction_basic():
@@ -1202,33 +1184,31 @@ def test_common_prefix_pattern_reduction():
 	)
 
 def test_pattern_parsing():
-	assert pattern.match("abc|def(ghi|jkl)", 0) == (
-		pattern(
-			conc(
-				mult(charclass("a"), one),
-				mult(charclass("b"), one),
-				mult(charclass("c"), one),
+	assert pattern.parse("abc|def(ghi|jkl)") == pattern(
+		conc(
+			mult(charclass("a"), one),
+			mult(charclass("b"), one),
+			mult(charclass("c"), one),
+		),
+		conc(
+			mult(charclass("d"), one),
+			mult(charclass("e"), one),
+			mult(charclass("f"), one),
+			mult(
+				pattern(
+					conc(
+						mult(charclass("g"), one),
+						mult(charclass("h"), one),
+						mult(charclass("i"), one),
+					),
+					conc(
+						mult(charclass("j"), one),
+						mult(charclass("k"), one),
+						mult(charclass("l"), one),
+					),
+				), one
 			),
-			conc(
-				mult(charclass("d"), one),
-				mult(charclass("e"), one),
-				mult(charclass("f"), one),
-				mult(
-					pattern(
-						conc(
-							mult(charclass("g"), one),
-							mult(charclass("h"), one),
-							mult(charclass("i"), one),
-						),
-						conc(
-							mult(charclass("j"), one),
-							mult(charclass("k"), one),
-							mult(charclass("l"), one),
-						),
-					), one
-				),
-			)
-		), 16
+		)
 	)
 
 def test_charclass_multiplication():
@@ -2154,8 +2134,8 @@ def test_parse_regex_intersection():
 	assert str(parse("\\d{4}-\\d{2}-\\d{2}") & parse("19.*")) == "19\\d\\d-\\d\\d-\\d\\d"
 
 def test_heavy_reduction():
-	assert str(parse("(|(|(|(|(|(|[$%\^])[$%\^])[$%\^])[$%\^])[$%\^])[$%\^])[$%\^][$%\^]")) == "[$%\^]{2,8}"
-	assert str(parse("[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]")) == "[0-9A-Fa-f]{3}"
+	assert str(parse("(|(|(|(|(|(|[$%\^])[$%\^])[$%\^])[$%\^])[$%\^])[$%\^])[$%\^][$%\^]").reduce()) == "[$%\^]{2,8}"
+	assert str(parse("[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]").reduce()) == "[0-9A-Fa-f]{3}"
 
 def test_silly_reduction():
 	# This one is horrendous and we have to jump through some hoops to get to
@@ -2168,7 +2148,7 @@ def test_silly_reduction():
 	long = reversed(long.lego())
 	assert str(long) == "[ab]*a[ab]"
 	short = "[ab]*a?b*|[ab]*b?a*"
-	assert str(parse(".*") & parse(short).reduce()) == "[ab]*"
+	assert str(parse(".*") & parse(short)) == "[ab]*"
 
 def test_bad_reduction_bug():
 	# DEFECT: "0{2}|1{2}" was erroneously reduced() to "[01]{2}"
@@ -2176,7 +2156,7 @@ def test_bad_reduction_bug():
 	assert bad.accepts("00")
 	assert bad.accepts("11")
 	assert not bad.accepts("01")
-	assert str(parse("0|[1-9]|ab")) == "\d|ab"
+	assert str(parse("0|[1-9]|ab").reduce()) == "\d|ab"
 
 def test_alphabet():
 	# lego.alphabet() should include "otherchars"
@@ -2192,7 +2172,7 @@ def test_fsm():
 	assert bad.accepts("00")
 	assert bad.accepts("11")
 	assert not bad.accepts("01")
-	assert str(parse("0|[1-9]|ab")) == "\d|ab"
+	assert str(parse("0|[1-9]|ab").reduce()) == "\d|ab"
 
 def test_everythingbut():
 	# Regexes are usually gibberish but we make a few claims
@@ -2216,8 +2196,8 @@ def test_everythingbut():
 def test_epsilon_reduction():
 	assert parse("|(ab)*|def").reduce() == parse("(ab)*|def")
 	assert parse("|(ab)+|def").reduce() == parse("(ab)*|def")
-	assert parse("|.+").reduce() == parse(".*")
-	assert parse("|a+|b+") in set([parse("a+|b*"), parse("a*|b+")])
+	assert parse("|.+").reduce() == parse(".*").reduce()
+	assert parse("|a+|b+").reduce() in set([pattern.parse("a+|b*"), pattern.parse("a*|b+")])
 
 def test_regex_reversal():
 	assert reversed(parse("b")) == parse("b")
