@@ -237,7 +237,8 @@ class fsm:
 		'''
 			Alternation.
 			Return a finite state machine which accepts any sequence of symbols
-			that is accepted by either self or other.
+			that is accepted by either self or other. Note that the set of strings
+			recognised by the two FSMs undergoes a set union.
 			Call using "fsm3 = fsm1 | fsm2"
 		'''
 
@@ -262,8 +263,9 @@ class fsm:
 		'''
 			Intersection.
 			Take FSMs and AND them together. That is, return an FSM which
-			accepts any sequence of symbols that is accepted by all of the original
-			FSMs.
+			accepts any sequence of symbols that is accepted by both of the original
+			FSMs. Note that the set of strings recognised by the two FSMs undergoes
+			a set intersection operation.
 			Call using "fsm3 = fsm1 & fsm2"
 		'''
 
@@ -281,6 +283,26 @@ class fsm:
 		# state is final if *all* of its substates are final
 		def final(state):
 			return state[0] in self.finals and state[1] in other.finals
+
+		return crawl(self.alphabet, initial, final, follow).reduce()
+
+	def __xor__(self, other):
+		'''
+			Symmetric difference. Returns an FSM which recognises only the strings
+			recognised by `self` or `other` but not both.
+		'''
+
+		# alphabets must be equal
+		if other.alphabet != self.alphabet:
+			raise Exception("Alphabets " + repr(self.alphabet) + " and " + repr(other.alphabet) + " disagree")
+
+		initial = (self.initial, other.initial)
+
+		def follow(current, symbol):
+			return (self.map[current[0]][symbol], other.map[current[1]][symbol])
+
+		def final(state):
+			return (state[0] in self.finals) != (state[1] in other.finals)
 
 		return crawl(self.alphabet, initial, final, follow).reduce()
 
@@ -328,6 +350,31 @@ class fsm:
 		return crawl(self.alphabet, initial, final, follow)
 		# Do not reduce() the result, since reduce() calls reversed() in turn
 
+	def islive(self, state):
+		'''A state is "live" if a final state can be reached from it.'''
+		reachable = [state]
+		i = 0
+		while i < len(reachable):
+			current = reachable[i]
+			if current in self.finals:
+				return True
+			for symbol in self.alphabet:
+				next = self.map[current][symbol]
+				if next not in reachable:
+					reachable.append(next)
+			i += 1
+		return False
+
+	def empty(self):
+		'''
+			An FSM is empty if it recognises no strings. An FSM may be arbitrarily
+			complicated and have arbitrarily many final states while still recognising
+			no strings because those final states may all be inaccessible from the
+			initial state. Equally, an FSM may be non-empty despite having an empty
+			alphabet if the initial state is final.
+		'''
+		return not self.islive(self.initial)
+
 	def strings(self):
 		'''
 			Generate strings (lists of symbols) that this FSM accepts. Since there may
@@ -340,23 +387,7 @@ class fsm:
 		# Many FSMs have "dead states". Once you reach a dead state, you can no
 		# longer reach a final state. Since many strings may end up here, it's
 		# advantageous to constrain our search to live states only.
-
-		def islive(state):
-			'''A state is "live" if a final state can be reached from it.'''
-			reachable = [state]
-			i = 0
-			while i < len(reachable):
-				current = reachable[i]
-				if current in self.finals:
-					return True
-				for symbol in self.alphabet:
-					next = self.map[current][symbol]
-					if next not in reachable:
-						reachable.append(next)
-				i += 1
-			return False
-
-		livestates = set(state for state in self.states if islive(state))
+		livestates = set(state for state in self.states if self.islive(state))
 
 		# We store a list of tuples. Each tuple consists of an input string and the
 		# state that this input string leads to. This means we don't have to run the
@@ -384,6 +415,14 @@ class fsm:
 						yield nstring
 					strings.append((nstring, nstate))
 			i += 1
+
+	def equivalent(self, other):
+		'''
+			Two FSMs are considered equivalent if they recognise the same strings.
+			Or, to put it another way, if their symmetric difference recognises no
+			strings.
+		'''
+		return (self ^ other).empty()
 
 	def lego(self):
 		'''

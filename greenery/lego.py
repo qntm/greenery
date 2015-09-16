@@ -180,6 +180,14 @@ class lego:
 		'''
 		raise Exception("Not implemented")
 
+	def equivalent(self, other):
+		'''
+			Two lego objects are equivalent if they recognise the same strings. Note
+			that in the general case this is actually quite an intensive calculation,
+			but far from unsolvable, as we demonstrate here:
+		'''
+		return self.fsm().equivalent(other.fsm())
+
 	def alphabet(self):
 		'''
 			Return a set of all unique characters used in this lego piece.
@@ -234,6 +242,7 @@ class lego:
 		for string in self.fsm().strings():
 
 			# Have to represent "otherchars" somehow.
+			# TODO: converting this over should be fsm()'s responsibility.
 			if otherchars in string:
 				if otherchar == None:
 					raise Exception("Please choose an 'otherchar'")
@@ -1674,6 +1683,7 @@ class pattern(lego):
 # "everything else". For example, if the regex is "abc.", then at the moment
 # our alphabet is {"a", "b", "c"}. But "." could match anything else not yet
 # specified. This extra letter stands for that ("[^abc]" in this case).
+# TODO: this should be in `fsm`
 otherchars = None
 
 # Standard character classes

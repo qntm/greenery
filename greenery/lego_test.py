@@ -2429,3 +2429,7 @@ def test_main_bug():
 	assert parse("a{1,2}|a{4}|a{5,6}").reduce() == parse("a{1,2}|a{4,6}").reduce()
 	assert parse("a{1,2}|a{4}|a{5,6}|bc").reduce() == parse("a{1,2}|a{4,6}|bc")
 	assert (parse("a") | parse("a*")).reduce() == parse("a*").reduce()
+
+def test_equivalence():
+	assert parse("aa*").equivalent(parse("a*a"))
+	assert parse("([ab]*a|[bc]*c)?b*").equivalent(parse("b*(a[ab]*|c[bc]*)?"))

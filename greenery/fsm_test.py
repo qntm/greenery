@@ -556,3 +556,57 @@ def test_otherchars_acceptance():
 		},
 	)
 	assert a.accepts("d")
+
+def test_difference(a, b):
+	aorb = fsm(
+		alphabet = {"a", "b"},
+		states = {0, 1, None},
+		initial = 0,
+		finals = {1},
+		map = { 
+			0    : {"a" : 1   , "b" : 1   },
+			1    : {"a" : None, "b" : None},
+			None : {"a" : None, "b" : None},
+		},
+	)
+
+	assert list((a ^ a).strings()) == []
+	assert list((b ^ b).strings()) == []
+	assert list((a ^ b).strings()) == [["a"], ["b"]]
+	assert list((aorb ^ a).strings()) == [["b"]]
+
+def test_empty(a, b):
+	assert not a.empty()
+	assert not b.empty()
+
+	assert fsm(
+		alphabet = {},
+		states = {0, 1},
+		initial = 0,
+		finals = {1},
+		map = {0:{}, 1:{}},
+	).empty()
+
+	assert not fsm(
+		alphabet = {},
+		states = {0},
+		initial = 0,
+		finals = {0},
+		map = {0:{}},
+	).empty()
+
+	assert fsm(
+		alphabet = {"a", "b"},
+		states = {0, 1, None, 2},
+		initial = 0,
+		finals = {2},
+		map = { 
+			0    : {"a" : 1   , "b" : 1   },
+			1    : {"a" : None, "b" : None},
+			None : {"a" : None, "b" : None},
+			2    : {"a" : None, "b" : None},
+		},
+	).empty()
+
+def test_equivalent(a, b):
+	assert (a | b).equivalent(b | a)
