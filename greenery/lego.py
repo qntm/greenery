@@ -90,10 +90,11 @@ def from_fsm(f):
 	i = 0
 	while i < len(states):
 		current = states[i]
-		for symbol in sorted(f.alphabet, key=lambda symbol: (symbol is fsm.anything_else, symbol)):
-			next = f.map[current][symbol]
-			if next not in states:
-				states.append(next)
+		if current in f.map:
+			for symbol in sorted(f.map[current], key=fsm.key):
+				next = f.map[current][symbol]
+				if next not in states:
+					states.append(next)
 		i += 1
 
 	# Our system of equations is represented like so:

@@ -15,6 +15,10 @@ class anything_else:
 	def __repr__(self):
 		return "anything_else"
 
+def key(symbol):
+	'''Ensure `fsm.anything_else` always sorts last'''
+	return (symbol is anything_else, symbol)
+
 class fsm:
 	'''
 		A Finite State Machine or FSM has an alphabet and a set of states. At any
@@ -40,12 +44,8 @@ class fsm:
 			raise Exception("Initial state " + repr(initial) + " must be one of " + repr(states))
 		if not finals.issubset(states):
 			raise Exception("Final states " + repr(finals) + " must be a subset of " + repr(states))
-		for state in states:
-			if not state in map.keys():
-				raise Exception("Need transition map for state " + repr(state))
-			for symbol in alphabet:
-				if not symbol in map[state]:
-					raise Exception("Need transition for state " + repr(state) + " and symbol " + repr(symbol))
+		for state in map.keys():
+			for symbol in map[state]:
 				if not map[state][symbol] in states:
 					raise Exception("Transition for state " + repr(state) + " and symbol " + repr(symbol) + " leads to " + repr(map[state][symbol]) + ", which is not a state")
 
@@ -65,6 +65,11 @@ class fsm:
 		for symbol in input:
 			if anything_else in self.alphabet and not symbol in self.alphabet:
 				symbol = anything_else
+
+			# Missing transition = transition to dead state
+			if not symbol in self.map[state]:
+				return False
+
 			state = self.map[state][symbol]
 		return state in self.finals
 
@@ -91,7 +96,7 @@ class fsm:
 
 		# top row
 		row = ["", "name", "final?"]
-		row.extend(str(symbol) for symbol in sorted(self.alphabet, key=str))
+		row.extend(str(symbol) for symbol in sorted(self.alphabet, key=key))
 		rows.append(row)
 
 		# other rows
@@ -106,7 +111,11 @@ class fsm:
 				row.append("True")
 			else:
 				row.append("False")
-			row.extend(str(self.map[state][symbol]) for symbol in sorted(self.alphabet, key=str))
+			for symbol in sorted(self.alphabet, key=key):
+				if state in self.map and symbol in self.map[state]:
+					row.append(str(self.map[state][symbol]))
+				else:
+					row.append("")
 			rows.append(row)
 
 		# column widths
@@ -260,16 +269,22 @@ class fsm:
 		if other.alphabet != self.alphabet:
 			raise Exception("Alphabets " + repr(self.alphabet) + " and " + repr(other.alphabet) + " disagree")
 
-		initial = (self.initial, other.initial)
+		initial = {0 : self.initial, 1 : other.initial}
 
 		# dedicated function accepts a "superset" and returns the next "superset"
 		# obtained by following this transition in the new FSM
 		def follow(current, symbol):
-			return (self.map[current[0]][symbol], other.map[current[1]][symbol])
+			next = {}
+			if 0 in current and current[0] in self.map and symbol in self.map[current[0]]:
+				next[0] = self.map[current[0]][symbol]
+			if 1 in current and current[1] in other.map and symbol in other.map[current[1]]:
+				next[1] = other.map[current[1]][symbol]
+			return next
 
 		# state is final if *any* of its internal states are final
 		def final(state):
-			return state[0] in self.finals or state[1] in other.finals
+			return (0 in state and state[0] in self.finals) \
+			or (1 in state and state[1] in other.finals)
 
 		return crawl(self.alphabet, initial, final, follow).reduce()
 
@@ -287,16 +302,22 @@ class fsm:
 		if other.alphabet != self.alphabet:
 			raise Exception("Alphabets " + repr(self.alphabet) + " and " + repr(other.alphabet) + " disagree")
 
-		initial = (self.initial, other.initial)
+		initial = {0 : self.initial, 1 : other.initial}
 
 		# dedicated function accepts a "superset" and returns the next "superset"
 		# obtained by following this transition in the new FSM
 		def follow(current, symbol):
-			return (self.map[current[0]][symbol], other.map[current[1]][symbol])
+			next = {}
+			if 0 in current and current[0] in self.map and symbol in self.map[current[0]]:
+				next[0] = self.map[current[0]][symbol]
+			if 1 in current and current[1] in other.map and symbol in other.map[current[1]]:
+				next[1] = other.map[current[1]][symbol]
+			return next
 
 		# state is final if *all* of its substates are final
 		def final(state):
-			return state[0] in self.finals and state[1] in other.finals
+			return (0 in state and state[0] in self.finals) \
+			and (1 in state and state[1] in other.finals)
 
 		return crawl(self.alphabet, initial, final, follow).reduce()
 
@@ -310,13 +331,22 @@ class fsm:
 		if other.alphabet != self.alphabet:
 			raise Exception("Alphabets " + repr(self.alphabet) + " and " + repr(other.alphabet) + " disagree")
 
-		initial = (self.initial, other.initial)
+		initial = {0 : self.initial, 1 : other.initial}
 
+		# dedicated function accepts a "superset" and returns the next "superset"
+		# obtained by following this transition in the new FSM
 		def follow(current, symbol):
-			return (self.map[current[0]][symbol], other.map[current[1]][symbol])
+			next = {}
+			if 0 in current and current[0] in self.map and symbol in self.map[current[0]]:
+				next[0] = self.map[current[0]][symbol]
+			if 1 in current and current[1] in other.map and symbol in other.map[current[1]]:
+				next[1] = other.map[current[1]][symbol]
+			return next
 
+		# state is final if exactly one of the substates is final
 		def final(state):
-			return (state[0] in self.finals) != (state[1] in other.finals)
+			return (0 in state and state[0] in self.finals) \
+			!= (1 in state and state[1] in other.finals)
 
 		return crawl(self.alphabet, initial, final, follow).reduce()
 
@@ -324,16 +354,24 @@ class fsm:
 		'''
 			Return a finite state machine which will accept any string NOT
 			accepted by self, and will not accept any string accepted by self.
-			This is achieved very easily by flipping the "is final" property
-			of each state.
+			This is more complicated if there are missing transitions, because the
+			missing "dead" state must now be reified.
 		'''
-		return fsm(
-			self.alphabet,
-			self.states,
-			self.initial,
-			self.states - self.finals,
-			self.map
-		).reduce()
+		alphabet = self.alphabet
+
+		initial = {0 : self.initial}
+
+		def follow(current, symbol):
+			next = {}
+			if 0 in current and current[0] in self.map and symbol in self.map[current[0]]:
+				next[0] = self.map[current[0]][symbol]
+			return next
+
+		# state is final unless the original was
+		def final(state):
+			return not (0 in state and state[0] in self.finals)
+
+		return crawl(alphabet, initial, final, follow).reduce()
 
 	def __reversed__(self):
 		'''
@@ -353,7 +391,7 @@ class fsm:
 				prev
 				for prev in self.map
 				for state in current
-				if self.map[prev][symbol] == state
+				if symbol in self.map[prev] and self.map[prev][symbol] == state
 			])
 
 		# A state-set is final if the initial state is in it.
@@ -372,10 +410,11 @@ class fsm:
 			current = reachable[i]
 			if current in self.finals:
 				return True
-			for symbol in self.alphabet:
-				next = self.map[current][symbol]
-				if next not in reachable:
-					reachable.append(next)
+			if current in self.map:
+				for symbol in self.map[current]:
+					next = self.map[current][symbol]
+					if next not in reachable:
+						reachable.append(next)
 			i += 1
 		return False
 
@@ -421,13 +460,14 @@ class fsm:
 		i = 0
 		while i < len(strings):
 			(cstring, cstate) = strings[i]
-			for symbol in sorted(self.alphabet, key=str):
-				nstate = self.map[cstate][symbol]
-				nstring = cstring + [symbol]
-				if nstate in livestates:
-					if nstate in self.finals:
-						yield nstring
-					strings.append((nstring, nstate))
+			if cstate in self.map:
+				for symbol in sorted(self.map[cstate], key=key):
+					nstate = self.map[cstate][symbol]
+					nstring = cstring + [symbol]
+					if nstate in livestates:
+						if nstate in self.finals:
+							yield nstring
+						strings.append((nstring, nstate))
 			i += 1
 
 	def equivalent(self, other):
@@ -493,7 +533,7 @@ def crawl(alphabet, initial, final, follow):
 
 		# compute map for this state
 		map[i] = {}
-		for symbol in sorted(alphabet, key=str):
+		for symbol in sorted(alphabet, key=key):
 			next = follow(state, symbol)
 
 			try:

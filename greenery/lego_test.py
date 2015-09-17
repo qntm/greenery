@@ -2322,11 +2322,11 @@ def test_infinite_generation():
 	assert next(gen) == "aaaa"
 
 def test_wildcard_generator():
-	# Generator needs to handle wildcards as well
+	# Generator needs to handle wildcards as well. Wildcards come last.
 	gen = parse("a.b").strings(otherchar="*")
-	assert next(gen) == "a*b"
 	assert next(gen) == "aab"
 	assert next(gen) == "abb"
+	assert next(gen) == "a*b"
 	try:
 		next(gen)
 		assert False
@@ -2595,3 +2595,18 @@ def test_bad_alphabet():
 			raise Exception("Accepted bad symbol: " + repr(bad_symbol))
 		except Exception as e:
 			pass
+
+def test_dead_default():
+	blockquote = from_fsm(fsm.fsm(
+		alphabet = {"/", "*", fsm.anything_else},
+		states = {0, 1, 2, 3, 4},
+		initial = 0,
+		finals = {4},
+		map = {
+				0    : {"/" : 1},
+				1    : {"*" : 2},
+				2    : {"/" : 2, fsm.anything_else : 2, "*" : 3},
+				3    : {"/" : 4, fsm.anything_else : 2, "*" : 3},
+		}
+	))
+

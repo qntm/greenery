@@ -361,38 +361,6 @@ def test_invalid_fsms():
 	except Exception:
 		pass
 
-	# no transitions for state 1
-	try:
-		fsm(
-			alphabet = {},
-			states = {1},
-			initial = 1,
-			finals = set(),
-			map = {}
-		)
-		assert False
-	except AssertionError:
-		assert False
-	except Exception:
-		pass
-
-	# no transitions for state 1, symbol "a"
-	try:
-		fsm(
-			alphabet = {"a"},
-			states = {1},
-			initial = 1,
-			finals = set(),
-			map = {
-				1 : {}
-			}
-		)
-		assert False
-	except AssertionError:
-		assert False
-	except Exception:
-		pass
-
 	# invalid transition for state 1, symbol "a"
 	try:
 		fsm(
@@ -512,3 +480,35 @@ def test_empty(a, b):
 
 def test_equivalent(a, b):
 	assert (a | b).equivalent(b | a)
+
+def test_dead_default():
+	'''
+		You may now omit a transition, or even an entire state, from the map. This
+		affects every usage of `fsm.map`.
+	'''
+	blockquote = fsm(
+		alphabet = {"/", "*", anything_else},
+		states = {0, 1, 2, 3, 4, 5},
+		initial = 0,
+		finals = {4},
+		map = {
+				0 : {"/" : 1},
+				1 : {"*" : 2},
+				2 : {"/" : 2, anything_else : 2, "*" : 3},
+				3 : {"/" : 4, anything_else : 2, "*" : 3},
+		}
+	)
+	assert blockquote.accepts(["/", "*", "whatever", "*", "/"])
+	assert not blockquote.accepts(["*", "*", "whatever", "*", "/"])
+	str(blockquote) # test stringification
+	blockquote | blockquote
+	blockquote & blockquote
+	blockquote ^ blockquote
+	reversed(blockquote)
+	assert not blockquote.everythingbut().accepts(["/", "*", "whatever", "*", "/"])
+	assert blockquote.everythingbut().accepts(["*"]) # deliberately seek oblivion
+	assert blockquote.islive(3)
+	assert blockquote.islive(4)
+	assert not blockquote.islive(5)
+	gen = blockquote.strings()
+	assert next(gen) == ["/", "*", "*", "/"]
