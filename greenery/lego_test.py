@@ -3,8 +3,8 @@
 if __name__ == "__main__":
 	raise Exception("Test files can't be run directly. Use `python -m pytest greenery`")
 
-from greenery.lego import conc, mult, charclass, one, emptystring, star, plus, nothing, pattern, qm, d, multiplier, bound, w, s, W, D, S, dot, nomatch, inf, zero, parse
-from greenery.fsm import anything_else
+from greenery.lego import conc, mult, charclass, one, emptystring, star, plus, nothing, pattern, qm, d, multiplier, bound, w, s, W, D, S, dot, nomatch, inf, zero, parse, from_fsm
+from greenery import fsm
 
 def test_new_reduce():
 	# The @reduce_after decorator has been removed from many methods since it
@@ -187,9 +187,9 @@ def test_conc_subtraction():
 
 def test_odd_bug():
 	# Odd bug with ([bc]*c)?[ab]*
-	int5A = mult(charclass("bc"), star).fsm(set(["a", "b", "c", anything_else]))
+	int5A = mult(charclass("bc"), star).to_fsm(set(["a", "b", "c", fsm.anything_else]))
 	assert int5A.accepts("")
-	int5B = mult(charclass("c"), one).fsm(set(["a", "b", "c", anything_else]))
+	int5B = mult(charclass("c"), one).to_fsm(set(["a", "b", "c", fsm.anything_else]))
 	assert int5B.accepts("c")
 	int5C = int5A + int5B
 	assert (int5A + int5B).accepts("c")
@@ -236,7 +236,7 @@ def test_pattern_fsm():
 			mult(charclass("a"), one),
 			mult(~charclass("a"), one),
 		)
-	).fsm("ab")
+	).to_fsm("ab")
 	assert not anota.accepts("a")
 	assert not anota.accepts("b")
 	assert not anota.accepts("aa")
@@ -250,7 +250,7 @@ def test_pattern_fsm():
 			mult(charclass("0"), one),
 			mult(charclass("123456789"), one)
 		)
-	).fsm(d.chars)
+	).to_fsm(d.chars)
 	assert zeroD.accepts("01")
 	assert not zeroD.accepts("10")
 
@@ -261,7 +261,7 @@ def test_pattern_fsm():
 				d, multiplier(bound(2), bound(2))
 			)
 		)
-	).fsm(d.chars)
+	).to_fsm(d.chars)
 	assert not d2.accepts("")
 	assert not d2.accepts("1")
 	assert d2.accepts("11")
@@ -293,7 +293,7 @@ def test_pattern_fsm():
 				), one
 			),
 		),
-	).fsm(w.chars)
+	).to_fsm(w.chars)
 	assert not conventional.accepts("a")
 	assert not conventional.accepts("ab")
 	assert conventional.accepts("abc")
@@ -2145,15 +2145,15 @@ def test_silly_reduction():
 	"(aa|bb*aa)a*|((ab|bb*ab)|(aa|bb*aa)a*b)((ab|bb*ab)|(aa|bb*aa)a*b)*" + \
 	"(aa|bb*aa)a*|((ab|bb*ab)|(aa|bb*aa)a*b)((ab|bb*ab)|(aa|bb*aa)a*b)*"
 	long = parse(long)
-	long = reversed(long.fsm())
-	long = reversed(long.lego())
+	long = reversed(long.to_fsm())
+	long = reversed(from_fsm(long))
 	assert str(long) == "[ab]*a[ab]"
 	short = "[ab]*a?b*|[ab]*b?a*"
 	assert str(parse(".*") & parse(short)) == "[ab]*"
 
 def test_bad_reduction_bug():
 	# DEFECT: "0{2}|1{2}" was erroneously reduced() to "[01]{2}"
-	bad = parse("0{2}|1{2}").fsm(set(["0", "1", anything_else]))
+	bad = parse("0{2}|1{2}").to_fsm(set(["0", "1", fsm.anything_else]))
 	assert bad.accepts("00")
 	assert bad.accepts("11")
 	assert not bad.accepts("01")
@@ -2161,15 +2161,15 @@ def test_bad_reduction_bug():
 
 def test_alphabet():
 	# lego.alphabet() should include `fsm.anything_else`
-	assert parse("").alphabet() == set([anything_else])
+	assert parse("").alphabet() == set([fsm.anything_else])
 
 def test_fsm():
-	# You should be able to fsm() a single lego piece without supplying a specific
+	# You should be able to to_fsm() a single lego piece without supplying a specific
 	# alphabet. That should be determinable from context.
-	assert str(parse("a.b").fsm().lego()) == "a.b" # not "a[ab]b"
+	assert str(from_fsm(parse("a.b").to_fsm())) == "a.b" # not "a[ab]b"
 
 	# A suspiciously familiar example
-	bad = parse("0{2}|1{2}").fsm()
+	bad = parse("0{2}|1{2}").to_fsm()
 	assert bad.accepts("00")
 	assert bad.accepts("11")
 	assert not bad.accepts("01")
@@ -2178,7 +2178,7 @@ def test_fsm():
 def test_everythingbut():
 	# Regexes are usually gibberish but we make a few claims
 	a = parse("a")
-	notA = a.everythingbut().fsm()
+	notA = a.everythingbut().to_fsm()
 	assert notA.accepts("")
 	assert not notA.accepts("a")
 	assert notA.accepts("aa")
@@ -2216,9 +2216,9 @@ def test_even_star_bug():
 
 def test_wildcards_in_charclasses():
 	# Allow "\w", "\d" and "\s" in charclasses
-	assert parse("[\w~]*").fsm().accepts("a0~")
-	assert parse("[\da]*").fsm().accepts("0129a")
-	assert parse("[\s]+").fsm().accepts(" \t \t ")
+	assert parse("[\w~]*").to_fsm().accepts("a0~")
+	assert parse("[\da]*").to_fsm().accepts("0129a")
+	assert parse("[\s]+").to_fsm().accepts(" \t \t ")
 
 def test_charclass_gen():
 	gen = charclass("xyz").strings()
@@ -2434,3 +2434,138 @@ def test_main_bug():
 def test_equivalence():
 	assert parse("aa*").equivalent(parse("a*a"))
 	assert parse("([ab]*a|[bc]*c)?b*").equivalent(parse("b*(a[ab]*|c[bc]*)?"))
+
+# Tests imported from `fsm` when its dependence on `lego` was severed
+
+def test_abstar():
+	# Buggggs.
+	abstar = fsm.fsm(
+		alphabet = set(['a', fsm.anything_else, 'b']),
+		states   = set([0, 1]),
+		initial  = 0,
+		finals   = set([0]),
+		map      = {
+			0: {'a': 0, fsm.anything_else: 1, 'b': 0},
+			1: {'a': 1, fsm.anything_else: 1, 'b': 1}
+		}
+	)
+	assert str(from_fsm(abstar)) == "[ab]*"
+
+def test_adotb():
+	adotb = fsm.fsm(
+		alphabet = set(['a', fsm.anything_else, 'b']),
+		states   = set([0, 1, 2, 3, 4]),
+		initial  = 0,
+		finals   = set([4]),
+		map      = {
+			0: {'a': 2, fsm.anything_else: 1, 'b': 1},
+			1: {'a': 1, fsm.anything_else: 1, 'b': 1},
+			2: {'a': 3, fsm.anything_else: 3, 'b': 3},
+			3: {'a': 1, fsm.anything_else: 1, 'b': 4},
+			4: {'a': 1, fsm.anything_else: 1, 'b': 1}
+		}
+	)
+	assert str(from_fsm(adotb)) == "a.b"
+
+def test_lego_recursion_error():
+	# Catch a recursion error
+	assert str(from_fsm(fsm.fsm(
+		alphabet = set(["0", "1"]),
+		states   = set([0, 1, 2, 3]),
+		initial  = 3,
+		finals   = set([1]),
+		map      = {
+			0: {"0": 1, "1": 1},
+			1: {"0": 2, "1": 2},
+			2: {"0": 2, "1": 2},
+			3: {"0": 0, "1": 2},
+		}
+	))) == "0[01]"
+
+def test_even_star_bug():
+	# Bug fix. This is a(a{2})* (i.e. accepts an odd number of "a" chars in a
+	# row), but when from_fsm() is called, the result is "a+". Turned out to be
+	# a fault in the lego.multiplier.__mul__() routine
+	elesscomplex = fsm.fsm(
+		alphabet = set(["a"]),
+		states = set([0, 1]),
+		initial = 0,
+		finals = set([1]),
+		map = {
+			0 : {"a" : 1},
+			1 : {"a" : 0},
+		},
+	)
+	assert not elesscomplex.accepts("")
+	assert elesscomplex.accepts("a")
+	assert not elesscomplex.accepts("aa")
+	assert elesscomplex.accepts("aaa")
+	elesscomplex = from_fsm(elesscomplex)
+	assert str(elesscomplex) in set(["a(aa)*", "(aa)*a"])
+	elesscomplex = elesscomplex.to_fsm()
+	assert not elesscomplex.accepts("")
+	assert elesscomplex.accepts("a")
+	assert not elesscomplex.accepts("aa")
+	assert elesscomplex.accepts("aaa")
+	gen = elesscomplex.strings()
+	assert next(gen) == ["a"]
+	assert next(gen) == ["a", "a", "a"]
+	assert next(gen) == ["a", "a", "a", "a", "a"]
+	assert next(gen) == ["a", "a", "a", "a", "a", "a", "a"]
+
+def test_binary_3():
+	# Binary numbers divisible by 3.
+	# Disallows the empty string
+	# Allows "0" on its own, but not leading zeroes.
+	div3 = from_fsm(fsm.fsm(
+		alphabet = set(["0", "1"]),
+		states = set(["initial", "zero", 0, 1, 2, None]),
+		initial = "initial",
+		finals = set(["zero", 0]),
+		map = {
+			"initial" : {"0" : "zero", "1" : 1   },
+			"zero"    : {"0" : None  , "1" : None},
+			0         : {"0" : 0     , "1" : 1   },
+			1         : {"0" : 2     , "1" : 0   },
+			2         : {"0" : 1     , "1" : 2   },
+			None      : {"0" : None  , "1" : None},
+		},
+	))
+	assert str(div3) == "0|1(01*0|10*1)*10*"
+	gen = div3.strings()
+	assert next(gen) == "0"
+	assert next(gen) == "11"
+	assert next(gen) == "110"
+	assert next(gen) == "1001"
+	assert next(gen) == "1100"
+
+def test_base_N():
+	# Machine accepts only numbers in selected base (e.g. 2, 10) that are
+	# divisible by N (e.g. 3, 7).
+	# "0" alone is acceptable, but leading zeroes (e.g. "00", "07") are not
+	base = 2
+	N = 3
+	assert base <= 10
+	divN = from_fsm(fsm.fsm(
+		alphabet = set(str(i) for i in range(base)),
+		states = set(range(N)) | set(["initial", "zero", None]),
+		initial = "initial",
+		finals = set(["zero", 0]),
+		map = dict(
+			[
+				("initial", dict([(str(j), j              % N) for j in range(1, base)] + [("0", "zero")])),
+				("zero"   , dict([(str(j), None              ) for j in range(   base)]                  )),
+				(None     , dict([(str(j), None              ) for j in range(   base)]                  )),
+			] + [
+				(i        , dict([(str(j), (i * base + j) % N) for j in range(   base)]                  ))
+				for i in range(N)
+			]
+		),
+	))
+	gen = divN.strings()
+	a = next(gen)
+	assert a == "0"
+	for i in range(7):
+		b = next(gen)
+		assert int(a, base) + N == int(b, base)
+		a = b

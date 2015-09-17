@@ -6,36 +6,6 @@ if __name__ == "__main__":
 import pytest
 from greenery.fsm import fsm, null, epsilon, anything_else
 
-def test_abstar():
-	# Buggggs.
-	abstar = fsm(
-		alphabet = set(['a', anything_else, 'b']),
-		states   = set([0, 1]),
-		initial  = 0,
-		finals   = set([0]),
-		map      = {
-			0: {'a': 0, anything_else: 1, 'b': 0},
-			1: {'a': 1, anything_else: 1, 'b': 1}
-		}
-	)
-	assert str(abstar.lego()) == "[ab]*"
-
-def test_adotb():
-	adotb = fsm(
-		alphabet = set(['a', anything_else, 'b']),
-		states   = set([0, 1, 2, 3, 4]),
-		initial  = 0,
-		finals   = set([4]),
-		map      = {
-			0: {'a': 2, anything_else: 1, 'b': 1},
-			1: {'a': 1, anything_else: 1, 'b': 1},
-			2: {'a': 3, anything_else: 3, 'b': 3},
-			3: {'a': 1, anything_else: 1, 'b': 4},
-			4: {'a': 1, anything_else: 1, 'b': 1}
-		}
-	)
-	assert str(adotb.lego()) == "a.b"
-
 def test_addbug():
 	# Odd bug with fsm.__add__(), exposed by "[bc]*c"
 	int5A = fsm(
@@ -66,21 +36,6 @@ def test_addbug():
 	int5C = int5A + int5B
 	assert int5C.accepts("c")
 	# assert int5C.initial == 0
-
-def test_lego_recursion_error():
-	# Catch a recursion error
-	assert str(fsm(
-		alphabet = set(["0", "1"]),
-		states   = set([0, 1, 2, 3]),
-		initial  = 3,
-		finals   = set([1]),
-		map      = {
-			0: {"0": 1, "1": 1},
-			1: {"0": 2, "1": 2},
-			2: {"0": 2, "1": 2},
-			3: {"0": 0, "1": 2},
-		}
-	).lego()) == "0[01]"
 
 def test_builtins():
 	assert not null("a").accepts("a")
@@ -331,37 +286,6 @@ def test_reverse_epsilon():
 	# epsilon reversed is epsilon
 	assert reversed(epsilon("a")).accepts("")
 
-def test_even_star_bug():
-	# Bug fix. This is a(a{2})* (i.e. accepts an odd number of "a" chars in a
-	# row), but when .lego() is called, the result is "a+". Turned out to be
-	# a fault in the lego.multiplier.__mul__() routine
-	elesscomplex = fsm(
-		alphabet = set(["a"]),
-		states = set([0, 1]),
-		initial = 0,
-		finals = set([1]),
-		map = {
-			0 : {"a" : 1},
-			1 : {"a" : 0},
-		},
-	)
-	assert not elesscomplex.accepts("")
-	assert elesscomplex.accepts("a")
-	assert not elesscomplex.accepts("aa")
-	assert elesscomplex.accepts("aaa")
-	elesscomplex = elesscomplex.lego()
-	assert str(elesscomplex) in set(["a(aa)*", "(aa)*a"])
-	elesscomplex = elesscomplex.fsm()
-	assert not elesscomplex.accepts("")
-	assert elesscomplex.accepts("a")
-	assert not elesscomplex.accepts("aa")
-	assert elesscomplex.accepts("aaa")
-	gen = elesscomplex.strings()
-	assert next(gen) == ["a"]
-	assert next(gen) == ["a", "a", "a"]
-	assert next(gen) == ["a", "a", "a", "a", "a"]
-	assert next(gen) == ["a", "a", "a", "a", "a", "a", "a"]
-
 def test_binary_3():
 	# Binary numbers divisible by 3.
 	# Disallows the empty string
@@ -405,45 +329,6 @@ def test_binary_3():
 	assert not div3.accepts("0111")
 	assert not div3.accepts("1000")
 	assert div3.accepts("1001")
-	div3 = div3.lego()
-	assert str(div3) == "0|1(01*0|10*1)*10*"
-	gen = div3.strings()
-	assert next(gen) == "0"
-	assert next(gen) == "11"
-	assert next(gen) == "110"
-	assert next(gen) == "1001"
-	assert next(gen) == "1100"
-
-def test_base_N():
-	# Machine accepts only numbers in selected base (e.g. 2, 10) that are
-	# divisible by N (e.g. 3, 7).
-	# "0" alone is acceptable, but leading zeroes (e.g. "00", "07") are not
-	base = 2
-	N = 3
-	assert base <= 10
-	divN = fsm(
-		alphabet = set(str(i) for i in range(base)),
-		states = set(range(N)) | set(["initial", "zero", None]),
-		initial = "initial",
-		finals = set(["zero", 0]),
-		map = dict(
-			[
-				("initial", dict([(str(j), j              % N) for j in range(1, base)] + [("0", "zero")])),
-				("zero"   , dict([(str(j), None              ) for j in range(   base)]                  )),
-				(None     , dict([(str(j), None              ) for j in range(   base)]                  )),
-			] + [
-				(i        , dict([(str(j), (i * base + j) % N) for j in range(   base)]                  ))
-				for i in range(N)
-			]
-		),
-	)
-	gen = divN.lego().strings()
-	a = next(gen)
-	assert a == "0"
-	for i in range(7):
-		b = next(gen)
-		assert int(a, base) + N == int(b, base)
-		a = b
 
 def test_invalid_fsms():
 	# initial state 1 is not a state

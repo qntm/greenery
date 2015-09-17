@@ -24,7 +24,7 @@
 	will), and for concatenating or alternating between arbitrary "pieces of
 	lego", using overloaded operators.
 
-	If the FSM module is available, call lego.fsm() on any lego piece to return
+	If the FSM module is available, call lego.to_fsm() on any lego piece to return
 	a finite state machine capable of accepting strings described by that piece.
 
 	Most important are the reduce() methods present in charclass, mult, conc and
@@ -32,9 +32,7 @@
 	pattern, these procedures can drastically simplify a regex structure for
 	readability. They're also pretty extensible.
 '''
-
-# http://qntm.org/lego
-# http://qntm.org/greenery
+from greenery import fsm
 
 class nomatch(Exception):
 	'''Thrown when parsing fails. Almost always caught and almost never fatal'''
@@ -56,6 +54,90 @@ def parse(string):
 	'''
 	return pattern.parse(string)
 
+def from_fsm(f):
+	'''
+		Turn the supplied finite state machine into a `lego` object. This is
+		accomplished using the Brzozowski algebraic method.
+	'''
+
+	# We need a new state not already used; guess first beyond current len
+	outside = len(f.states)
+	while outside in f.states:
+		outside += 1
+
+	# The set of strings that would be accepted by this FSM if you started
+	# at state i is represented by the regex R_i.
+	# If state i has a sole transition "a" to state j, then we know R_i = a R_j.
+	# If state i is final, then the empty string is also accepted by this regex.
+	# And so on...
+
+	# From this we can build a set of simultaneous equations in len(f.states)
+	# variables. This system is easily solved for all variables, but we only
+	# need one: R_a, where a is the starting state.
+
+	# The first thing we need to do is organise the states into order of depth,
+	# so that when we perform our back-substitutions, we can start with the
+	# last (deepest) state and therefore finish with R_a.
+	states = [f.initial]
+	i = 0
+	while i < len(states):
+		current = states[i]
+		for symbol in sorted(f.alphabet, key=str):
+			next = f.map[current][symbol]
+			if next not in states:
+				states.append(next)
+		i += 1
+
+	# Our system of equations is represented like so:
+	brz = {}
+	for a in f.states:
+		brz[a] = {}
+		for b in f.states | set([outside]):
+			brz[a][b] = nothing
+
+	# Populate it with some initial data.
+	for a in f.map:
+		for symbol in f.map[a]:
+			b = f.map[a][symbol]
+			if symbol == fsm.anything_else:
+				brz[a][b] |= ~charclass(f.alphabet - set([fsm.anything_else]))
+			else:
+				brz[a][b] |= charclass(set([symbol]))
+		if a in f.finals:
+			brz[a][outside] |= emptystring
+
+	# Now perform our back-substitution
+	for i in reversed(range(len(states))):
+		a = states[i]
+
+		# Before the equation for R_a can be substituted into the other
+		# equations, we need to resolve the self-transition (if any).
+		# e.g.    R_a = 0 R_a |   1 R_b |   2 R_c
+		# becomes R_a =         0*1 R_b | 0*2 R_c
+		loop = brz[a][a] * star # i.e. "0*"
+		del brz[a][a]
+
+		for right in brz[a]:
+			brz[a][right] = loop + brz[a][right]
+
+		# Note: even if we're down to our final equation, the above step still
+		# needs to be performed before anything is returned.
+
+		# Now we can substitute this equation into all of the previous ones.
+		for j in range(i):
+			b = states[j]
+
+			# e.g. substituting R_a =  0*1 R_b |      0*2 R_c
+			# into              R_b =    3 R_a |        4 R_c | 5 R_d
+			# yields            R_b = 30*1 R_b | (30*2|4) R_c | 5 R_d
+			univ = brz[b][a] # i.e. "3"
+			del brz[b][a]
+
+			for right in brz[a]:
+				brz[b][right] |= univ + brz[a][right]
+
+	return brz[f.initial][outside].reduce()
+
 def static(string, i, static):
 	j = i+len(static)
 	if string[i:j] == static:
@@ -76,7 +158,7 @@ class lego:
 		'''
 		raise Exception("This object is immutable.")
 
-	def fsm(self, alphabet):
+	def to_fsm(self, alphabet):
 		'''
 			Return the present lego piece in the form of a finite state machine,
 			as imported from the fsm module.
@@ -163,7 +245,7 @@ class lego:
 			Alternate between any two lego pieces, regardless of differing classes.
 			Again, reduce() is called afterwards, usually with excellent results.
 			Call using "a = b | c".
-			This method MUST NOT call the fsm() method, because this method is used
+			This method MUST NOT call the to_fsm() method, because this method is used
 			in turn when converting an FSM back to a regex.
 		'''
 		raise Exception("Not implemented")
@@ -174,7 +256,7 @@ class lego:
 			that both self and other can match. Fairly elementary results relating
 			to regular languages and finite state machines show that this is
 			possible, but implementation is a BEAST in many cases. Here, we convert
-			both lego pieces to FSMs (see fsm(), above) for the intersection, then
+			both lego pieces to FSMs (see to_fsm(), above) for the intersection, then
 			back to lego afterwards.
 			Call using "a = b & c"
 		'''
@@ -186,7 +268,7 @@ class lego:
 			that in the general case this is actually quite an intensive calculation,
 			but far from unsolvable, as we demonstrate here:
 		'''
-		return self.fsm().equivalent(other.fsm())
+		return self.to_fsm().equivalent(other.to_fsm())
 
 	def alphabet(self):
 		'''
@@ -207,7 +289,7 @@ class lego:
 			utter garbage when actually printed), but becomes trivial to code
 			thanks to FSM routines.
 		'''
-		return self.fsm().everythingbut().lego()
+		return from_fsm(self.to_fsm().everythingbut())
 
 	def __reversed__(self):
 		'''
@@ -238,16 +320,14 @@ class lego:
 		# productive to iterate over all of these giving every single example.
 		# You must supply your own "otherchar" to stand in for all of these
 		# possibilities.
-		from greenery.fsm import anything_else
-
-		for string in self.fsm().strings():
+		for string in self.to_fsm().strings():
 
 			# Have to represent `fsm.anything_else` somehow.
-			if anything_else in string:
+			if fsm.anything_else in string:
 				if otherchar == None:
 					raise Exception("Please choose an 'otherchar'")
 				string = [
-					otherchar if char == anything_else else char
+					otherchar if char == fsm.anything_else else char
 					for char in string
 				]
 
@@ -265,11 +345,10 @@ class charclass(lego):
 	'''
 
 	def __init__(self, chars=set(), negateMe=False):
-		from greenery.fsm import anything_else
 		chars = frozenset(chars)
 		# chars should consist only of chars
-		if anything_else in chars:
-			raise Exception("Can't put " + repr(anything_else) + " in a charclass")
+		if fsm.anything_else in chars:
+			raise Exception("Can't put " + repr(fsm.anything_else) + " in a charclass")
 		self.__dict__["chars"]   = chars
 		self.__dict__["negated"] = negateMe
 
@@ -396,9 +475,7 @@ class charclass(lego):
 
 		return output
 
-	def fsm(self, alphabet=None):
-		from greenery.fsm import fsm
-
+	def to_fsm(self, alphabet=None):
 		if alphabet is None:
 			alphabet = self.alphabet()
 
@@ -420,7 +497,7 @@ class charclass(lego):
 				2: dict([(symbol, 2) for symbol in alphabet]),
 			}
 
-		return fsm(
+		return fsm.fsm(
 			alphabet = alphabet,
 			states   = set([0, 1, 2]),
 			initial  = 0,
@@ -447,8 +524,7 @@ class charclass(lego):
 		return mult(self, one) + other
 
 	def alphabet(self):
-		from greenery.fsm import anything_else
-		return set([anything_else]) | self.chars
+		return set([fsm.anything_else]) | self.chars
 
 	def empty(self):
 		return len(self.chars) == 0 and self.negated == False
@@ -1024,8 +1100,7 @@ class mult(lego):
 		return conc(self) & other
 
 	def alphabet(self):
-		from greenery.fsm import anything_else
-		return set([anything_else]) | self.multiplicand.alphabet()
+		return set([fsm.anything_else]) | self.multiplicand.alphabet()
 
 	def empty(self):
 		return self.multiplicand.empty() and self.multiplier.min > bound(0)
@@ -1117,16 +1192,14 @@ class mult(lego):
 
 		return output + suffix
 
-	def fsm(self, alphabet=None):
-		from greenery.fsm import epsilon
-
+	def to_fsm(self, alphabet=None):
 		if alphabet is None:
 			alphabet = self.alphabet()
 
 		# worked example: (min, max) = (5, 7) or (5, inf)
 		# (mandatory, optional) = (5, 2) or (5, inf)
 
-		unit = self.multiplicand.fsm(alphabet)
+		unit = self.multiplicand.to_fsm(alphabet)
 		# accepts e.g. "ab"
 
 		# accepts "ababababab"
@@ -1138,7 +1211,7 @@ class mult(lego):
 			# accepts "(ab)*"
 
 		else:
-			optional = epsilon(alphabet) | unit
+			optional = fsm.epsilon(alphabet) | unit
 			# accepts "(ab)?"
 
 			optional *= self.multiplier.optional.v
@@ -1292,21 +1365,18 @@ class conc(lego):
 
 		return self
 
-	def fsm(self, alphabet=None):
-		from greenery.fsm import epsilon
-
+	def to_fsm(self, alphabet=None):
 		if alphabet is None:
 			alphabet = self.alphabet()
 
 		# start with a component accepting only the empty string
-		fsm1 = epsilon(alphabet)
+		fsm1 = fsm.epsilon(alphabet)
 		for m in self.mults:
-			fsm1 += m.fsm(alphabet)
+			fsm1 += m.to_fsm(alphabet)
 		return fsm1
 
 	def alphabet(self):
-		from greenery.fsm import anything_else
-		return set([anything_else]).union(*[m.alphabet() for m in self.mults])
+		return set([fsm.anything_else]).union(*[m.alphabet() for m in self.mults])
 
 	def empty(self):
 		for m in self.mults:
@@ -1456,8 +1526,7 @@ class pattern(lego):
 		return mult(self, one) + other
 
 	def alphabet(self):
-		from greenery.fsm import anything_else
-		return set([anything_else]).union(*[c.alphabet() for c in self.concs])
+		return set([fsm.anything_else]).union(*[c.alphabet() for c in self.concs])
 
 	def empty(self):
 		for c in self.concs:
@@ -1470,8 +1539,8 @@ class pattern(lego):
 		alphabet = self.alphabet() | other.alphabet()
 
 		# Which means that we can build finite state machines sharing that alphabet
-		combined = self.fsm(alphabet) & other.fsm(alphabet)
-		return combined.lego()
+		combined = self.to_fsm(alphabet) & other.to_fsm(alphabet)
+		return from_fsm(combined)
 
 	def __or__(self, other):
 		# other must be a pattern too
@@ -1668,15 +1737,13 @@ class pattern(lego):
 			self.concs
 		)
 
-	def fsm(self, alphabet=None):
-		from greenery.fsm import null
-
+	def to_fsm(self, alphabet=None):
 		if alphabet is None:
 			alphabet = self.alphabet()
 
-		fsm1 = null(alphabet)
+		fsm1 = fsm.null(alphabet)
 		for c in self.concs:
-			fsm1 |= c.fsm(alphabet)
+			fsm1 |= c.to_fsm(alphabet)
 		return fsm1
 
 	def __reversed__(self):
