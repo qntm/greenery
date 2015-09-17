@@ -59,6 +59,14 @@ def from_fsm(f):
 		Turn the supplied finite state machine into a `lego` object. This is
 		accomplished using the Brzozowski algebraic method.
 	'''
+	# Make sure the supplied alphabet is kosher. It must contain only single-
+	# character strings or `fsm.anything_else`.
+	for symbol in f.alphabet:
+		if symbol == fsm.anything_else:
+			continue
+		if isinstance(symbol, str) and len(symbol) == 1:
+			continue
+		raise Exception("Symbol " + repr(symbol) + " cannot be used in a regular expression")
 
 	# We need a new state not already used; guess first beyond current len
 	outside = len(f.states)
@@ -82,7 +90,7 @@ def from_fsm(f):
 	i = 0
 	while i < len(states):
 		current = states[i]
-		for symbol in sorted(f.alphabet, key=str):
+		for symbol in sorted(f.alphabet, key=lambda symbol: (symbol is fsm.anything_else, symbol)):
 			next = f.map[current][symbol]
 			if next not in states:
 				states.append(next)

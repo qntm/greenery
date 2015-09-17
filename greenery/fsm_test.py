@@ -341,6 +341,8 @@ def test_invalid_fsms():
 			map = {}
 		)
 		assert False
+	except AssertionError:
+		assert False
 	except Exception:
 		pass
 
@@ -354,6 +356,8 @@ def test_invalid_fsms():
 			map = {}
 		)
 		assert False
+	except AssertionError:
+		assert False
 	except Exception:
 		pass
 
@@ -366,6 +370,8 @@ def test_invalid_fsms():
 			finals = set(),
 			map = {}
 		)
+		assert False
+	except AssertionError:
 		assert False
 	except Exception:
 		pass
@@ -382,6 +388,8 @@ def test_invalid_fsms():
 			}
 		)
 		assert False
+	except AssertionError:
+		assert False
 	except Exception:
 		pass
 
@@ -397,6 +405,8 @@ def test_invalid_fsms():
 			}
 		)
 		assert False
+	except AssertionError:
+		assert False
 	except Exception:
 		pass
 
@@ -407,11 +417,15 @@ def test_alphabet_disagreements():
 	try:
 		c = a + b
 		assert False
+	except AssertionError:
+		assert False
 	except Exception:
 		pass
 
 	try:
 		c = a | b
+		assert False
+	except AssertionError:
 		assert False
 	except Exception:
 		pass
@@ -419,12 +433,16 @@ def test_alphabet_disagreements():
 	try:
 		c = a & b
 		assert False
+	except AssertionError:
+		assert False
 	except Exception:
 		pass
 
 def test_bad_multiplier(a):
 	try:
 		x = a * -1
+		assert False
+	except AssertionError:
 		assert False
 	except Exception:
 		pass

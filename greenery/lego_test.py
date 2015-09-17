@@ -175,7 +175,9 @@ def test_conc_subtraction():
 			)
 		)
 		assert False
-	except:
+	except AssertionError:
+		assert False
+	except Exception:
 		pass
 
 	# A - () = A
@@ -2415,7 +2417,9 @@ def test_multiplier_union():
 	try:
 		zero | multiplier(bound(7), bound(8))
 		assert False
-	except:
+	except AssertionError:
+		assert False
+	except Exception:
 		pass
 
 def test_main_bug():
@@ -2569,3 +2573,25 @@ def test_base_N():
 		b = next(gen)
 		assert int(a, base) + N == int(b, base)
 		a = b
+
+def test_bad_alphabet():
+	# You can use anything you like in your FSM alphabet, but if you try to
+	# convert it to a `lego` object then the only acceptable symbols are single
+	# characters or `fsm.anything_else`.
+	for bad_symbol in [None, (), 0, ("a",), "", "aa", "ab", True]:
+		f = fsm.fsm(
+			alphabet = {bad_symbol},
+			states = {0},
+			initial = 0,
+			finals = set(),
+			map = {
+				0 : {bad_symbol : 0}
+			},
+		)
+		try:
+			from_fsm(f)
+			assert False
+		except AssertionError as e:
+			raise Exception("Accepted bad symbol: " + repr(bad_symbol))
+		except Exception as e:
+			pass
