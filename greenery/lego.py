@@ -195,7 +195,7 @@ class lego:
 			a function, self.alphabet(), but in the vast majority of cases
 			this will never be queried so it's a waste of computation to
 			calculate it every time a lego piece is instantiated.
-			By convention, otherchars is always included in this result.
+			By convention, fsm.anything_else is always included in this result.
 		'''
 		raise Exception("Not implemented")
 
@@ -238,16 +238,16 @@ class lego:
 		# productive to iterate over all of these giving every single example.
 		# You must supply your own "otherchar" to stand in for all of these
 		# possibilities.
+		from greenery.fsm import anything_else
 
 		for string in self.fsm().strings():
 
-			# Have to represent "otherchars" somehow.
-			# TODO: converting this over should be fsm()'s responsibility.
-			if otherchars in string:
+			# Have to represent `fsm.anything_else` somehow.
+			if anything_else in string:
 				if otherchar == None:
 					raise Exception("Please choose an 'otherchar'")
 				string = [
-					otherchar if char == otherchars else char
+					otherchar if char == anything_else else char
 					for char in string
 				]
 
@@ -265,10 +265,11 @@ class charclass(lego):
 	'''
 
 	def __init__(self, chars=set(), negateMe=False):
+		from greenery.fsm import anything_else
 		chars = frozenset(chars)
 		# chars should consist only of chars
-		if otherchars in chars:
-			raise Exception("Can't put " + repr(otherchars) + " in a charclass")
+		if anything_else in chars:
+			raise Exception("Can't put " + repr(anything_else) + " in a charclass")
 		self.__dict__["chars"]   = chars
 		self.__dict__["negated"] = negateMe
 
@@ -446,7 +447,8 @@ class charclass(lego):
 		return mult(self, one) + other
 
 	def alphabet(self):
-		return set([otherchars]) | self.chars
+		from greenery.fsm import anything_else
+		return set([anything_else]) | self.chars
 
 	def empty(self):
 		return len(self.chars) == 0 and self.negated == False
@@ -675,7 +677,7 @@ class bound:
 			return False
 
 	def __ne__(self, other):
-		return not self.__eq__(other)
+		return not self == other
 
 	def __hash__(self):
 		return hash(self.v)
@@ -1022,7 +1024,8 @@ class mult(lego):
 		return conc(self) & other
 
 	def alphabet(self):
-		return set([otherchars]) | self.multiplicand.alphabet()
+		from greenery.fsm import anything_else
+		return set([anything_else]) | self.multiplicand.alphabet()
 
 	def empty(self):
 		return self.multiplicand.empty() and self.multiplier.min > bound(0)
@@ -1302,7 +1305,8 @@ class conc(lego):
 		return fsm1
 
 	def alphabet(self):
-		return set([otherchars]).union(*[m.alphabet() for m in self.mults])
+		from greenery.fsm import anything_else
+		return set([anything_else]).union(*[m.alphabet() for m in self.mults])
 
 	def empty(self):
 		for m in self.mults:
@@ -1452,7 +1456,8 @@ class pattern(lego):
 		return mult(self, one) + other
 
 	def alphabet(self):
-		return set([otherchars]).union(*[c.alphabet() for c in self.concs])
+		from greenery.fsm import anything_else
+		return set([anything_else]).union(*[c.alphabet() for c in self.concs])
 
 	def empty(self):
 		for c in self.concs:
@@ -1678,13 +1683,6 @@ class pattern(lego):
 		return pattern(*(reversed(c) for c in self.concs))
 
 # Special and useful values go here.
-
-# We need to add an extra character in the alphabet which can stand for
-# "everything else". For example, if the regex is "abc.", then at the moment
-# our alphabet is {"a", "b", "c"}. But "." could match anything else not yet
-# specified. This extra letter stands for that ("[^abc]" in this case).
-# TODO: this should be in `fsm`
-otherchars = None
 
 # Standard character classes
 w = charclass("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz")

@@ -3,7 +3,8 @@
 if __name__ == "__main__":
 	raise Exception("Test files can't be run directly. Use `python -m pytest greenery`")
 
-from greenery.lego import conc, mult, charclass, one, emptystring, star, plus, otherchars, nothing, pattern, qm, d, multiplier, bound, w, s, W, D, S, dot, nomatch, inf, zero, parse
+from greenery.lego import conc, mult, charclass, one, emptystring, star, plus, nothing, pattern, qm, d, multiplier, bound, w, s, W, D, S, dot, nomatch, inf, zero, parse
+from greenery.fsm import anything_else
 
 def test_new_reduce():
 	# The @reduce_after decorator has been removed from many methods since it
@@ -186,9 +187,9 @@ def test_conc_subtraction():
 
 def test_odd_bug():
 	# Odd bug with ([bc]*c)?[ab]*
-	int5A = mult(charclass("bc"), star).fsm(set(["a", "b", "c", otherchars]))
+	int5A = mult(charclass("bc"), star).fsm(set(["a", "b", "c", anything_else]))
 	assert int5A.accepts("")
-	int5B = mult(charclass("c"), one).fsm(set(["a", "b", "c", otherchars]))
+	int5B = mult(charclass("c"), one).fsm(set(["a", "b", "c", anything_else]))
 	assert int5B.accepts("c")
 	int5C = int5A + int5B
 	assert (int5A + int5B).accepts("c")
@@ -2152,15 +2153,15 @@ def test_silly_reduction():
 
 def test_bad_reduction_bug():
 	# DEFECT: "0{2}|1{2}" was erroneously reduced() to "[01]{2}"
-	bad = parse("0{2}|1{2}").fsm(set(["0", "1", otherchars]))
+	bad = parse("0{2}|1{2}").fsm(set(["0", "1", anything_else]))
 	assert bad.accepts("00")
 	assert bad.accepts("11")
 	assert not bad.accepts("01")
 	assert str(parse("0|[1-9]|ab").reduce()) == "\d|ab"
 
 def test_alphabet():
-	# lego.alphabet() should include "otherchars"
-	assert parse("").alphabet() == set([otherchars])
+	# lego.alphabet() should include `fsm.anything_else`
+	assert parse("").alphabet() == set([anything_else])
 
 def test_fsm():
 	# You should be able to fsm() a single lego piece without supplying a specific

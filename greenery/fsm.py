@@ -1,5 +1,20 @@
 # -*- coding: utf-8 -*-
 
+class anything_else:
+	'''
+		This is a surrogate symbol which you can use in your finite state machines
+		to represent "any symbol not in the official alphabet". For example, if your
+		state machine's alphabet is {"a", "b", "c", "d", fsm.anything_else}, then
+		you can pass "e" in as a symbol and it will be converted to
+		fsm.anything_else, then follow the appropriate transition.
+		Represented as a class since this is hashable and cannot be mistaken for any
+		other legitimate possible symbol.
+	'''
+	def __str__(self):
+		return "anything_else"
+	def __repr__(self):
+		return "anything_else"
+
 class fsm:
 	'''
 		A Finite State Machine or FSM has an alphabet and a set of states. At any
@@ -43,14 +58,13 @@ class fsm:
 	def accepts(self, input):
 		'''
 			This is actually mainly used for unit testing purposes.
-			If lego.otherchars (i.e. "anything else") is in your alphabet, then any
-			symbol not in your alphabet will be converted to lego.otherchars.
+			If `fsm.anything_else` is in your alphabet, then any symbol not in your
+			alphabet will be converted to `fsm.anything_else`.
 		'''
-		from greenery.lego import otherchars # todo: this is really for FSMs
 		state = self.initial
 		for symbol in input:
-			if otherchars in self.alphabet and not symbol in self.alphabet:
-				symbol = otherchars
+			if anything_else in self.alphabet and not symbol in self.alphabet:
+				symbol = anything_else
 			state = self.map[state][symbol]
 		return state in self.finals
 
@@ -430,7 +444,7 @@ class fsm:
 			expression object, as imported from the lego module. This is accomplished
 			using the Brzozowski algebraic method.
 		'''
-		from greenery.lego import nothing, charclass, emptystring, star, otherchars
+		from greenery.lego import nothing, charclass, emptystring, star
 
 		# We need a new state not already used; guess first beyond current len
 		outside = len(self.states)
@@ -471,8 +485,8 @@ class fsm:
 		for a in self.map:
 			for symbol in self.map[a]:
 				b = self.map[a][symbol]
-				if symbol == otherchars:
-					brz[a][b] |= ~charclass(self.alphabet - set([otherchars]))
+				if symbol == anything_else:
+					brz[a][b] |= ~charclass(self.alphabet - set([anything_else]))
 				else:
 					brz[a][b] |= charclass(set([symbol]))
 			if a in self.finals:

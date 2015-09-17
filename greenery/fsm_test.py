@@ -4,35 +4,34 @@ if __name__ == "__main__":
 	raise Exception("Test files can't be run directly. Use `python -m pytest greenery`")
 
 import pytest
-from greenery.fsm import fsm, null, epsilon
-from greenery.lego import otherchars
+from greenery.fsm import fsm, null, epsilon, anything_else
 
 def test_abstar():
 	# Buggggs.
 	abstar = fsm(
-		alphabet = set(['a', None, 'b']),
+		alphabet = set(['a', anything_else, 'b']),
 		states   = set([0, 1]),
 		initial  = 0,
 		finals   = set([0]),
 		map      = {
-			0: {'a': 0, None: 1, 'b': 0},
-			1: {'a': 1, None: 1, 'b': 1}
+			0: {'a': 0, anything_else: 1, 'b': 0},
+			1: {'a': 1, anything_else: 1, 'b': 1}
 		}
 	)
 	assert str(abstar.lego()) == "[ab]*"
 
 def test_adotb():
 	adotb = fsm(
-		alphabet = set(['a', None, 'b']),
+		alphabet = set(['a', anything_else, 'b']),
 		states   = set([0, 1, 2, 3, 4]),
 		initial  = 0,
 		finals   = set([4]),
 		map      = {
-			0: {'a': 2, None: 1, 'b': 1},
-			1: {'a': 1, None: 1, 'b': 1},
-			2: {'a': 3, None: 3, 'b': 3},
-			3: {'a': 1, None: 1, 'b': 4},
-			4: {'a': 1, None: 1, 'b': 1}
+			0: {'a': 2, anything_else: 1, 'b': 1},
+			1: {'a': 1, anything_else: 1, 'b': 1},
+			2: {'a': 3, anything_else: 3, 'b': 3},
+			3: {'a': 1, anything_else: 1, 'b': 4},
+			4: {'a': 1, anything_else: 1, 'b': 1}
 		}
 	)
 	assert str(adotb.lego()) == "a.b"
@@ -40,26 +39,26 @@ def test_adotb():
 def test_addbug():
 	# Odd bug with fsm.__add__(), exposed by "[bc]*c"
 	int5A = fsm(
-		alphabet = set(["a", "b", "c", otherchars]),
+		alphabet = set(["a", "b", "c", anything_else]),
 		states   = set([0, 1]),
 		initial  = 1,
 		finals   = set([1]),
 		map      = {
-			0: {otherchars: 0, "a": 0, "b": 0, "c": 0},
-			1: {otherchars: 0, "a": 0, "b": 1, "c": 1},
+			0: {anything_else: 0, "a": 0, "b": 0, "c": 0},
+			1: {anything_else: 0, "a": 0, "b": 1, "c": 1},
 		}
 	)
 	assert int5A.accepts("")
 
 	int5B = fsm(
-		alphabet = set(["a", "b", "c", otherchars]),
+		alphabet = set(["a", "b", "c", anything_else]),
 		states   = set([0, 1, 2]),
 		initial  = 1,
 		finals   = set([0]),
 		map      = {
-			0: {otherchars: 2, "a": 2, "b": 2, "c": 2},
-			1: {otherchars: 2, "a": 2, "b": 2, "c": 0},
-			2: {otherchars: 2, "a": 2, "b": 2, "c": 2},
+			0: {anything_else: 2, "a": 2, "b": 2, "c": 2},
+			1: {anything_else: 2, "a": 2, "b": 2, "c": 0},
+			2: {anything_else: 2, "a": 2, "b": 2, "c": 2},
 		}
 	)
 	assert int5B.accepts("c")
@@ -545,14 +544,14 @@ def test_bad_multiplier(a):
 	except Exception:
 		pass
 
-def test_otherchars_acceptance():
+def test_anything_else_acceptance():
 	a = fsm(
-		alphabet = {"a", "b", "c", otherchars},
+		alphabet = {"a", "b", "c", anything_else},
 		states = {1},
 		initial = 1,
 		finals = {1},
 		map = {
-			1 : {"a" : 1, "b" : 1, "c" : 1, otherchars : 1}
+			1 : {"a" : 1, "b" : 1, "c" : 1, anything_else : 1}
 		},
 	)
 	assert a.accepts("d")
