@@ -2609,4 +2609,3 @@ def test_dead_default():
 				3    : {"/" : 4, fsm.anything_else : 2, "*" : 3},
 		}
 	))
-

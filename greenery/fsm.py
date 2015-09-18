@@ -1,19 +1,15 @@
 # -*- coding: utf-8 -*-
 
-class anything_else:
-	'''
-		This is a surrogate symbol which you can use in your finite state machines
-		to represent "any symbol not in the official alphabet". For example, if your
-		state machine's alphabet is {"a", "b", "c", "d", fsm.anything_else}, then
-		you can pass "e" in as a symbol and it will be converted to
-		fsm.anything_else, then follow the appropriate transition.
-		Represented as a class since this is hashable and cannot be mistaken for any
-		other legitimate possible symbol.
-	'''
-	def __str__(self):
-		return "anything_else"
-	def __repr__(self):
-		return "anything_else"
+'''
+	Finite state machine library.
+'''
+
+# This is a surrogate symbol which you can use in your finite state machines
+# to represent "any symbol not in the official alphabet". For example, if your
+# state machine's alphabet is {"a", "b", "c", "d", fsm.anything_else}, then
+# you can pass "e" in as a symbol and it will be converted to
+# fsm.anything_else, then follow the appropriate transition.
+anything_else = object()
 
 def key(symbol):
 	'''Ensure `fsm.anything_else` always sorts last'''
