@@ -189,9 +189,9 @@ def test_conc_subtraction():
 
 def test_odd_bug():
 	# Odd bug with ([bc]*c)?[ab]*
-	int5A = mult(charclass("bc"), star).to_fsm(set(["a", "b", "c", fsm.anything_else]))
+	int5A = mult(charclass("bc"), star).to_fsm({"a", "b", "c", fsm.anything_else})
 	assert int5A.accepts("")
-	int5B = mult(charclass("c"), one).to_fsm(set(["a", "b", "c", fsm.anything_else]))
+	int5B = mult(charclass("c"), one).to_fsm({"a", "b", "c", fsm.anything_else})
 	assert int5B.accepts("c")
 	int5C = int5A + int5B
 	assert (int5A + int5B).accepts("c")
@@ -2132,7 +2132,7 @@ def test_parse_regex_intersection():
 	assert str(parse("\\d{2}") & parse("19.*")) == "19"
 	assert str(parse("\\d{3}") & parse("19.*")) == "19\\d"
 	assert str(parse("abc...") & parse("...def")) == "abcdef"
-	assert str(parse("[bc]*[ab]*") & parse("[ab]*[bc]*")) in set(["([ab]*a|[bc]*c)?b*", "b*(a[ab]*|c[bc]*)?"])
+	assert str(parse("[bc]*[ab]*") & parse("[ab]*[bc]*")) in {"([ab]*a|[bc]*c)?b*", "b*(a[ab]*|c[bc]*)?"}
 	assert str(parse("\\W*") & parse("[a-g0-8$%\\^]+") & parse("[^d]{2,8}")) == "[$%\\^]{2,8}"
 	assert str(parse("\\d{4}-\\d{2}-\\d{2}") & parse("19.*")) == "19\\d\\d-\\d\\d-\\d\\d"
 
@@ -2155,7 +2155,7 @@ def test_silly_reduction():
 
 def test_bad_reduction_bug():
 	# DEFECT: "0{2}|1{2}" was erroneously reduced() to "[01]{2}"
-	bad = parse("0{2}|1{2}").to_fsm(set(["0", "1", fsm.anything_else]))
+	bad = parse("0{2}|1{2}").to_fsm({"0", "1", fsm.anything_else})
 	assert bad.accepts("00")
 	assert bad.accepts("11")
 	assert not bad.accepts("01")
@@ -2163,7 +2163,7 @@ def test_bad_reduction_bug():
 
 def test_alphabet():
 	# lego.alphabet() should include `fsm.anything_else`
-	assert parse("").alphabet() == set([fsm.anything_else])
+	assert parse("").alphabet() == {fsm.anything_else}
 
 def test_fsm():
 	# You should be able to to_fsm() a single lego piece without supplying a specific
@@ -2200,7 +2200,7 @@ def test_epsilon_reduction():
 	assert parse("|(ab)*|def").reduce() == parse("(ab)*|def")
 	assert parse("|(ab)+|def").reduce() == parse("(ab)*|def")
 	assert parse("|.+").reduce() == parse(".*").reduce()
-	assert parse("|a+|b+").reduce() in set([pattern.parse("a+|b*"), pattern.parse("a*|b+")])
+	assert parse("|a+|b+").reduce() in {pattern.parse("a+|b*"), pattern.parse("a*|b+")}
 
 def test_regex_reversal():
 	assert reversed(parse("b")) == parse("b")
@@ -2444,10 +2444,10 @@ def test_equivalence():
 def test_abstar():
 	# Buggggs.
 	abstar = fsm.fsm(
-		alphabet = set(['a', fsm.anything_else, 'b']),
-		states   = set([0, 1]),
+		alphabet = {'a', fsm.anything_else, 'b'},
+		states   = {0, 1},
 		initial  = 0,
-		finals   = set([0]),
+		finals   = {0},
 		map      = {
 			0: {'a': 0, fsm.anything_else: 1, 'b': 0},
 			1: {'a': 1, fsm.anything_else: 1, 'b': 1}
@@ -2457,10 +2457,10 @@ def test_abstar():
 
 def test_adotb():
 	adotb = fsm.fsm(
-		alphabet = set(['a', fsm.anything_else, 'b']),
-		states   = set([0, 1, 2, 3, 4]),
+		alphabet = {'a', fsm.anything_else, 'b'},
+		states   = {0, 1, 2, 3, 4},
 		initial  = 0,
-		finals   = set([4]),
+		finals   = {4},
 		map      = {
 			0: {'a': 2, fsm.anything_else: 1, 'b': 1},
 			1: {'a': 1, fsm.anything_else: 1, 'b': 1},
@@ -2474,10 +2474,10 @@ def test_adotb():
 def test_lego_recursion_error():
 	# Catch a recursion error
 	assert str(from_fsm(fsm.fsm(
-		alphabet = set(["0", "1"]),
-		states   = set([0, 1, 2, 3]),
+		alphabet = {"0", "1"},
+		states   = {0, 1, 2, 3},
 		initial  = 3,
-		finals   = set([1]),
+		finals   = {1},
 		map      = {
 			0: {"0": 1, "1": 1},
 			1: {"0": 2, "1": 2},
@@ -2491,10 +2491,10 @@ def test_even_star_bug():
 	# row), but when from_fsm() is called, the result is "a+". Turned out to be
 	# a fault in the lego.multiplier.__mul__() routine
 	elesscomplex = fsm.fsm(
-		alphabet = set(["a"]),
-		states = set([0, 1]),
+		alphabet = {"a"},
+		states = {0, 1},
 		initial = 0,
-		finals = set([1]),
+		finals = {1},
 		map = {
 			0 : {"a" : 1},
 			1 : {"a" : 0},
@@ -2505,7 +2505,7 @@ def test_even_star_bug():
 	assert not elesscomplex.accepts("aa")
 	assert elesscomplex.accepts("aaa")
 	elesscomplex = from_fsm(elesscomplex)
-	assert str(elesscomplex) in set(["a(aa)*", "(aa)*a"])
+	assert str(elesscomplex) in {"a(aa)*", "(aa)*a"}
 	elesscomplex = elesscomplex.to_fsm()
 	assert not elesscomplex.accepts("")
 	assert elesscomplex.accepts("a")
@@ -2522,10 +2522,10 @@ def test_binary_3():
 	# Disallows the empty string
 	# Allows "0" on its own, but not leading zeroes.
 	div3 = from_fsm(fsm.fsm(
-		alphabet = set(["0", "1"]),
-		states = set(["initial", "zero", 0, 1, 2, None]),
+		alphabet = {"0", "1"},
+		states = {"initial", "zero", 0, 1, 2, None},
 		initial = "initial",
-		finals = set(["zero", 0]),
+		finals = {"zero", 0},
 		map = {
 			"initial" : {"0" : "zero", "1" : 1   },
 			"zero"    : {"0" : None  , "1" : None},
@@ -2552,9 +2552,9 @@ def test_base_N():
 	assert base <= 10
 	divN = from_fsm(fsm.fsm(
 		alphabet = set(str(i) for i in range(base)),
-		states = set(range(N)) | set(["initial", "zero", None]),
+		states = set(range(N)) | {"initial", "zero", None},
 		initial = "initial",
-		finals = set(["zero", 0]),
+		finals = {"zero", 0},
 		map = dict(
 			[
 				("initial", dict([(str(j), j              % N) for j in range(1, base)] + [("0", "zero")])),

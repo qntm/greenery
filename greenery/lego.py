@@ -68,10 +68,8 @@ def from_fsm(f):
 			continue
 		raise Exception("Symbol " + repr(symbol) + " cannot be used in a regular expression")
 
-	# We need a new state not already used; guess first beyond current len
-	outside = len(f.states)
-	while outside in f.states:
-		outside += 1
+	# We need a new state not already used
+	outside = object()
 
 	# The set of strings that would be accepted by this FSM if you started
 	# at state i is represented by the regex R_i.
@@ -101,7 +99,7 @@ def from_fsm(f):
 	brz = {}
 	for a in f.states:
 		brz[a] = {}
-		for b in f.states | set([outside]):
+		for b in f.states | {outside}:
 			brz[a][b] = nothing
 
 	# Populate it with some initial data.
@@ -109,9 +107,9 @@ def from_fsm(f):
 		for symbol in f.map[a]:
 			b = f.map[a][symbol]
 			if symbol == fsm.anything_else:
-				brz[a][b] |= ~charclass(f.alphabet - set([fsm.anything_else]))
+				brz[a][b] |= ~charclass(f.alphabet - {fsm.anything_else})
 			else:
-				brz[a][b] |= charclass(set([symbol]))
+				brz[a][b] |= charclass({symbol})
 		if a in f.finals:
 			brz[a][outside] |= emptystring
 
@@ -508,9 +506,9 @@ class charclass(lego):
 
 		return fsm.fsm(
 			alphabet = alphabet,
-			states   = set([0, 1, 2]),
+			states   = {0, 1, 2},
 			initial  = 0,
-			finals   = set([1]),
+			finals   = {1},
 			map      = map,
 		)
 
@@ -533,7 +531,7 @@ class charclass(lego):
 		return mult(self, one) + other
 
 	def alphabet(self):
-		return set([fsm.anything_else]) | self.chars
+		return {fsm.anything_else} | self.chars
 
 	def empty(self):
 		return len(self.chars) == 0 and self.negated == False
@@ -1109,7 +1107,7 @@ class mult(lego):
 		return conc(self) & other
 
 	def alphabet(self):
-		return set([fsm.anything_else]) | self.multiplicand.alphabet()
+		return {fsm.anything_else} | self.multiplicand.alphabet()
 
 	def empty(self):
 		return self.multiplicand.empty() and self.multiplier.min > bound(0)
@@ -1130,7 +1128,7 @@ class mult(lego):
 			and self.multiplier.canmultiplyby(qm):
 				return mult(
 					pattern(
-						*self.multiplicand.concs.difference(set([emptystring]))
+						*self.multiplicand.concs.difference({emptystring})
 					),
 					self.multiplier * qm,
 				)
@@ -1385,7 +1383,7 @@ class conc(lego):
 		return fsm1
 
 	def alphabet(self):
-		return set([fsm.anything_else]).union(*[m.alphabet() for m in self.mults])
+		return {fsm.anything_else}.union(*[m.alphabet() for m in self.mults])
 
 	def empty(self):
 		for m in self.mults:
@@ -1535,7 +1533,7 @@ class pattern(lego):
 		return mult(self, one) + other
 
 	def alphabet(self):
-		return set([fsm.anything_else]).union(*[c.alphabet() for c in self.concs])
+		return {fsm.anything_else}.union(*[c.alphabet() for c in self.concs])
 
 	def empty(self):
 		for c in self.concs:
@@ -1581,7 +1579,7 @@ class pattern(lego):
 		# If one of our internal concs is empty, remove it
 		for c in self.concs:
 			if c.empty():
-				new = self.concs - set([c])
+				new = self.concs - {c}
 				return pattern(*new)
 
 		# no point alternating among one possibility
@@ -1667,10 +1665,10 @@ class pattern(lego):
 					continue
 				m = c.mults[0]
 				if m.multiplier.min == bound(0):
-					rest = self.concs - set([conc()])
+					rest = self.concs - {conc()}
 					return pattern(*rest)
 				if m.multiplier.min == bound(1):
-					rest = self.concs - set([conc(), c]) | set([m * qm])
+					rest = self.concs - {conc(), c} | {m * qm}
 					return pattern(*rest)
 
 		# If the present pattern's concs all have a common prefix, split

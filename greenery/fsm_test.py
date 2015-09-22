@@ -9,10 +9,10 @@ from greenery.fsm import fsm, null, epsilon, anything_else
 def test_addbug():
 	# Odd bug with fsm.__add__(), exposed by "[bc]*c"
 	int5A = fsm(
-		alphabet = set(["a", "b", "c", anything_else]),
-		states   = set([0, 1]),
+		alphabet = {"a", "b", "c", anything_else},
+		states   = {0, 1},
 		initial  = 1,
-		finals   = set([1]),
+		finals   = {1},
 		map      = {
 			0: {anything_else: 0, "a": 0, "b": 0, "c": 0},
 			1: {anything_else: 0, "a": 0, "b": 1, "c": 1},
@@ -21,10 +21,10 @@ def test_addbug():
 	assert int5A.accepts("")
 
 	int5B = fsm(
-		alphabet = set(["a", "b", "c", anything_else]),
-		states   = set([0, 1, 2]),
+		alphabet = {"a", "b", "c", anything_else},
+		states   = {0, 1, 2},
 		initial  = 1,
-		finals   = set([0]),
+		finals   = {0},
 		map      = {
 			0: {anything_else: 2, "a": 2, "b": 2, "c": 2},
 			1: {anything_else: 2, "a": 2, "b": 2, "c": 0},
@@ -45,10 +45,10 @@ def test_builtins():
 @pytest.fixture
 def a():
 	a = fsm(
-		alphabet = set(["a", "b"]),
-		states   = set([0, 1, "ob"]),
+		alphabet = {"a", "b"},
+		states   = {0, 1, "ob"},
 		initial  = 0,
-		finals   = set([1]),
+		finals   = {1},
 		map      = {
 			0    : {"a" : 1   , "b" : "ob"},
 			1    : {"a" : "ob", "b" : "ob"},
@@ -65,10 +65,10 @@ def test_a(a):
 @pytest.fixture
 def b():
 	b = fsm(
-		alphabet = set(["a", "b"]),
-		states   = set([0, 1, "ob"]),
+		alphabet = {"a", "b"},
+		states   = {0, 1, "ob"},
 		initial  = 0,
-		finals   = set([1]),
+		finals   = {1},
 		map      = {
 			0    : {"a" : "ob", "b" : 1   },
 			1    : {"a" : "ob", "b" : "ob"},
@@ -89,7 +89,7 @@ def test_concatenation_aa(a):
 	assert concAA.accepts("aa")
 	assert not concAA.accepts("aaa")
 
-	concAA = epsilon(set(["a", "b"])) + a + a
+	concAA = epsilon({"a", "b"}) + a + a
 	assert not concAA.accepts("")
 	assert not concAA.accepts("a")
 	assert concAA.accepts("aa")
@@ -106,7 +106,7 @@ def test_concatenation_ab(a, b):
 	assert not concAB.accepts("bb")
 
 def test_alternation_a(a):
-	altA = a | null(set(["a", "b"]))
+	altA = a | null({"a", "b"})
 	assert not altA.accepts("")
 	assert altA.accepts("a")
 
@@ -159,10 +159,10 @@ def test_crawl_reduction():
 	# states 1 and 2&3 also behave identically, so they, too should be resolved
 	# (this is impossible to spot before 2 and 3 have been combined).
 	merged = fsm(
-		alphabet = set(["0", "1"]),
-		states   = set([1, 2, 3, 4, "oblivion"]),
+		alphabet = {"0", "1"},
+		states   = {1, 2, 3, 4, "oblivion"},
 		initial  = 1,
-		finals   = set([4]),
+		finals   = {4},
 		map      = {
 			1          : {"0" : 2         , "1" : 4         },
 			2          : {"0" : 3         , "1" : 4         },
@@ -176,10 +176,10 @@ def test_crawl_reduction():
 def test_star_advanced():
 	# this is (a*ba)*
 	starred = fsm(
-		alphabet = set(["a", "b"]),
-		states   = set([0, 1, 2, "oblivion"]),
+		alphabet = {"a", "b"},
+		states   = {0, 1, 2, "oblivion"},
 		initial  = 0,
-		finals   = set([2]),
+		finals   = {2},
 		map      = {
 			0          : {"a" : 0         , "b" : 1         },
 			1          : {"a" : 2         , "b" : "oblivion"},
@@ -201,10 +201,10 @@ def test_star_advanced():
 def test_reduce():
 	# FSM accepts no strings but has 3 states, needs only 1
 	asdf = fsm(
-		alphabet = set([None]),
-		states   = set([0, 1, 2]),
+		alphabet = {None},
+		states   = {0, 1, 2},
 		initial  = 0,
-		finals   = set([1]),
+		finals   = {1},
 		map = {
 			0 : {None : 2},
 			1 : {None : 2},
@@ -216,10 +216,10 @@ def test_reduce():
 
 def test_reverse_abc():
 	abc = fsm(
-		alphabet = set(["a", "b", "c"]),
-		states   = set([0, 1, 2, 3, None]),
+		alphabet = {"a", "b", "c"},
+		states   = {0, 1, 2, 3, None},
 		initial  = 0,
-		finals   = set([3]),
+		finals   = {3},
 		map = {
 			0    : {"a" : 1   , "b" : None, "c" : None},
 			1    : {"a" : None, "b" : 2   , "c" : None},
@@ -234,10 +234,10 @@ def test_reverse_abc():
 def test_reverse_brzozowski():
 	# This is (a|b)*a(a|b)
 	brzozowski = fsm(
-		alphabet = set(["a", "b"]),
-		states = set(["A", "B", "C", "D", "E"]),
+		alphabet = {"a", "b"},
+		states = {"A", "B", "C", "D", "E"},
 		initial = "A",
-		finals = set(["C", "E"]),
+		finals = {"C", "E"},
 		map = {
 			"A" : {"a" : "B", "b" : "D"},
 			"B" : {"a" : "C", "b" : "E"},
@@ -291,10 +291,10 @@ def test_binary_3():
 	# Disallows the empty string
 	# Allows "0" on its own, but not leading zeroes.
 	div3 = fsm(
-		alphabet = set(["0", "1"]),
-		states = set(["initial", "zero", 0, 1, 2, None]),
+		alphabet = {"0", "1"},
+		states = {"initial", "zero", 0, 1, 2, None},
 		initial = "initial",
-		finals = set(["zero", 0]),
+		finals = {"zero", 0},
 		map = {
 			"initial" : {"0" : "zero", "1" : 1   },
 			"zero"    : {"0" : None  , "1" : None},

@@ -34,7 +34,15 @@ class fsm:
 		raise Exception("This object is immutable.")
 
 	def __init__(self, alphabet, states, initial, finals, map):
-		'''Initialise the hard way due to immutability.'''
+		'''
+			`alphabet` is an iterable of symbols the FSM can be fed.
+			`states` is the set of states for the FSM
+			`initial` is the initial state
+			`finals` is the set of accepting states
+			`map` may be sparse (i.e. it may omit transitions). In the case of omitted
+			transitions, a non-final "oblivion" state is simulated.
+		'''
+
 		# Validation. Thanks to immutability, this only needs to be carried out once.
 		if not initial in states:
 			raise Exception("Initial state " + repr(initial) + " must be one of " + repr(states))
@@ -45,6 +53,7 @@ class fsm:
 				if not map[state][symbol] in states:
 					raise Exception("Transition for state " + repr(state) + " and symbol " + repr(symbol) + " leads to " + repr(map[state][symbol]) + ", which is not a state")
 
+		# Initialise the hard way due to immutability.
 		self.__dict__["alphabet"] = set(alphabet)
 		self.__dict__["states"  ] = set(states)
 		self.__dict__["initial" ] = initial
@@ -63,7 +72,7 @@ class fsm:
 				symbol = anything_else
 
 			# Missing transition = transition to dead state
-			if not symbol in self.map[state]:
+			if not (state in self.map and symbol in self.map[state]):
 				return False
 
 			state = self.map[state][symbol]
@@ -177,12 +186,14 @@ class fsm:
 
 			for (id, state) in current:
 				if id == 0:
-					next.append((0, self.map[state][symbol]))
-					# final of self? merge with other initial
-					if self.map[state][symbol] in self.finals:
-						next.append((1, other.initial))
+					if state in self.map and symbol in self.map[state]:
+						next.append((0, self.map[state][symbol]))
+						# final of self? merge with other initial
+						if self.map[state][symbol] in self.finals:
+							next.append((1, other.initial))
 				elif id == 1:
-					next.append((1, other.map[state][symbol]))
+					if state in other.map and symbol in other.map[state]:
+						next.append((1, other.map[state][symbol]))
 				else:
 					raise Exception("Whaat")
 
@@ -199,10 +210,8 @@ class fsm:
 			dives into the FSM and from which all exits return.
 		'''
 
-		# We need a new state not already used; guess first beyond current len
-		omega = len(self.states)
-		while omega in self.states:
-			omega += 1
+		# We need a new state not already used
+		omega = object()
 
 		initial = frozenset([omega])
 
@@ -482,7 +491,7 @@ def null(alphabet):
 	'''
 	return fsm(
 		alphabet = alphabet,
-		states   = set([0]),
+		states   = {0},
 		initial  = 0,
 		finals   = set(),
 		map      = {
@@ -497,9 +506,9 @@ def epsilon(alphabet):
 	'''
 	return fsm(
 		alphabet = alphabet,
-		states   = set([0, 1]),
+		states   = {0, 1},
 		initial  = 0,
-		finals   = set([0]),
+		finals   = {0},
 		map      = {
 			0: dict([(symbol, 1) for symbol in alphabet]),
 			1: dict([(symbol, 1) for symbol in alphabet]),
@@ -542,4 +551,10 @@ def crawl(alphabet, initial, final, follow):
 
 		i += 1
 
-	return fsm(alphabet, range(len(states)), 0, finals, map)
+	return fsm(
+		alphabet = alphabet,
+		states   = range(len(states)),
+		initial  = 0,
+		finals   = finals,
+		map      = map,
+	)
