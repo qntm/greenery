@@ -152,8 +152,11 @@ def test_multiply_7(a):
 	assert not sevenA.accepts("aaaaaaaa")
 
 def test_optional_mul(a, b):
-	unit = a + b # accepts "ab"
-	optional = (epsilon(a.alphabet) | unit) # accepts "(ab)?
+	unit = a + b
+	# accepts "ab"
+
+	optional = (epsilon(a.alphabet) | unit)
+	# accepts "(ab)?
 	assert optional.accepts([])
 	assert not optional.accepts(["a"])
 	assert not optional.accepts(["b"])
@@ -163,8 +166,6 @@ def test_optional_mul(a, b):
 
 	optional = optional * 2
 	# accepts "(ab)?(ab)?"
-	print(optional)
-
 	assert optional.accepts([])
 	assert not optional.accepts(["a"])
 	assert not optional.accepts(["b"])
