@@ -190,11 +190,14 @@ def test_conc_subtraction():
 def test_odd_bug():
 	# Odd bug with ([bc]*c)?[ab]*
 	int5A = mult(charclass("bc"), star).to_fsm({"a", "b", "c", fsm.anything_else})
+	assert int5A.accepts([])
 	assert int5A.accepts("")
 	int5B = mult(charclass("c"), one).to_fsm({"a", "b", "c", fsm.anything_else})
 	assert int5B.accepts("c")
+	assert int5B.accepts(["c"])
 	int5C = int5A + int5B
 	assert (int5A + int5B).accepts("c")
+	assert (int5A + int5B).accepts(["c"])
 
 def test_empty_mult_suppression():
 	assert conc(
@@ -231,6 +234,14 @@ def test_empty_pattern_suppression():
 def test_empty_pattern_reduction():
 	assert pattern().reduce() == charclass()
 
+def test_charclass_fsm():
+	# "[^a]"
+	nota = (~charclass("a")).to_fsm()
+	assert nota.alphabet == {"a", fsm.anything_else}
+	assert nota.accepts("b")
+	assert nota.accepts(["b"])
+	assert nota.accepts([fsm.anything_else])
+
 def test_pattern_fsm():
 	# "a[^a]"
 	anota = pattern(
@@ -238,11 +249,18 @@ def test_pattern_fsm():
 			mult(charclass("a"), one),
 			mult(~charclass("a"), one),
 		)
-	).to_fsm("ab")
+	).to_fsm()
+	assert len(anota.states) == 4
+	print(anota)
 	assert not anota.accepts("a")
+	assert not anota.accepts(["a"])
 	assert not anota.accepts("b")
+	assert not anota.accepts(["b"])
 	assert not anota.accepts("aa")
+	assert not anota.accepts(["a", "a"])
 	assert anota.accepts("ab")
+	assert anota.accepts(["a", "b"])
+	assert anota.accepts(["a", fsm.anything_else])
 	assert not anota.accepts("ba")
 	assert not anota.accepts("bb")
 
@@ -2133,6 +2151,24 @@ def test_parse_regex_intersection():
 	assert str(parse("\\d{3}") & parse("19.*")) == "19\\d"
 	assert str(parse("abc...") & parse("...def")) == "abcdef"
 	assert str(parse("[bc]*[ab]*") & parse("[ab]*[bc]*")) in {"([ab]*a|[bc]*c)?b*", "b*(a[ab]*|c[bc]*)?"}
+	assert str(parse("\\W*")) == "\\W*"
+	assert str(parse("[a-g0-8$%\\^]+")) == "[$%0-8\\^a-g]+"
+	assert str(parse("[^d]{2,8}")) == "[^d]{2,8}"
+	assert str(parse("\\W*") & parse("[a-g0-8$%\\^]+")) == "[$%\\^]+"
+	assert str(parse("[ab]{1,2}") & parse("[^a]{1,2}")) == "b{1,2}"
+	assert str(parse("[ab]?") & parse("[^a]?")) == "b?"
+	print(parse("a{0,2}").to_fsm())
+	assert parse("a{0,2}").to_fsm().accepts("")
+	assert parse("[ab]{0,2}").to_fsm().accepts("")
+	assert parse("[ab]{0,2}").to_fsm().accepts([])
+	assert parse("[^a]{0,2}").to_fsm().accepts([])
+	assert parse("b{0,2}").to_fsm().accepts([])
+	assert str(parse("[ab]{0,2}") & parse("[^a]{0,2}")) == "b{0,2}"
+	assert str(parse("[ab]{0,4}") & parse("[^a]{0,4}")) == "b{0,4}"
+	assert str(parse("[abc]{0,8}") & parse("[^a]{0,8}")) == "[bc]{0,8}"
+	assert str(parse("[a-g0-8$%\\^]{0,8}") & parse("[^d]{0,8}")) == "[$%0-8\\^abcefg]{0,8}"
+	assert str(parse("[a-g0-8$%\\^]+") & parse("[^d]{0,8}")) == "[$%0-8\\^abcefg]{1,8}"
+	assert str(parse("[a-g0-8$%\\^]+") & parse("[^d]{2,8}")) == "[$%0-8\\^abcefg]{2,8}"
 	assert str(parse("\\W*") & parse("[a-g0-8$%\\^]+") & parse("[^d]{2,8}")) == "[$%\\^]{2,8}"
 	assert str(parse("\\d{4}-\\d{2}-\\d{2}") & parse("19.*")) == "19\\d\\d-\\d\\d-\\d\\d"
 
@@ -2163,6 +2199,7 @@ def test_bad_reduction_bug():
 
 def test_alphabet():
 	# lego.alphabet() should include `fsm.anything_else`
+	print(repr(parse("")))
 	assert parse("").alphabet() == {fsm.anything_else}
 
 def test_fsm():

@@ -146,9 +146,7 @@ class fsm:
 			Accomplished by effectively following non-deterministically.
 			Call using "fsm3 = fsm1 + fsm2"
 		'''
-		# alphabets must be equal
-		if other.alphabet != self.alphabet:
-			raise Exception("Alphabets " + repr(self.alphabet) + " and " + repr(other.alphabet) + " disagree")
+		alphabet = self.alphabet | other.alphabet
 
 		# We start at the start of self. If this starting state happens to be
 		# final in self, we also start at the start of other.
@@ -199,7 +197,7 @@ class fsm:
 
 			return frozenset(next)
 
-		return crawl(self.alphabet, initial, final, follow).reduce()
+		return crawl(alphabet, initial, final, follow).reduce()
 
 	def star(self):
 		'''
@@ -209,6 +207,7 @@ class fsm:
 			an articial "omega state" which is our only accepting state and which
 			dives into the FSM and from which all exits return.
 		'''
+		alphabet = self.alphabet
 
 		# We need a new state not already used
 		omega = object()
@@ -226,12 +225,13 @@ class fsm:
 				if state == omega:
 					state = self.initial
 
-				substate = self.map[state][symbol]
-				next.append(substate)
+				if state in self.map and symbol in self.map[state]:
+					substate = self.map[state][symbol]
+					next.append(substate)
 
-				# loop back to beginning
-				if substate in self.finals:
-					next.append(omega)
+					# loop back to beginning
+					if substate in self.finals:
+						next.append(omega)
 
 			return frozenset(next)
 
@@ -239,27 +239,42 @@ class fsm:
 		def final(state):
 			return omega in state
 
-		return crawl(self.alphabet, initial, final, follow).reduce()
+		return crawl(alphabet, initial, final, follow).reduce()
 
 	def __mul__(self, multiplier):
 		'''
 			Given an FSM and a multiplier, return the multiplied FSM.
+			TODO: improve
 		'''
 		if multiplier < 0:
 			raise Exception("Can't multiply an FSM by " + repr(multiplier))
 
-		if multiplier == 0:
-			return epsilon(self.alphabet)
+		alphabet = self.alphabet
 
-		# worked example: multiplier = 5
-		output = self
-		# accepts e.g. "ab"
+		# metastate is a set of iterations+states
+		initial = {(self.initial, 0)}
 
-		for i in range(multiplier - 1):
-			output += self
-		# now accepts e.g. "ababababab"
+		def final(state):
+			'''If the initial state is final then multiplying doesn't alter that'''
+			for (substate, iteration) in state:
+				if substate == self.initial \
+				and (self.initial in self.finals or iteration == multiplier):
+					return True
+			return False
 
-		return output.reduce()
+		def follow(current, symbol):
+			next = []
+			for (substate, iteration) in current:
+				if iteration < multiplier \
+				and substate in self.map \
+				and symbol in self.map[substate]:
+					next.append((self.map[substate][symbol], iteration))
+					# final of self? merge with initial on next iteration
+					if self.map[substate][symbol] in self.finals:
+						next.append((self.initial, iteration + 1))
+			return frozenset(next)
+
+		return crawl(alphabet, initial, final, follow).reduce()
 
 	def __or__(self, other):
 		'''
@@ -269,10 +284,7 @@ class fsm:
 			recognised by the two FSMs undergoes a set union.
 			Call using "fsm3 = fsm1 | fsm2"
 		'''
-
-		# alphabets must be equal
-		if other.alphabet != self.alphabet:
-			raise Exception("Alphabets " + repr(self.alphabet) + " and " + repr(other.alphabet) + " disagree")
+		alphabet = self.alphabet | other.alphabet
 
 		initial = {0 : self.initial, 1 : other.initial}
 
@@ -291,7 +303,7 @@ class fsm:
 			return (0 in state and state[0] in self.finals) \
 			or (1 in state and state[1] in other.finals)
 
-		return crawl(self.alphabet, initial, final, follow).reduce()
+		return crawl(alphabet, initial, final, follow).reduce()
 
 	def __and__(self, other):
 		'''
@@ -302,10 +314,7 @@ class fsm:
 			a set intersection operation.
 			Call using "fsm3 = fsm1 & fsm2"
 		'''
-
-		# alphabets must be equal
-		if other.alphabet != self.alphabet:
-			raise Exception("Alphabets " + repr(self.alphabet) + " and " + repr(other.alphabet) + " disagree")
+		alphabet = self.alphabet | other.alphabet
 
 		initial = {0 : self.initial, 1 : other.initial}
 
@@ -324,17 +333,14 @@ class fsm:
 			return (0 in state and state[0] in self.finals) \
 			and (1 in state and state[1] in other.finals)
 
-		return crawl(self.alphabet, initial, final, follow).reduce()
+		return crawl(alphabet, initial, final, follow).reduce()
 
 	def __xor__(self, other):
 		'''
 			Symmetric difference. Returns an FSM which recognises only the strings
 			recognised by `self` or `other` but not both.
 		'''
-
-		# alphabets must be equal
-		if other.alphabet != self.alphabet:
-			raise Exception("Alphabets " + repr(self.alphabet) + " and " + repr(other.alphabet) + " disagree")
+		alphabet = self.alphabet | other.alphabet
 
 		initial = {0 : self.initial, 1 : other.initial}
 
@@ -353,7 +359,7 @@ class fsm:
 			return (0 in state and state[0] in self.finals) \
 			!= (1 in state and state[1] in other.finals)
 
-		return crawl(self.alphabet, initial, final, follow).reduce()
+		return crawl(alphabet, initial, final, follow).reduce()
 
 	def everythingbut(self):
 		'''
@@ -383,6 +389,7 @@ class fsm:
 			Return a new FSM such that for every string that self accepts (e.g.
 			"beer", the new FSM accepts the reversed string ("reeb").
 		'''
+		alphabet = self.alphabet
 
 		# Start from a composite "state-set" consisting of all final states.
 		# If there are no final states, this set is empty and we'll find that
@@ -404,8 +411,8 @@ class fsm:
 			return self.initial in state
 
 		# Man, crawl() is the best!
-		return crawl(self.alphabet, initial, final, follow)
-		# Do not reduce() the result, since reduce() calls reversed() in turn
+		return crawl(alphabet, initial, final, follow)
+		# Do not reduce() the result, since reduce() calls us in turn
 
 	def islive(self, state):
 		'''A state is "live" if a final state can be reached from it.'''

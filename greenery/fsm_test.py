@@ -127,6 +127,17 @@ def test_star(a):
 	assert not starA.accepts("b")
 	assert starA.accepts("aaaaaaaaa")
 
+def test_multiply_0(a):
+	zeroA = a * 0
+	assert zeroA.accepts("")
+	assert not zeroA.accepts("a")
+
+def test_multiply_1(a):
+	oneA = a * 1
+	assert not oneA.accepts("")
+	assert oneA.accepts("a")
+	assert not oneA.accepts("aa")
+
 def test_multiply_2(a):
 	twoA = a * 2
 	assert not twoA.accepts("")
@@ -134,10 +145,35 @@ def test_multiply_2(a):
 	assert twoA.accepts("aa")
 	assert not twoA.accepts("aaa")
 
-def test_multiply_0(a):
-	zeroA = a * 0
-	assert zeroA.accepts("")
-	assert not zeroA.accepts("a")
+def test_multiply_7(a):
+	sevenA = a * 7
+	assert not sevenA.accepts("aaaaaa")
+	assert sevenA.accepts("aaaaaaa")
+	assert not sevenA.accepts("aaaaaaaa")
+
+def test_optional_mul(a, b):
+	unit = a + b # accepts "ab"
+	optional = (epsilon(a.alphabet) | unit) # accepts "(ab)?
+	assert optional.accepts([])
+	assert not optional.accepts(["a"])
+	assert not optional.accepts(["b"])
+	assert optional.accepts(["a", "b"])
+	assert not optional.accepts(["a", "a"])
+	print(optional)
+
+	optional = optional * 2
+	# accepts "(ab)?(ab)?"
+	print(optional)
+
+	assert optional.accepts([])
+	assert not optional.accepts(["a"])
+	assert not optional.accepts(["b"])
+	assert not optional.accepts(["a", "a"])
+	assert optional.accepts(["a", "b"])
+	assert not optional.accepts(["b", "a"])
+	assert not optional.accepts(["b", "b"])
+	assert not optional.accepts(["a", "a", "a"])
+	assert optional.accepts(["a", "b", "a", "b"])
 
 def test_intersection_ab(a, b):
 	intAB = a & b
@@ -378,34 +414,6 @@ def test_invalid_fsms():
 	except Exception:
 		pass
 
-def test_alphabet_disagreements():
-	a = fsm(alphabet = {"a"}, states = {1}, initial = 1, finals = set(), map = {1 : {"a" : 1}})
-	b = fsm(alphabet = {"b"}, states = {1}, initial = 1, finals = set(), map = {1 : {"b" : 1}})
-
-	try:
-		c = a + b
-		assert False
-	except AssertionError:
-		assert False
-	except Exception:
-		pass
-
-	try:
-		c = a | b
-		assert False
-	except AssertionError:
-		assert False
-	except Exception:
-		pass
-
-	try:
-		c = a & b
-		assert False
-	except AssertionError:
-		assert False
-	except Exception:
-		pass
-
 def test_bad_multiplier(a):
 	try:
 		x = a * -1
@@ -512,3 +520,33 @@ def test_dead_default():
 	assert not blockquote.islive(5)
 	gen = blockquote.strings()
 	assert next(gen) == ["/", "*", "*", "/"]
+
+def test_alphabet_unions():
+	# Thanks to sparse maps it should now be possible to compute the union of FSMs
+	# with disagreeing alphabets!
+	a = fsm(
+		alphabet = {"a"},
+		states   = {0, 1},
+		initial  = 0,
+		finals   = {1},
+		map      = {
+			0    : {"a" : 1},
+		},
+	)
+
+	b = fsm(
+		alphabet = {"b"},
+		states   = {0, 1},
+		initial  = 0,
+		finals   = {1},
+		map      = {
+			0    : {"b" : 1},
+		},
+	)
+
+	assert (a | b).accepts(["a"])
+	assert (a | b).accepts(["b"])
+	assert (a & b).empty()
+	assert (a + b).accepts(["a", "b"])
+	assert (a ^ b).accepts(["a"])
+	assert (a ^ b).accepts(["b"])
