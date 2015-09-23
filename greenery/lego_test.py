@@ -2157,7 +2157,6 @@ def test_parse_regex_intersection():
 	assert str(parse("\\W*") & parse("[a-g0-8$%\\^]+")) == "[$%\\^]+"
 	assert str(parse("[ab]{1,2}") & parse("[^a]{1,2}")) == "b{1,2}"
 	assert str(parse("[ab]?") & parse("[^a]?")) == "b?"
-	print(parse("a{0,2}").to_fsm())
 	assert parse("a{0,2}").to_fsm().accepts("")
 	assert parse("[ab]{0,2}").to_fsm().accepts("")
 	assert parse("[ab]{0,2}").to_fsm().accepts([])
@@ -2646,3 +2645,21 @@ def test_dead_default():
 				3    : {"/" : 4, fsm.anything_else : 2, "*" : 3},
 		}
 	))
+
+def test_block_comment_regex():
+	# I went through several incorrect regexes for C block comments. Here we show
+	# why the first few attempts were incorrect
+	a = parse("/\\*(([^*]|\\*+[^*/])*)\\*/")
+	assert a.matches("/**/")
+	assert not a.matches("/***/")
+	assert not a.matches("/****/")
+
+	b = parse("/\\*(([^*]|\\*[^/])*)\\*/")
+	assert b.matches("/**/")
+	assert not b.matches("/***/")
+	assert b.matches("/****/")
+
+	c = parse("/\\*(([^*]|\\*+[^*/])*)\\*+/")
+	assert c.matches("/**/")
+	assert c.matches("/***/")
+	assert c.matches("/****/")

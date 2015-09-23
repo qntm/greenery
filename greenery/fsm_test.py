@@ -551,3 +551,7 @@ def test_alphabet_unions():
 	assert (a + b).accepts(["a", "b"])
 	assert (a ^ b).accepts(["a"])
 	assert (a ^ b).accepts(["b"])
+
+def test_repr():
+	assert repr(anything_else) == "anything_else"
+	assert str(anything_else) == "anything_else"

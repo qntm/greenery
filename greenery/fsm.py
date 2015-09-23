@@ -4,12 +4,21 @@
 	Finite state machine library.
 '''
 
-# This is a surrogate symbol which you can use in your finite state machines
-# to represent "any symbol not in the official alphabet". For example, if your
-# state machine's alphabet is {"a", "b", "c", "d", fsm.anything_else}, then
-# you can pass "e" in as a symbol and it will be converted to
-# fsm.anything_else, then follow the appropriate transition.
-anything_else = object()
+class anything_else:
+	'''
+		This is a surrogate symbol which you can use in your finite state machines
+		to represent "any symbol not in the official alphabet". For example, if your
+		state machine's alphabet is {"a", "b", "c", "d", fsm.anything_else}, then
+		you can pass "e" in as a symbol and it will be converted to
+		fsm.anything_else, then follow the appropriate transition.
+		We use a class instance because that gives me control over how the special
+		value gets serialised. Otherwise this would just be `object()`.
+	'''
+	def __str__(self):
+		return "anything_else"
+	def __repr__(self):
+		return "anything_else"
+anything_else = anything_else()
 
 def key(symbol):
 	'''Ensure `fsm.anything_else` always sorts last'''
@@ -150,50 +159,33 @@ class fsm:
 
 		# We start at the start of self. If this starting state happens to be
 		# final in self, we also start at the start of other.
+		initial = []
+		initial.append((0, self.initial))
 		if self.initial in self.finals:
-			initial = frozenset([
-				(0, self.initial),
-				(1, other.initial),
-			])
-		else:
-			initial = frozenset([(0, self.initial)])
+			initial.append((1, self.initial))
+		initial = frozenset(initial)
 
 		def final(state):
 			for (id, substate) in state:
-				# self
-				if id == 0:
-					if substate in self.finals:
-						if other.initial in other.finals:
-							return True
-
-				# other
-				elif id == 1:
-					if substate in other.finals:
-						return True
-
-				else:
-					raise Exception("What")
-
+				if id == 1 and substate in other.finals:
+					return True
 			return False
 
-		# dedicated function accepts a "superset" and returns the next "superset"
-		# obtained by following this transition in the new FSM
 		def follow(current, symbol):
-
+			'''
+				Dedicated function accepts a "superset" and returns the next "superset"
+				obtained by following this transition in the new FSM
+			'''
 			next = []
 
 			for (id, state) in current:
-				if id == 0:
-					if state in self.map and symbol in self.map[state]:
-						next.append((0, self.map[state][symbol]))
-						# final of self? merge with other initial
-						if self.map[state][symbol] in self.finals:
-							next.append((1, other.initial))
-				elif id == 1:
-					if state in other.map and symbol in other.map[state]:
-						next.append((1, other.map[state][symbol]))
-				else:
-					raise Exception("Whaat")
+				if id == 0 and state in self.map and symbol in self.map[state]:
+					next.append((0, self.map[state][symbol]))
+					# final of self? merge with other initial
+					if self.map[state][symbol] in self.finals:
+						next.append((1, other.initial))
+				if id == 1 and state in other.map and symbol in other.map[state]:
+					next.append((1, other.map[state][symbol]))
 
 			return frozenset(next)
 
@@ -244,7 +236,6 @@ class fsm:
 	def __mul__(self, multiplier):
 		'''
 			Given an FSM and a multiplier, return the multiplied FSM.
-			TODO: improve
 		'''
 		if multiplier < 0:
 			raise Exception("Can't multiply an FSM by " + repr(multiplier))

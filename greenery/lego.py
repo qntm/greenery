@@ -314,6 +314,9 @@ class lego:
 		'''
 		raise Exception("Not implemented")
 
+	def matches(self, string):
+		return self.to_fsm().accepts(string)
+
 	def strings(self, otherchar=None):
 		'''
 			Each time next() is called on this iterator, a new string is returned
@@ -486,27 +489,23 @@ class charclass(lego):
 		if alphabet is None:
 			alphabet = self.alphabet()
 
-		# 0 is initial, 1 is final, 2 is oblivion
+		# 0 is initial, 1 is final
 
 		# If negated, make a singular FSM accepting any other characters
 		if self.negated:
 			map = {
-				0: dict([(symbol, 2 if symbol in self.chars else 1) for symbol in alphabet]),
-				1: dict([(symbol, 2) for symbol in alphabet]),
-				2: dict([(symbol, 2) for symbol in alphabet]),
+				0: dict([(symbol, 1) for symbol in alphabet - self.chars]),
 			}
 
 		# If normal, make a singular FSM accepting only these characters
 		else:
 			map = {
-				0: dict([(symbol, 1 if symbol in self.chars else 2) for symbol in alphabet]),
-				1: dict([(symbol, 2) for symbol in alphabet]),
-				2: dict([(symbol, 2) for symbol in alphabet]),
+				0: dict([(symbol, 1) for symbol in self.chars]),
 			}
 
 		return fsm.fsm(
 			alphabet = alphabet,
-			states   = {0, 1, 2},
+			states   = {0, 1},
 			initial  = 0,
 			finals   = {1},
 			map      = map,
@@ -753,6 +752,39 @@ class bound:
 			return ""
 		return str(self.v)
 
+	@classmethod
+	def match(cls, string, i = 0):
+		def matchAnyOf(string, i, collection):
+			for char in collection:
+				try:
+					return char, static(string, i, char)
+				except nomatch:
+					pass
+			raise nomatch
+
+		# "0"
+		try:
+			return bound(0), static(string, i, "0")
+		except nomatch:
+			pass
+
+		# "1", etc.
+		try:
+			digit, j = matchAnyOf(string, i, "123456789")
+			integer = int(digit)
+			try:
+				while True:
+					digit, j = matchAnyOf(string, j, "0123456789")
+					integer *= 10
+					integer += int(digit)
+			except nomatch:
+				return bound(integer), j
+		except nomatch:
+			pass
+
+		# "" empty string = infinite bound as in "{4,}"
+		return inf, i
+
 	def __eq__(self, other):
 		try:
 			return self.v == other.v
@@ -858,8 +890,6 @@ class multiplier:
 			raise Exception("Can't serialise a multiplier with bound " + repr(self.max))
 		if self in symbolic.keys():
 			return symbolic[self]
-		if self.max == inf:
-			return "{" + str(self.min) + ",}"
 		if self.min == self.max:
 			return "{" + str(self.min) + "}"
 		return "{" + str(self.min) + "," + str(self.max) + "}"
@@ -867,56 +897,23 @@ class multiplier:
 	@classmethod
 	def match(cls, string, i = 0):
 
-		def matchAnyOf(string, i, collection):
-			for char in collection:
-				try:
-					return char, static(string, i, char)
-				except nomatch:
-					pass
-			raise nomatch
-
-		def matchInteger(string, i):
-			try:
-				return 0, static(string, i, "0")
-			except nomatch:
-				pass
-
-			digit, i = matchAnyOf(string, i, "123456789")
-			integer = int(digit)
-			try:
-				while True:
-					digit, i = matchAnyOf(string, i, "0123456789")
-					integer *= 10
-					integer += int(digit)
-			except nomatch:
-				return integer, i
-
-		# {2,3}
+		# {2,3} or {2,}
 		try:
 			j = static(string, i, "{")
-			min, j = matchInteger(string, j)
+			min, j = bound.match(string, j)
 			j = static(string, j, ",")
-			max, j = matchInteger(string, j)
+			max, j = bound.match(string, j)
 			j = static(string, j, "}")
-			return multiplier(bound(min), bound(max)), j
-		except nomatch:
-			pass
-
-		# {2,}
-		try:
-			j = static(string, i, "{")
-			min, j = matchInteger(string, j)
-			j = static(string, j, ",}")
-			return multiplier(bound(min), inf), j
+			return multiplier(min, max), j
 		except nomatch:
 			pass
 
 		# {2}
 		try:
 			j = static(string, i, "{")
-			min, j = matchInteger(string, j)
+			min, j = bound.match(string, j)
 			j = static(string, j, "}")
-			return multiplier(bound(min), bound(min)), j
+			return multiplier(min, min), j
 		except nomatch:
 			pass
 
