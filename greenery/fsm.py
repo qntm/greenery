@@ -299,27 +299,7 @@ class fsm:
 			Can be used as `fsm1.union(fsm2, ...)` or `fsm.union(fsm1, ...)`. `fsms`
 			may be empty.
 		'''
-		alphabet = set().union(*[fsm.alphabet for fsm in fsms])
-
-		initial = dict([(i, fsm.initial) for (i, fsm) in enumerate(fsms)])
-
-		# dedicated function accepts a "superset" and returns the next "superset"
-		# obtained by following this transition in the new FSM
-		def follow(current, symbol):
-			next = {}
-			for i in range(len(fsms)):
-				if i in current \
-				and current[i] in fsms[i].map \
-				and symbol in fsms[i].map[current[i]]:
-					next[i] = fsms[i].map[current[i]][symbol]
-			return next
-
-		# state is final if *any* of its internal states are final
-		def final(state):
-			accepts = [i in state and state[i] in fsm.finals for (i, fsm) in enumerate(fsms)]
-			return any(accepts)
-
-		return crawl(alphabet, initial, final, follow).reduce()
+		return parallel(fsms, any)
 
 	def __or__(self, other):
 		'''
@@ -340,27 +320,7 @@ class fsm:
 			a set intersection operation.
 			Call using "fsm3 = fsm1 & fsm2"
 		'''
-		alphabet = set().union(*[fsm.alphabet for fsm in fsms])
-
-		initial = dict([(i, fsm.initial) for (i, fsm) in enumerate(fsms)])
-
-		# dedicated function accepts a "superset" and returns the next "superset"
-		# obtained by following this transition in the new FSM
-		def follow(current, symbol):
-			next = {}
-			for i in range(len(fsms)):
-				if i in current \
-				and current[i] in fsms[i].map \
-				and symbol in fsms[i].map[current[i]]:
-					next[i] = fsms[i].map[current[i]][symbol]
-			return next
-
-		# state is final if *all* of its substates are final
-		def final(state):
-			accepts = [i in state and state[i] in fsm.finals for (i, fsm) in enumerate(fsms)]
-			return all(accepts)
-
-		return crawl(alphabet, initial, final, follow).reduce()
+		return parallel(fsms, all)
 
 	def __and__(self, other):
 		'''
@@ -376,27 +336,7 @@ class fsm:
 			difference of them all. The python set method only allows two sets to be
 			operated on at once, but we go the extra mile since it's not too hard.
 		'''
-		alphabet = set().union(*[fsm.alphabet for fsm in fsms])
-
-		initial = dict([(i, fsm.initial) for (i, fsm) in enumerate(fsms)])
-
-		# dedicated function accepts a "superset" and returns the next "superset"
-		# obtained by following this transition in the new FSM
-		def follow(current, symbol):
-			next = {}
-			for i in range(len(fsms)):
-				if i in current \
-				and current[i] in fsms[i].map \
-				and symbol in fsms[i].map[current[i]]:
-					next[i] = fsms[i].map[current[i]][symbol]
-			return next
-
-		# state is final if the number of FSMs in an accept state is odd
-		def final(state):
-			accepts = [i in state and state[i] in fsm.finals for (i, fsm) in enumerate(fsms)]
-			return (accepts.count(True) % 2) == 1
-
-		return crawl(alphabet, initial, final, follow).reduce()
+		return parallel(fsms, lambda accepts: (accepts.count(True) % 2) == 1)
 
 	def __xor__(self, other):
 		'''
@@ -412,21 +352,7 @@ class fsm:
 			This is more complicated if there are missing transitions, because the
 			missing "dead" state must now be reified.
 		'''
-		alphabet = self.alphabet
-
-		initial = {0 : self.initial}
-
-		def follow(current, symbol):
-			next = {}
-			if 0 in current and current[0] in self.map and symbol in self.map[current[0]]:
-				next[0] = self.map[current[0]][symbol]
-			return next
-
-		# state is final unless the original was
-		def final(state):
-			return not (0 in state and state[0] in self.finals)
-
-		return crawl(alphabet, initial, final, follow).reduce()
+		return parallel([self], operator.not)
 
 	def reversed(self):
 		'''
@@ -574,27 +500,7 @@ class fsm:
 			Difference. Returns an FSM which recognises only the strings
 			recognised by the first FSM in the list, but none of the others.
 		'''
-		alphabet = set().union(*[fsm.alphabet for fsm in fsms])
-
-		initial = dict([(i, fsm.initial) for (i, fsm) in enumerate(fsms)])
-
-		# dedicated function accepts a "superset" and returns the next "superset"
-		# obtained by following this transition in the new FSM
-		def follow(current, symbol):
-			next = {}
-			for i in range(len(fsms)):
-				if i in current \
-				and current[i] in fsms[i].map \
-				and symbol in fsms[i].map[current[i]]:
-					next[i] = fsms[i].map[current[i]][symbol]
-			return next
-
-		# state is final if the first FSM accepts it and none of the others do.
-		def final(state):
-			accepts = [i in state and state[i] in fsm.finals for (i, fsm) in enumerate(fsms)]
-			return accepts[0] and not any(accepts[1:])
-
-		return crawl(alphabet, initial, final, follow).reduce()
+		return parallel(fsms, lambda accepts: accepts[0] and not any(accepts[1:]))
 
 	def __sub__(self, other):
 		return self.difference(other)
@@ -744,6 +650,35 @@ def epsilon(alphabet):
 			1: dict([(symbol, 1) for symbol in alphabet]),
 		},
 	)
+
+def parallel(fsms, test):
+	'''
+		Crawl several FSMs in parallel, mapping the states of a larger meta-FSM.
+		To determine whether a state in the larger FSM is final, pass all of the
+		finality statuses (e.g. [True, False, False] to `test`.
+	'''
+	alphabet = set().union(*[fsm.alphabet for fsm in fsms])
+
+	initial = dict([(i, fsm.initial) for (i, fsm) in enumerate(fsms)])
+
+	# dedicated function accepts a "superset" and returns the next "superset"
+	# obtained by following this transition in the new FSM
+	def follow(current, symbol):
+		next = {}
+		for i in range(len(fsms)):
+			if i in current \
+			and current[i] in fsms[i].map \
+			and symbol in fsms[i].map[current[i]]:
+				next[i] = fsms[i].map[current[i]][symbol]
+		return next
+
+	# Determine the "is final?" condition of each substate, then pass it to the
+	# test to determine finality of the overall FSM.
+	def final(state):
+		accepts = [i in state and state[i] in fsm.finals for (i, fsm) in enumerate(fsms)]
+		return test(accepts)
+
+	return crawl(alphabet, initial, final, follow).reduce()
 
 def crawl(alphabet, initial, final, follow):
 	'''
