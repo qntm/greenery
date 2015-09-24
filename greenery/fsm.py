@@ -11,13 +11,14 @@ class anything_else:
 		state machine's alphabet is {"a", "b", "c", "d", fsm.anything_else}, then
 		you can pass "e" in as a symbol and it will be converted to
 		fsm.anything_else, then follow the appropriate transition.
-		We use a class instance because that gives me control over how the special
-		value gets serialised. Otherwise this would just be `object()`.
 	'''
 	def __str__(self):
 		return "anything_else"
 	def __repr__(self):
 		return "anything_else"
+
+# We use a class instance because that gives us control over how the special
+# value gets serialised. Otherwise this would just be `object()`.
 anything_else = anything_else()
 
 def key(symbol):
@@ -71,6 +72,9 @@ class fsm:
 
 	def accepts(self, input):
 		'''
+			Test whether the present FSM accepts the supplied string (iterable of
+			symbols). Equivalently, consider `self` as a possibly-infinite set of
+			strings and test whether `string` is a member of it.
 			This is actually mainly used for unit testing purposes.
 			If `fsm.anything_else` is in your alphabet, then any symbol not in your
 			alphabet will be converted to `fsm.anything_else`.
@@ -86,6 +90,13 @@ class fsm:
 
 			state = self.map[state][symbol]
 		return state in self.finals
+
+	def __contains__(self, string):
+		'''
+			This lets you use the syntax `"a" in fsm1` to see whether the string "a"
+			is in the set of strings accepted by `fsm1`.
+		'''
+		return self.accepts(string)
 
 	def reduce(self):
 		'''
@@ -147,6 +158,49 @@ class fsm:
 
 		return "".join("".join(row) + "\n" for row in rows)
 
+	def concatenate(*fsms):
+		'''
+			Concatenate arbitrarily many finite state machines together.
+		'''
+		alphabet = set().union(*[fsm.alphabet for fsm in fsms])
+
+		# Use a superset containing states from all FSMs at once.
+		# We start at the start of the first FSM. If this state is final in the
+		# first FSM, then we are also at the start of the second FSM. And so on.
+		initial = set()
+		for (i, fsm) in enumerate(fsms):
+			initial.add((i, fsm.initial))
+			if not fsm.initial in fsm.finals:
+				break
+		initial = frozenset(initial)
+
+		def final(state):
+			'''If you're in a final state of the final FSM, it's final'''
+			for (i, substate) in state:
+				if i == len(fsms) - 1 and substate in fsms[i].finals:
+					return True
+			return False
+
+		def follow(current, symbol):
+			'''
+				Follow the collection of states through all FSMs at once, jumping to the
+				next FSM if we reach the end of the current one
+				TODO: improve all follow() implementations to allow for dead metastates?
+			'''
+			next = set()
+
+			for (i, substate) in current:
+				fsm = fsms[i]
+				if substate in fsm.map and symbol in fsm.map[substate]:
+					next.add((i, fsm.map[substate][symbol]))
+					# final of this FSM? merge with next FSM's initial
+					if i < len(fsms) - 1 and fsm.map[substate][symbol] in fsm.finals:
+						next.add((i + 1, fsms[i + 1].initial))
+
+			return frozenset(next)
+
+		return crawl(alphabet, initial, final, follow).reduce()
+
 	def __add__(self, other):
 		'''
 			Concatenate two finite state machines together.
@@ -155,41 +209,7 @@ class fsm:
 			Accomplished by effectively following non-deterministically.
 			Call using "fsm3 = fsm1 + fsm2"
 		'''
-		alphabet = self.alphabet | other.alphabet
-
-		# We start at the start of self. If this starting state happens to be
-		# final in self, we also start at the start of other.
-		initial = []
-		initial.append((0, self.initial))
-		if self.initial in self.finals:
-			initial.append((1, self.initial))
-		initial = frozenset(initial)
-
-		def final(state):
-			for (id, substate) in state:
-				if id == 1 and substate in other.finals:
-					return True
-			return False
-
-		def follow(current, symbol):
-			'''
-				Dedicated function accepts a "superset" and returns the next "superset"
-				obtained by following this transition in the new FSM
-			'''
-			next = []
-
-			for (id, state) in current:
-				if id == 0 and state in self.map and symbol in self.map[state]:
-					next.append((0, self.map[state][symbol]))
-					# final of self? merge with other initial
-					if self.map[state][symbol] in self.finals:
-						next.append((1, other.initial))
-				if id == 1 and state in other.map and symbol in other.map[state]:
-					next.append((1, other.map[state][symbol]))
-
-			return frozenset(next)
-
-		return crawl(alphabet, initial, final, follow).reduce()
+		return self.concatenate(other)
 
 	def star(self):
 		'''
@@ -233,7 +253,7 @@ class fsm:
 
 		return crawl(alphabet, initial, final, follow).reduce()
 
-	def __mul__(self, multiplier):
+	def times(self, multiplier):
 		'''
 			Given an FSM and a multiplier, return the multiplied FSM.
 		'''
@@ -267,6 +287,40 @@ class fsm:
 
 		return crawl(alphabet, initial, final, follow).reduce()
 
+	def __mul__(self, multiplier):
+		'''
+			Given an FSM and a multiplier, return the multiplied FSM.
+		'''
+		return self.times(multiplier)
+
+	def union(*fsms):
+		'''
+			Treat `fsms` as a collection of arbitrary FSMs and return the union FSM.
+			Can be used as `fsm1.union(fsm2, ...)` or `fsm.union(fsm1, ...)`. `fsms`
+			may be empty.
+		'''
+		alphabet = set().union(*[fsm.alphabet for fsm in fsms])
+
+		initial = dict([(i, fsm.initial) for (i, fsm) in enumerate(fsms)])
+
+		# dedicated function accepts a "superset" and returns the next "superset"
+		# obtained by following this transition in the new FSM
+		def follow(current, symbol):
+			next = {}
+			for i in range(len(fsms)):
+				if i in current \
+				and current[i] in fsms[i].map \
+				and symbol in fsms[i].map[current[i]]:
+					next[i] = fsms[i].map[current[i]][symbol]
+			return next
+
+		# state is final if *any* of its internal states are final
+		def final(state):
+			accepts = [i in state and state[i] in fsm.finals for (i, fsm) in enumerate(fsms)]
+			return any(accepts)
+
+		return crawl(alphabet, initial, final, follow).reduce()
+
 	def __or__(self, other):
 		'''
 			Alternation.
@@ -275,28 +329,9 @@ class fsm:
 			recognised by the two FSMs undergoes a set union.
 			Call using "fsm3 = fsm1 | fsm2"
 		'''
-		alphabet = self.alphabet | other.alphabet
+		return self.union(other)
 
-		initial = {0 : self.initial, 1 : other.initial}
-
-		# dedicated function accepts a "superset" and returns the next "superset"
-		# obtained by following this transition in the new FSM
-		def follow(current, symbol):
-			next = {}
-			if 0 in current and current[0] in self.map and symbol in self.map[current[0]]:
-				next[0] = self.map[current[0]][symbol]
-			if 1 in current and current[1] in other.map and symbol in other.map[current[1]]:
-				next[1] = other.map[current[1]][symbol]
-			return next
-
-		# state is final if *any* of its internal states are final
-		def final(state):
-			return (0 in state and state[0] in self.finals) \
-			or (1 in state and state[1] in other.finals)
-
-		return crawl(alphabet, initial, final, follow).reduce()
-
-	def __and__(self, other):
+	def intersection(*fsms):
 		'''
 			Intersection.
 			Take FSMs and AND them together. That is, return an FSM which
@@ -305,24 +340,61 @@ class fsm:
 			a set intersection operation.
 			Call using "fsm3 = fsm1 & fsm2"
 		'''
-		alphabet = self.alphabet | other.alphabet
+		alphabet = set().union(*[fsm.alphabet for fsm in fsms])
 
-		initial = {0 : self.initial, 1 : other.initial}
+		initial = dict([(i, fsm.initial) for (i, fsm) in enumerate(fsms)])
 
 		# dedicated function accepts a "superset" and returns the next "superset"
 		# obtained by following this transition in the new FSM
 		def follow(current, symbol):
 			next = {}
-			if 0 in current and current[0] in self.map and symbol in self.map[current[0]]:
-				next[0] = self.map[current[0]][symbol]
-			if 1 in current and current[1] in other.map and symbol in other.map[current[1]]:
-				next[1] = other.map[current[1]][symbol]
+			for i in range(len(fsms)):
+				if i in current \
+				and current[i] in fsms[i].map \
+				and symbol in fsms[i].map[current[i]]:
+					next[i] = fsms[i].map[current[i]][symbol]
 			return next
 
 		# state is final if *all* of its substates are final
 		def final(state):
-			return (0 in state and state[0] in self.finals) \
-			and (1 in state and state[1] in other.finals)
+			accepts = [i in state and state[i] in fsm.finals for (i, fsm) in enumerate(fsms)]
+			return all(accepts)
+
+		return crawl(alphabet, initial, final, follow).reduce()
+
+	def __and__(self, other):
+		'''
+			Treat the FSMs as sets of strings and return the intersection of those
+			sets in the form of a new FSM. `fsm1.intersection(fsm2, ...)` or
+			`fsm.intersection(fsm1, ...)` are acceptable.
+		'''
+		return self.intersection(other)
+
+	def symmetric_difference(*fsms):
+		'''
+			Treat `fsms` as a collection of sets of strings and compute the symmetric
+			difference of them all. The python set method only allows two sets to be
+			operated on at once, but we go the extra mile since it's not too hard.
+		'''
+		alphabet = set().union(*[fsm.alphabet for fsm in fsms])
+
+		initial = dict([(i, fsm.initial) for (i, fsm) in enumerate(fsms)])
+
+		# dedicated function accepts a "superset" and returns the next "superset"
+		# obtained by following this transition in the new FSM
+		def follow(current, symbol):
+			next = {}
+			for i in range(len(fsms)):
+				if i in current \
+				and current[i] in fsms[i].map \
+				and symbol in fsms[i].map[current[i]]:
+					next[i] = fsms[i].map[current[i]][symbol]
+			return next
+
+		# state is final if the number of FSMs in an accept state is odd
+		def final(state):
+			accepts = [i in state and state[i] in fsm.finals for (i, fsm) in enumerate(fsms)]
+			return (accepts.count(True) % 2) == 1
 
 		return crawl(alphabet, initial, final, follow).reduce()
 
@@ -331,26 +403,7 @@ class fsm:
 			Symmetric difference. Returns an FSM which recognises only the strings
 			recognised by `self` or `other` but not both.
 		'''
-		alphabet = self.alphabet | other.alphabet
-
-		initial = {0 : self.initial, 1 : other.initial}
-
-		# dedicated function accepts a "superset" and returns the next "superset"
-		# obtained by following this transition in the new FSM
-		def follow(current, symbol):
-			next = {}
-			if 0 in current and current[0] in self.map and symbol in self.map[current[0]]:
-				next[0] = self.map[current[0]][symbol]
-			if 1 in current and current[1] in other.map and symbol in other.map[current[1]]:
-				next[1] = other.map[current[1]][symbol]
-			return next
-
-		# state is final if exactly one of the substates is final
-		def final(state):
-			return (0 in state and state[0] in self.finals) \
-			!= (1 in state and state[1] in other.finals)
-
-		return crawl(alphabet, initial, final, follow).reduce()
+		return self.symmetric_difference(other)
 
 	def everythingbut(self):
 		'''
@@ -375,7 +428,7 @@ class fsm:
 
 		return crawl(alphabet, initial, final, follow).reduce()
 
-	def __reversed__(self):
+	def reversed(self):
 		'''
 			Return a new FSM such that for every string that self accepts (e.g.
 			"beer", the new FSM accepts the reversed string ("reeb").
@@ -404,6 +457,13 @@ class fsm:
 		# Man, crawl() is the best!
 		return crawl(alphabet, initial, final, follow)
 		# Do not reduce() the result, since reduce() calls us in turn
+
+	def __reversed__(self):
+		'''
+			Return a new FSM such that for every string that self accepts (e.g.
+			"beer", the new FSM accepts the reversed string ("reeb").
+		'''
+		return self.reversed()
 
 	def islive(self, state):
 		'''A state is "live" if a final state can be reached from it.'''
@@ -438,6 +498,7 @@ class fsm:
 			static list. Strings will be sorted in order of length and then lexically.
 			This procedure uses arbitrary amounts of memory but is very fast. There
 			may be more efficient ways to do this, that I haven't investigated yet.
+			You can use this in list comprehensions.
 		'''
 
 		# Many FSMs have "dead states". Once you reach a dead state, you can no
@@ -473,6 +534,12 @@ class fsm:
 						strings.append((nstring, nstate))
 			i += 1
 
+	def __iter__(self):
+		'''
+			This allows you to do `for string in fsm1` as a list comprehensions!
+		'''
+		return self.strings()
+
 	def equivalent(self, other):
 		'''
 			Two FSMs are considered equivalent if they recognise the same strings.
@@ -480,6 +547,157 @@ class fsm:
 			strings.
 		'''
 		return (self ^ other).empty()
+
+	def __eq__(self, other):
+		'''
+			You can use `fsm1 == fsm2` to determine whether two FSMs recognise the
+			same strings.
+		'''
+		return self.equivalent(other)
+
+	def difference(*fsms):
+		'''
+			Difference. Returns an FSM which recognises only the strings
+			recognised by the first FSM in the list, but none of the others.
+		'''
+		alphabet = set().union(*[fsm.alphabet for fsm in fsms])
+
+		initial = dict([(i, fsm.initial) for (i, fsm) in enumerate(fsms)])
+
+		# dedicated function accepts a "superset" and returns the next "superset"
+		# obtained by following this transition in the new FSM
+		def follow(current, symbol):
+			next = {}
+			for i in range(len(fsms)):
+				if i in current \
+				and current[i] in fsms[i].map \
+				and symbol in fsms[i].map[current[i]]:
+					next[i] = fsms[i].map[current[i]][symbol]
+			return next
+
+		# state is final if the first FSM accepts it and none of the others do.
+		def final(state):
+			accepts = [i in state and state[i] in fsm.finals for (i, fsm) in enumerate(fsms)]
+			return accepts[0] and not any(accepts[1:])
+
+		return crawl(alphabet, initial, final, follow).reduce()
+
+	def __sub__(self, other):
+		return self.difference(other)
+
+	def cardinality(self):
+		'''
+			Consider the FSM as a set of strings and return the cardinality of that
+			set, or raise an OverflowError if there are infinitely many
+		'''
+		num_strings = {}
+		def get_num_strings(state):
+			# Many FSMs have at least one oblivion state
+			if self.islive(state):
+				if state in num_strings:
+					if num_strings[state] is None: # "computing..."
+						# Recursion! There are infinitely many strings recognised
+						raise OverflowError(state)
+					return num_strings[state]
+				num_strings[state] = None # i.e. "computing..."
+
+				n = 0
+				if state in self.finals:
+					n += 1
+				if state in self.map:
+					for symbol in self.map[state]:
+						n += get_num_strings(self.map[state][symbol])
+				num_strings[state] = n
+
+			else:
+				# Dead state
+				num_strings[state] = 0
+
+			return num_strings[state]
+
+		return get_num_strings(self.initial)
+
+	def __len__(self):
+		'''
+			Consider the FSM as a set of strings and return the cardinality of that
+			set, or raise an OverflowError if there are infinitely many
+		'''
+		return self.cardinality()
+
+	def isdisjoint(self, other):
+		'''
+			Treat `self` and `other` as sets of strings and see if they are disjoint
+		'''
+		return (self & other).empty()
+
+	def issubset(self, other):
+		'''
+			Treat `self` and `other` as sets of strings and see if `self` is a subset
+			of `other`... `self` recognises no strings which `other` doesn't.
+		'''
+		return (self - other).empty()
+
+	def __le__(self, other):
+		'''
+			Treat `self` and `other` as sets of strings and see if `self` is a subset
+			of `other`... `self` recognises no strings which `other` doesn't.
+		'''
+		return self.issubset(other)
+
+	def ispropersubset(self, other):
+		'''
+			Treat `self` and `other` as sets of strings and see if `self` is a proper
+			subset of `other`.
+		'''
+		return self <= other and self != other
+
+	def __lt__(self, other):
+		'''
+			Treat `self` and `other` as sets of strings and see if `self` is a strict
+			subset of `other`.
+		'''
+		return self.ispropersubset(other)
+
+	def issuperset(self, other):
+		'''
+			Treat `self` and `other` as sets of strings and see if `self` is a
+			superset of `other`.
+		'''
+		return (other - self).empty()
+
+	def __ge__(self, other):
+		'''
+			Treat `self` and `other` as sets of strings and see if `self` is a
+			superset of `other`.
+		'''
+		return self.issuperset(other)
+
+	def ispropersuperset(self, other):
+		'''
+			Treat `self` and `other` as sets of strings and see if `self` is a proper
+			superset of `other`.
+		'''
+		return self >= other and self != other
+
+	def __gt__(self, other):
+		'''
+			Treat `self` and `other` as sets of strings and see if `self` is a
+			strict superset of `other`.
+		'''
+		return self.ispropersuperset(other)
+
+	def copy(self):
+		'''
+			For completeness only, since `set.copy()` also exists. FSM objects are
+			immutable, so I can see only very odd reasons to need this.
+		'''
+		return fsm(
+			alphabet = self.alphabet,
+			states   = self.states,
+			initial  = self.initial,
+			finals   = self.finals,
+			map      = self.map,
+		)
 
 def null(alphabet):
 	'''

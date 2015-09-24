@@ -555,3 +555,61 @@ def test_alphabet_unions():
 def test_repr():
 	assert repr(anything_else) == "anything_else"
 	assert str(anything_else) == "anything_else"
+
+def test_new_set_methods(a, b):
+	# A whole bunch of new methods were added to the FSM module to enable FSMs to
+	# function exactly as if they were sets of strings (symbol lists), see:
+	# https://docs.python.org/3/library/stdtypes.html#set-types-set-frozenset
+	# But do they work?
+	assert len(a) == 1
+	assert len((a | b) * 4) == 16
+	try:
+		len(a.star())
+		assert False
+	except OverflowError:
+		pass
+
+	# "in"
+	assert "a" in a
+	assert not "a" in b
+	assert "a" not in b
+
+	# List comprehension!
+	four = (a | b) * 2
+	for string in four:
+		assert string == ["a", "a"]
+		break
+	assert [s for s in four] == [["a", "a"], ["a", "b"], ["b", "a"], ["b", "b"]]
+
+	# set.union() imitation
+	assert fsm.union(a, b) == a.union(b)
+	assert len(fsm.union()) == 0
+	assert fsm.intersection(a, b) == a.intersection(b)
+
+	# This takes a little explaining. In general, `a & b & c` is equivalent to
+	# `EVERYTHING & a & b & c` where `EVERYTHING` is an FSM accepting every
+	# possible string. Similarly `a` is equivalent to `EVERYTHING & a`, and the
+	# intersection of no sets at all is... `EVERYTHING`.
+	# However, since we compute the union of alphabets, and there are no
+	# alphabets, the union is the empty set. So the only string which `EVERYTHING`
+	# actually recognises is the empty string, [] (or "" if you prefer).
+	int_none = fsm.intersection()
+	assert len(int_none) == 1
+	assert [] in int_none
+
+	assert (a | b).difference(a) == fsm.difference((a | b), a) == (a | b) - a == b
+	assert (a | b).difference(a, b) == fsm.difference((a | b), a, b) == (a | b) - a - b == null("ab")
+	assert a.symmetric_difference(b) == fsm.symmetric_difference(a, b) == a ^ b
+	assert a.isdisjoint(b)
+	assert a <= (a | b)
+	assert a < (a | b)
+	assert a != (a | b)
+	assert (a | b) > a
+	assert (a | b) >= a
+
+	assert list(a.concatenate(a, a).strings()) == [["a", "a", "a"]]
+	assert list(a.concatenate().strings()) == [["a"]]
+	assert list(fsm.concatenate(b, a, b).strings()) == [["b", "a", "b"]]
+	assert list(fsm.concatenate().strings()) == []
+	assert not a.copy() is a
+
