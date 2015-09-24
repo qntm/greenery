@@ -162,7 +162,6 @@ def test_optional_mul(a, b):
 	assert not optional.accepts(["b"])
 	assert optional.accepts(["a", "b"])
 	assert not optional.accepts(["a", "a"])
-	print(optional)
 
 	optional = optional * 2
 	# accepts "(ab)?(ab)?"
@@ -195,6 +194,7 @@ def test_crawl_reduction():
 	# Notice how states 2 and 3 behave identically. When resolved together,
 	# states 1 and 2&3 also behave identically, so they, too should be resolved
 	# (this is impossible to spot before 2 and 3 have been combined).
+	# Finally, the oblivion state should be omitted.
 	merged = fsm(
 		alphabet = {"0", "1"},
 		states   = {1, 2, 3, 4, "oblivion"},
@@ -208,10 +208,11 @@ def test_crawl_reduction():
 			"oblivion" : {"0" : "oblivion", "1" : "oblivion"},
 		}
 	).reduce()
-	assert len(merged.states) == 3
+	assert len(merged.states) == 2
 
 def test_star_advanced():
-	# this is (a*ba)*
+	# This is (a*ba)*. Naively connecting the final states to the initial state
+	# gives the incorrect result here.
 	starred = fsm(
 		alphabet = {"a", "b"},
 		states   = {0, 1, 2, "oblivion"},
@@ -613,3 +614,25 @@ def test_new_set_methods(a, b):
 	assert list(fsm.concatenate().strings()) == []
 	assert not a.copy() is a
 
+def test_oblivion_crawl(a):
+	# When crawling a new FSM, we should avoid generating an oblivion state.
+	# `abc` has no oblivion state... all the results should not as well!
+	abc = fsm(
+		alphabet = {"a", "b", "c"},
+		states = {0, 1, 2, 3},
+		initial = 0,
+		finals = {3},
+		map = {
+			0 : {"a" : 1},
+			1 : {"b" : 2},
+			2 : {"c" : 3},
+		}
+	)
+	assert len((abc + abc).states) == 7
+	assert len(abc.star().states) == 3
+	assert len((abc * 3).states) == 10
+	assert len(reversed(abc).states) == 4
+	assert len((abc | abc).states) == 4
+	assert len((abc & abc).states) == 4
+	assert len((abc ^ abc).states) == 1
+	assert len((abc - abc).states) == 1

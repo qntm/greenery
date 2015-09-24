@@ -250,8 +250,7 @@ def test_pattern_fsm():
 			mult(~charclass("a"), one),
 		)
 	).to_fsm()
-	assert len(anota.states) == 4
-	print(anota)
+	assert len(anota.states) == 3
 	assert not anota.accepts("a")
 	assert not anota.accepts(["a"])
 	assert not anota.accepts("b")
@@ -2198,7 +2197,6 @@ def test_bad_reduction_bug():
 
 def test_alphabet():
 	# lego.alphabet() should include `fsm.anything_else`
-	print(repr(parse("")))
 	assert parse("").alphabet() == {fsm.anything_else}
 
 def test_fsm():

@@ -25,6 +25,15 @@ def key(symbol):
 	'''Ensure `fsm.anything_else` always sorts last'''
 	return (symbol is anything_else, symbol)
 
+class OblivionError(Exception):
+	'''
+		This exception is thrown while `crawl()`ing an FSM if we transition to the
+		oblivion state. For example while crawling two FSMs in parallel we may
+		transition to the oblivion state of both FSMs at once. This warrants an
+		out-of-bound signal which will reduce the complexity of the new FSM's map.
+	'''
+	pass
+
 class fsm:
 	'''
 		A Finite State Machine or FSM has an alphabet and a set of states. At any
@@ -188,7 +197,6 @@ class fsm:
 				TODO: improve all follow() implementations to allow for dead metastates?
 			'''
 			next = set()
-
 			for (i, substate) in current:
 				fsm = fsms[i]
 				if substate in fsm.map and symbol in fsm.map[substate]:
@@ -196,7 +204,8 @@ class fsm:
 					# final of this FSM? merge with next FSM's initial
 					if i < len(fsms) - 1 and fsm.map[substate][symbol] in fsm.finals:
 						next.add((i + 1, fsms[i + 1].initial))
-
+			if len(next) == 0:
+				raise OblivionError
 			return frozenset(next)
 
 		return crawl(alphabet, initial, final, follow).reduce()
@@ -227,24 +236,20 @@ class fsm:
 		initial = frozenset([omega])
 
 		def follow(current, symbol):
-
 			next = []
-
 			for state in current:
-
 				# the special new starting "omega" state behaves exactly like the
 				# original starting state did
 				if state == omega:
 					state = self.initial
-
 				if state in self.map and symbol in self.map[state]:
 					substate = self.map[state][symbol]
 					next.append(substate)
-
 					# loop back to beginning
 					if substate in self.finals:
 						next.append(omega)
-
+			if len(next) == 0:
+				raise OblivionError
 			return frozenset(next)
 
 		# final if state contains omega
@@ -283,6 +288,8 @@ class fsm:
 					# final of self? merge with initial on next iteration
 					if self.map[substate][symbol] in self.finals:
 						next.append((self.initial, iteration + 1))
+			if len(next) == 0:
+				raise OblivionError
 			return frozenset(next)
 
 		return crawl(alphabet, initial, final, follow).reduce()
@@ -352,7 +359,21 @@ class fsm:
 			This is more complicated if there are missing transitions, because the
 			missing "dead" state must now be reified.
 		'''
-		return parallel([self], operator.not)
+		alphabet = self.alphabet
+
+		initial = {0 : self.initial}
+
+		def follow(current, symbol):
+			next = {}
+			if 0 in current and current[0] in self.map and symbol in self.map[current[0]]:
+				next[0] = self.map[current[0]][symbol]
+			return next
+
+		# state is final unless the original was
+		def final(state):
+			return not (0 in state and state[0] in self.finals)
+
+		return crawl(alphabet, initial, final, follow).reduce()
 
 	def reversed(self):
 		'''
@@ -369,12 +390,15 @@ class fsm:
 		# Find every possible way to reach the current state-set
 		# using this symbol.
 		def follow(current, symbol):
-			return frozenset([
+			next = frozenset([
 				prev
 				for prev in self.map
 				for state in current
 				if symbol in self.map[prev] and self.map[prev][symbol] == state
 			])
+			if len(next) == 0:
+				raise OblivionError
+			return next
 
 		# A state-set is final if the initial state is in it.
 		def final(state):
@@ -642,13 +666,10 @@ def epsilon(alphabet):
 	'''
 	return fsm(
 		alphabet = alphabet,
-		states   = {0, 1},
+		states   = {0},
 		initial  = 0,
 		finals   = {0},
-		map      = {
-			0: dict([(symbol, 1) for symbol in alphabet]),
-			1: dict([(symbol, 1) for symbol in alphabet]),
-		},
+		map      = {},
 	)
 
 def parallel(fsms, test):
@@ -670,6 +691,8 @@ def parallel(fsms, test):
 			and current[i] in fsms[i].map \
 			and symbol in fsms[i].map[current[i]]:
 				next[i] = fsms[i].map[current[i]][symbol]
+		if len(next.keys()) == 0:
+			raise OblivionError
 		return next
 
 	# Determine the "is final?" condition of each substate, then pass it to the
@@ -704,13 +727,18 @@ def crawl(alphabet, initial, final, follow):
 		# compute map for this state
 		map[i] = {}
 		for symbol in sorted(alphabet, key=key):
-			next = follow(state, symbol)
-
 			try:
-				j = states.index(next)
-			except ValueError:
-				j = len(states)
-				states.append(next)
+				next = follow(state, symbol)
+
+				try:
+					j = states.index(next)
+				except ValueError:
+					j = len(states)
+					states.append(next)
+
+			except OblivionError:
+				# Reached an oblivion state. Don't list it.
+				continue
 
 			map[i][symbol] = j
 
