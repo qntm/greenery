@@ -88,30 +88,30 @@ Returns an FSM over the supplied alphabet which accepts only the empty string, `
 
 An FSM accepts a possibly-infinite set of strings. With this in mind, `fsm` implements numerous set-like methods, as well as many FSM-specific methods. FSMs are immutable.
 
-Method | Alternate usage | Behaviour
----|---|---
-`fsm1.accepts("a")` | `"a" in fsm1` | Returns `True` or `False` or throws an exception if the string contains a symbol which is not in the FSM's alphabet. The string should be an iterable of symbols.
-`fsm1.strings()` | `for string in fsm1` | Returns a generator of all the strings that this FSM accepts.
-`fsm1.empty()` | | Returns `True` if this FSM accepts no strings, otherwise `False`.
-`fsm1.cardinality()` | `len(fsm1)` | Returns the number of strings which the FSM accepts. Throws a `ValueError` if this number is infinite.
-`fsm1.equivalent(fsm2)` | `fsm1 == fsm2` | Returns `True` if the two FSMs accept exactly the same strings, otherwise `False`.
-`fsm1.different(fsm2)` | `fsm1 != fsm2` | Returns `True` if the FSMs accept different strings, otherwise `False`.
-`fsm1.issubset(fsm2)` | `fsm1 <= fsm2` | Returns `True` if the set of strings accepted by `fsm1` is a subset of those accepted by `fsm2`, otherwise `False`.
-`fsm1.ispropersubset(fsm2)` | `fsm1 < fsm2` | Returns `True` if the set of strings accepted by `fsm1` is a proper subset of those accepted by `fsm2`, otherwise `False`.
-`fsm1.issuperset(fsm2)` | `fsm1 >= fsm2` | Returns `True` if the set of strings accepted by `fsm1` is a superset of those accepted by `fsm2`, otherwise `False`.
-`fsm1.ispropersuperset(fsm2)` | `fsm1 > fsm2` | Returns `True` if the set of strings accepted by `fsm1` is a proper superset of those accepted by `fsm2`, otherwise `False.
-`fsm1.isdisjoint(fsm2)` | | Returns `True` if the set of strings accepted by `fsm1` is disjoint from those accepted by `fsm2`, otherwise `False`.
-`fsm1.copy()` | | Returns a copy of `fsm1`.
-`fsm1.reduce()` | | Returns an FSM which accepts exactly the same strings as `fsm1` but with a minimal number of states.
-`fsm1.star()` | | Returns a new FSM which is the *[Kleene star closure](https://en.wikipedia.org/wiki/Kleene_star)* of the original. For example, if `fsm1` accepts only `"asdf"`, `fsm1.star()` accepts `""`, `"asdf"`, `"asdfasdf"`, `"asdfasdfasdf"`, and so on.
-`fsm1.everythingbut()` | | Returns an FSM which accepts every string not accepted by the original. `x.everythingbut().everythingbut()` accepts the same strings as `x` for all `fsm` objects `x`, but is not necessarily mechanically identical.
-`fsm1.reversed()` | `reversed(fsm1)` | Returns a reversed FSM. For each string that `fsm1` accepted, `reversed(fsm1)` will accept the reversed string. `reversed(reversed(x))` accepts the same strings as `x` for all `fsm` objects `x`, but is not necessarily mechanically identical.
-`fsm1.times(7)` | `fsm1 * 7` | Essentially, this is repeated self-concatenation. If `fsm1` only accepts `"z"`, `fsm2` only accepts `"zzzzzzz"`.
-`fsm1.concatenate(fsm2, ...)` | `fsm1 + fsm2 + ...` | Returns the concatenation of the FSMs. If `fsm1` accepts all strings in *A* and `fsm2` accepts all strings in *B*, then `fsm1 + fsm2` accepts all strings of the form *a·b* where *a* is in *A* and *b* is in *B*.
-`fsm1.union(fsm2, ...)` | `fsm1 | fsm2 | ...` | Returns an FSM accepting any string accepted by any input FSM. This is also called *alternation*.
-`fsm1.intersection(fsm2, ...)` | `fsm1 & fsm2 & ...` | Returns an FSM accepting any string accepted by all input FSMs.
-`fsm1.difference(fsm2, ...)` | `fsm1 - fsm2 - ...` | Subtract the set of strings accepted by `fsm2` onwards from those accepted by `fsm1` and return the resulting new FSM.
-`fsm1.symmetric_difference(fsm2, ...)` | `fsm1 ^ fsm2 ^ ...` | Returns an FSM accepting any string accepted by `fsm1` or `fsm2` but not both.
+Method | Behaviour
+---|---
+`fsm1.accepts("a")` <br/> `"a" in fsm1` | Returns `True` or `False` or throws an exception if the string contains a symbol which is not in the FSM's alphabet. The string should be an iterable of symbols.
+`fsm1.strings()` <br/> `for string in fsm1` | Returns a generator of all the strings that this FSM accepts.
+`fsm1.empty()` | Returns `True` if this FSM accepts no strings, otherwise `False`.
+`fsm1.cardinality()` <br/> `len(fsm1)` | Returns the number of strings which the FSM accepts. Throws a `ValueError` if this number is infinite.
+`fsm1.equivalent(fsm2)` <br/> `fsm1 == fsm2` | Returns `True` if the two FSMs accept exactly the same strings, otherwise `False`.
+`fsm1.different(fsm2)` <br/> `fsm1 != fsm2` | Returns `True` if the FSMs accept different strings, otherwise `False`.
+`fsm1.issubset(fsm2)` <br/> `fsm1 <= fsm2` | Returns `True` if the set of strings accepted by `fsm1` is a subset of those accepted by `fsm2`, otherwise `False`.
+`fsm1.ispropersubset(fsm2)` <br/> `fsm1 < fsm2` | Returns `True` if the set of strings accepted by `fsm1` is a proper subset of those accepted by `fsm2`, otherwise `False`.
+`fsm1.issuperset(fsm2)` <br/> `fsm1 >= fsm2` | Returns `True` if the set of strings accepted by `fsm1` is a superset of those accepted by `fsm2`, otherwise `False`.
+`fsm1.ispropersuperset(fsm2)` <br/> `fsm1 > fsm2` | Returns `True` if the set of strings accepted by `fsm1` is a proper superset of those accepted by `fsm2`, otherwise `False.
+`fsm1.isdisjoint(fsm2)` | Returns `True` if the set of strings accepted by `fsm1` is disjoint from those accepted by `fsm2`, otherwise `False`.
+`fsm1.copy()` | Returns a copy of `fsm1`.
+`fsm1.reduce()` | Returns an FSM which accepts exactly the same strings as `fsm1` but with a minimal number of states.
+`fsm1.star()` | Returns a new FSM which is the *[Kleene star closure](https://en.wikipedia.org/wiki/Kleene_star)* of the original. For example, if `fsm1` accepts only `"asdf"`, `fsm1.star()` accepts `""`, `"asdf"`, `"asdfasdf"`, `"asdfasdfasdf"`, and so on.
+`fsm1.everythingbut()` | Returns an FSM which accepts every string not accepted by the original. `x.everythingbut().everythingbut()` accepts the same strings as `x` for all `fsm` objects `x`, but is not necessarily mechanically identical.
+`fsm1.reversed()` <br/> `reversed(fsm1)` | Returns a reversed FSM. For each string that `fsm1` accepted, `reversed(fsm1)` will accept the reversed string. `reversed(reversed(x))` accepts the same strings as `x` for all `fsm` objects `x`, but is not necessarily mechanically identical.
+`fsm1.times(7)` <br/> `fsm1 * 7` | Essentially, this is repeated self-concatenation. If `fsm1` only accepts `"z"`, `fsm2` only accepts `"zzzzzzz"`.
+`fsm1.concatenate(fsm2, ...)` <br/> `fsm1 + fsm2 + ...` | Returns the concatenation of the FSMs. If `fsm1` accepts all strings in *A* and `fsm2` accepts all strings in *B*, then `fsm1 + fsm2` accepts all strings of the form *a·b* where *a* is in *A* and *b* is in *B*.
+`fsm1.union(fsm2, ...)` <br/> `fsm1 | fsm2 | ...` | Returns an FSM accepting any string accepted by any input FSM. This is also called *alternation*.
+`fsm1.intersection(fsm2, ...)` <br/> `fsm1 & fsm2 & ...` | Returns an FSM accepting any string accepted by all input FSMs.
+`fsm1.difference(fsm2, ...)` <br/> `fsm1 - fsm2 - ...` | Subtract the set of strings accepted by `fsm2` onwards from those accepted by `fsm1` and return the resulting new FSM.
+`fsm1.symmetric_difference(fsm2, ...)` <br/> `fsm1 ^ fsm2 ^ ...` | Returns an FSM accepting any string accepted by `fsm1` or `fsm2` but not both.
 
 ## greenery.lego
 
