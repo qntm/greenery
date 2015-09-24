@@ -4,8 +4,6 @@ Tools for parsing and manipulating regular expressions (`greenery.lego`), for pr
 
 This project was undertaken because I wanted to be able to **compute the intersection between two regular expressions**. The "intersection" is the set of strings which both regexes will accept, represented as a third regular expression.
 
-
-
 ## Example
 
     >>> from greenery.lego import parse
@@ -28,13 +26,6 @@ In the penultimate example, the empty string is returned, because only the empty
 
 As such, `greenery` is divided into two libraries:
 
-
-
-
-
-
-
-
 ## greenery.fsm
 
 This module provides for the creation and manipulation of **deterministic** finite state machines.
@@ -46,52 +37,40 @@ This module provides for the creation and manipulation of **deterministic** fini
     >>> from greenery import fsm
     >>> a = fsm.fsm(
     ...     alphabet = {"a", "b"},
-    ...     states   = {0, 1, 2},
+    ...     states   = {0, 1},
     ...     initial  = 0,
     ...     finals   = {1},
     ...     map      = {
-    ...             0 : {"a" : 1, "b" : 2},
-    ...             1 : {"a" : 2, "b" : 2},
-    ...             2 : {"a" : 2, "b" : 2},
+    ...             0 : {"a" : 1},
     ...     },
     ... )
     >>> print(a)
       name final? a b
     ------------------
-    * 0    False  1 2
-      1    True   2 2
-      2    False  2 2
-    >>> a.accepts("")
+    * 0    False  1
+      1    True
+    >>> a.accepts([])
     False
-    >>> a.accepts("a")
+    >>> a.accepts(["a"])
     True
-    >>> a.accepts("b")
+    >>> a.accepts(["b"])
     False
-    >>> print(a.accepts("c"))
+    >>> print(a.accepts(["c"]))
     Traceback (most recent call last):
       File "<stdin>", line 1, in <module>
       File "fsm.py", line 68, in accepts
         state = self.map[state][symbol]
     KeyError: 'c'
-    >>> print(repr(a.lego()))
-    charclass("a")
-    >>> print(a.lego())
-    a
-
-
-
-
-
-
-
-
-
 
 ### Functions in this module
 
 #### `fsm(alphabet, states, initial, finals, map)`
 
 Constructor for an `fsm` object, as demonstrated above. `fsm` objects are intended to be immutable.
+
+`map` may be sparse. If a transition is missing from `map`, then it is assumed that this transition leads to an undocumented "oblivion state" which is not final and does not appear when the FSM is printed out.
+
+Ordinarily, you may only feed known alphabet symbols into the FSM. Any other symbol will result in an exception, as seen above. However, if you add the special symbol `fsm.anything_else` to your alphabet, then any unrecognised symbol will be automatically converted into `fsm.anything_else` before following whatever transition you have specified for this symbol.
 
 #### `crawl(alphabet, initial, final, follow)`
 
@@ -107,70 +86,40 @@ Returns an FSM over the supplied alphabet which accepts only the empty string, `
 
 ### Methods on class `fsm`
 
-#### `fsm.accepts(string)`
+An FSM accepts a possibly-infinite set of strings. With this in mind, `fsm` implements numerous set-like methods, as well as many FSM-specific methods. FSMs are immutable.
 
-Returns `True` or `False`, or throws an exception if the string contains a character which is not in `fsm`'s alphabet.
-
-#### `fsm.strings()`
-
-Returns a generator of all the strings that this FSM accepts.
-
-#### `fsm.__str__()`
-
-Means you can pretty-print an FSM using `print(fsm1)`.
-
-#### `fsm.__add__()` (e.g. `fsm3 = fsm1 + fsm2`)
-
-Returns the concatenation of two FSMs. If the first FSM accepts all strings in *A* and the second FSM accepts all strings in *B*, then the resulting FSM will accept all strings of the form *a·b* where *a* is in *A* and *b* is in *B*.
-
-#### `fsm.__and__()` (e.g. `fsm3 = fsm1 & fsm2`)
-
-Returns an FSM accepting any string which is in both *A* and *B*. This is called *intersection*.
-
-#### `fsm.__or__()` (e.g. `fsm3 = fsm1 | fsm2`)
-
-Returns an FSM accepting any string which is in *A* or in *B* or both. This is called *alternation*.
-
-#### `fsm.star()`
-
-Returns a new FSM which is the *[Kleene star closure](https://en.wikipedia.org/wiki/Kleene_star)* of the original. For example, if `fsm` accepts only `"asdf"`, `fsm.star()` accepts `""`, `"asdf"`, `"asdfasdf"`, `"asdfasdfasdf"`, and so on.
-
-#### `fsm.__mul__()` (e.g. `fsm2 = fsm1 * 7`)
-
-Essentially, this is repeated self-concatenation. In this example, if `fsm1` only accepts `"z"`, `fsm2` only accepts `"zzzzzzz"`.
-
-#### `fsm.__reversed__()` (e.g. `fsm2 = reversed(fsm1)`)
-
-Returns a reversed FSM. For each string that `fsm1` accepted, `fsm2` will accept the reversed string. `reversed(reversed(x))` accepts the same strings as `x` for all `fsm` objects `x`, but is not necessarily mechanically identical.
-
-#### `fsm.everythingbut()`
-
-Returns an FSM which accepts every string not accepted by the original. `x.everythingbut().everythingbut()` accepts the same strings as `x` for all `fsm` objects `x`, but is not necessarily mechanically identical.
-
-#### `fsm.lego()`
-
-Uses the Brzozowski algebraic method to convert an `fsm` into a `lego` object, which is a regular expression (see `greenery.lego`, below).
-
-**Caution.** Every finite state machine has an alphabet associated with it. Typically this alphabet will be a set of characters, such as `{"a", "b", "c"}`. If you have an FSM over this alphabet which is capable of recognising "any string", then upon conversion into a regex you might expect an expression like `.*`, with `.` standing for "any character". Instead, you will get an expression like `[abc]*`.
-
-To solve this, add `greenery.lego.otherchars` to your alphabet. This character is taken to stand for "every possible character not explicitly mentioned in the rest of the alphabet". Thus, an FSM over the alphabet `{"a", "b", "c", otherchars}`, which can recognise `"a"` or `"b"` or `"c"`, will be turned into the regular expression `[abc]`, whereas an FSM over that same alphabet which can recognise `"a"` or `"b"` or `"c"` or `lego.otherchars` will be turned into `.` as you would expect.
-
-#### `fsm.reduce()`
-
-Returns an FSM accepting the same strings as the original, but with a minimal number of states.
-
-
-
-
-
-
-
+Method | Alternate usage | Behaviour
+---|---|---
+`fsm1.accepts("a")` | `"a" in fsm1` | Returns `True` or `False` or throws an exception if the string contains a symbol which is not in the FSM's alphabet. The string should be an iterable of symbols.
+`fsm1.strings()` | `for string in fsm1` | Returns a generator of all the strings that this FSM accepts.
+`fsm1.empty()` | | Returns `True` if this FSM accepts no strings, otherwise `False`.
+`fsm1.cardinality()` | `len(fsm1)` | Returns the number of strings which the FSM accepts. Throws a `ValueError` if this number is infinite.
+`fsm1.equivalent(fsm2)` | `fsm1 == fsm2` | Returns `True` if the two FSMs accept exactly the same strings, otherwise `False`.
+`fsm1.different(fsm2)` | `fsm1 != fsm2` | Returns `True` if the FSMs accept different strings, otherwise `False`.
+`fsm1.issubset(fsm2)` | `fsm1 <= fsm2` | Returns `True` if the set of strings accepted by `fsm1` is a subset of those accepted by `fsm2`, otherwise `False`.
+`fsm1.ispropersubset(fsm2)` | `fsm1 < fsm2` | Returns `True` if the set of strings accepted by `fsm1` is a proper subset of those accepted by `fsm2`, otherwise `False`.
+`fsm1.issuperset(fsm2)` | `fsm1 >= fsm2` | Returns `True` if the set of strings accepted by `fsm1` is a superset of those accepted by `fsm2`, otherwise `False`.
+`fsm1.ispropersuperset(fsm2)` | `fsm1 > fsm2` | Returns `True` if the set of strings accepted by `fsm1` is a proper superset of those accepted by `fsm2`, otherwise `False.
+`fsm1.isdisjoint(fsm2)` | | Returns `True` if the set of strings accepted by `fsm1` is disjoint from those accepted by `fsm2`, otherwise `False`.
+`fsm1.copy()` | | Returns a copy of `fsm1`.
+`fsm1.reduce()` | | Returns an FSM which accepts exactly the same strings as `fsm1` but with a minimal number of states.
+`fsm1.star()` | | Returns a new FSM which is the *[Kleene star closure](https://en.wikipedia.org/wiki/Kleene_star)* of the original. For example, if `fsm1` accepts only `"asdf"`, `fsm1.star()` accepts `""`, `"asdf"`, `"asdfasdf"`, `"asdfasdfasdf"`, and so on.
+`fsm1.everythingbut()` | | Returns an FSM which accepts every string not accepted by the original. `x.everythingbut().everythingbut()` accepts the same strings as `x` for all `fsm` objects `x`, but is not necessarily mechanically identical.
+`fsm1.reversed()` | `reversed(fsm1)` | Returns a reversed FSM. For each string that `fsm1` accepted, `reversed(fsm1)` will accept the reversed string. `reversed(reversed(x))` accepts the same strings as `x` for all `fsm` objects `x`, but is not necessarily mechanically identical.
+`fsm1.times(7)` | `fsm1 * 7` | Essentially, this is repeated self-concatenation. If `fsm1` only accepts `"z"`, `fsm2` only accepts `"zzzzzzz"`.
+`fsm1.concatenate(fsm2, ...)` | `fsm1 + fsm2 + ...` | Returns the concatenation of the FSMs. If `fsm1` accepts all strings in *A* and `fsm2` accepts all strings in *B*, then `fsm1 + fsm2` accepts all strings of the form *a·b* where *a* is in *A* and *b* is in *B*.
+`fsm1.union(fsm2, ...)` | `fsm1 | fsm2 | ...` | Returns an FSM accepting any string accepted by any input FSM. This is also called *alternation*.
+`fsm1.intersection(fsm2, ...)` | `fsm1 & fsm2 & ...` | Returns an FSM accepting any string accepted by all input FSMs.
+`fsm1.difference(fsm2, ...)` | `fsm1 - fsm2 - ...` | Subtract the set of strings accepted by `fsm2` onwards from those accepted by `fsm1` and return the resulting new FSM.
+`fsm1.symmetric_difference(fsm2, ...)` | `fsm1 ^ fsm2 ^ ...` | Returns an FSM accepting any string accepted by `fsm1` or `fsm2` but not both.
 
 ## greenery.lego
 
 This module provides methods for parsing a regular expression (i.e. a string) into a manipulable nested data structure, and for manipulating that data structure.
 
 Note that this is an entirely different concept from that of simply creating and using those regexes, functionality which is present in basically every programming language in the world, [Python included](http://docs.python.org/library/re.html).
+
+This module requires `greenery.fsm` in order to carry out many of its most important functions. (`greenery.fsm`, in comparison, is completely standalone.)
 
 ### Classes in this module
 
@@ -204,13 +153,6 @@ Represents a sequence of zero or more `mult`s, e.g. `ab`, `[abc]*d`.
 
 Represents an alternation between one or more `conc`s, e.g. `[abc]*d|e`.
 
-
-
-
-
-
-
-
 ### Constants in this module
 
 * the `bound` object `inf`
@@ -220,9 +162,12 @@ Represents an alternation between one or more `conc`s, e.g. `[abc]*d|e`.
 * the character classes `w`, `W`, `s`, `S`, `d`, `D` and `dot`
 * `emptystring`, the regular expression which only matches the empty string (`conc()`)
 * `nothing`, a regular expression which matches no strings (`charclass()`)
-* `otherchars`, which you can use in an `fsm`'s alphabet (see `fsm.lego()`).
 
 ### Methods in this module
+
+#### `lego.from_fsm()`
+
+Uses the Brzozowski algebraic method to convert a `greenery.fsm` object into a `lego` object, which is a regular expression.
 
 #### `lego.parse(string)`
 
@@ -244,14 +189,16 @@ An empty charclass `[]` is legal and matches no characters: when used in a regex
 
  This is because computing the intersection between `.*a.*` and `.*b.*` (1) is largely pointless and (2) usually results in gibberish coming out of the program.
 
-* The greedy operators `*?`, `+?`, `??` and `{m,n}?` are not supported, since they do not alter the regular language
+* The greedy operators `*?`, `+?`, `??` and `{m,n}?` are not supported, since they do not alter the regular language.
 
 * Parentheses are used to alternate between multiple possibilities e.g. `(a|bc)` only, not for capture grouping. Here's why:
 
         >>> print(parse("(ab)c") & parse("a(bc)"))
         abc
 
-* `(?...)` constructs are not supported (and most are not [regular in the computer science sense](http://en.wikipedia.org/wiki/Regular_language)).
+ The `(?:...)` syntax for non-capturing groups is permitted, but does nothing.
+
+* Other `(?...)` constructs are not supported (and most are not [regular in the computer science sense](http://en.wikipedia.org/wiki/Regular_language)).
 
 *  Back-references, such as `([aeiou])\1`, are not regular.
 
@@ -281,26 +228,13 @@ Return the current regular expression after it has been multiplied by the suppli
 
 Returns a generator of all the strings that this regular expression accepts.
 
-#### `lego.fsm()`
+#### `lego.to_fsm()`
 
 Returns an `fsm` object, a finite state machine which recognises exactly the strings that the original regular expression can match.
 
+#### `lego.reduce()`
 
-
-
-
-
-
-
-
-
-
-
-
-
-### Regular expression reduction
-
-`lego` objects are automatically simplified at creation time, using the various implementations  of `lego.reduce()`, which can recognise and simplify the following patterns:
+Call this method to try to simplify the regular expression object, according to the following patterns:
 
 * `(ab|cd|ef|)g` to `(ab|cd|ef)?g`
 * `([ab])*` to `[ab]*`
@@ -309,38 +243,11 @@ Returns an `fsm` object, a finite state machine which recognises exactly the str
 * `0|[2-9]` to `[02-9]`
 * `abc|ade` to `a(bc|de)`
 * `xyz|stz` to `(xy|st)z`
+* `abc()def` to `abcdef`
+* `a{1,2}|a{3,4}` to `a{1,4}`
 
 The various `reduce()` methods are extensible.
 
 ### Name
 
 I spent a long time trying to find an appropriate metaphor for what I was trying to do: "I need an X such that lots of Xs go together to make a Y, but lots of Ys go together to make an X". Unfortunately the real world doesn't seem to be recursive in this way so I plumped for "lego" as a basic catchall term for the various components that go together to make up a data structure.
-
-
-
-
-
-
-
-
-
-## Backward compatibility
-
-`greenery.fsm` and `greenery.lego` are separated in this version, which is 2.x. In the 1.x versions, executing:
-
-    import greenery
-    regex = greenery.parse( "a*b" )
-
-would import all of `greenery.fsm.*` and `greenery.lego.*` into the `greenery` namespace. To restore version 1.0 behavior for legacy code, use the `greenery.v1` compatibility interface:
-
-    import greenery.v1 as greenery
-    regex = greenery.parse( "a*b" )
-
-To make version 1.x style code work with either version 1.x or version 2.x, use:
-
-    try:
-        import greenery.v1 as greenery
-    except ImportError:
-        import greenery
-    
-    # V1 code
