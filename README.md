@@ -68,7 +68,7 @@ This module provides for the creation and manipulation of **deterministic** fini
 
 Constructor for an `fsm` object, as demonstrated above. `fsm` objects are intended to be immutable.
 
-`map` may be sparse. If a transition is missing from `map`, then it is assumed that this transition leads to an undocumented "oblivion state" which is not final and does not appear when the FSM is printed out.
+`map` may be sparse. If a transition is missing from `map`, then it is assumed that this transition leads to an undocumented "oblivion state" which is not final. This oblivion state does not appear when the FSM is printed out.
 
 Ordinarily, you may only feed known alphabet symbols into the FSM. Any other symbol will result in an exception, as seen above. However, if you add the special symbol `fsm.anything_else` to your alphabet, then any unrecognised symbol will be automatically converted into `fsm.anything_else` before following whatever transition you have specified for this symbol.
 
@@ -86,7 +86,7 @@ Returns an FSM over the supplied alphabet which accepts only the empty string, `
 
 ### Methods on class `fsm`
 
-An FSM accepts a possibly-infinite set of strings. With this in mind, `fsm` implements numerous set-like methods, as well as many FSM-specific methods. FSMs are immutable.
+An FSM accepts a possibly-infinite set of strings. With this in mind, `fsm` implements numerous [methods like those on `frozenset`](https://docs.python.org/3.5/library/stdtypes.html#frozenset), as well as many FSM-specific methods. FSMs are immutable.
 
 Method | Behaviour
 ---|---
@@ -102,7 +102,7 @@ Method | Behaviour
 `fsm1.ispropersuperset(fsm2)` <br/> `fsm1 > fsm2` | Returns `True` if the set of strings accepted by `fsm1` is a proper superset of those accepted by `fsm2`, otherwise `False.
 `fsm1.isdisjoint(fsm2)` | Returns `True` if the set of strings accepted by `fsm1` is disjoint from those accepted by `fsm2`, otherwise `False`.
 `fsm1.copy()` | Returns a copy of `fsm1`.
-`fsm1.reduce()` | Returns an FSM which accepts exactly the same strings as `fsm1` but with a minimal number of states.
+`fsm1.reduce()` | Returns an FSM which accepts exactly the same strings as `fsm1` but has a minimal number of states.
 `fsm1.star()` | Returns a new FSM which is the *[Kleene star closure](https://en.wikipedia.org/wiki/Kleene_star)* of the original. For example, if `fsm1` accepts only `"asdf"`, `fsm1.star()` accepts `""`, `"asdf"`, `"asdfasdf"`, `"asdfasdfasdf"`, and so on.
 `fsm1.everythingbut()` | Returns an FSM which accepts every string not accepted by the original. `x.everythingbut().everythingbut()` accepts the same strings as `x` for all `fsm` objects `x`, but is not necessarily mechanically identical.
 `fsm1.reversed()` <br/> `reversed(fsm1)` | Returns a reversed FSM. For each string that `fsm1` accepted, `reversed(fsm1)` will accept the reversed string. `reversed(reversed(x))` accepts the same strings as `x` for all `fsm` objects `x`, but is not necessarily mechanically identical.
