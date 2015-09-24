@@ -555,6 +555,20 @@ class fsm:
 		'''
 		return self.equivalent(other)
 
+	def different(self, other):
+		'''
+			Two FSMs are considered different if they have a non-empty symmetric
+			difference.
+		'''
+		return not (self ^ other).empty()
+
+	def __ne__(self, other):
+		'''
+			Use `fsm1 != fsm2` to determine whether two FSMs recognise different
+			strings.
+		'''
+		return self.different(other)
+
 	def difference(*fsms):
 		'''
 			Difference. Returns an FSM which recognises only the strings
