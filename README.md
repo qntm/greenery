@@ -251,3 +251,5 @@ The various `reduce()` methods are extensible.
 ### Name
 
 I spent a long time trying to find an appropriate metaphor for what I was trying to do: "I need an X such that lots of Xs go together to make a Y, but lots of Ys go together to make an X". Unfortunately the real world doesn't seem to be recursive in this way so I plumped for "lego" as a basic catchall term for the various components that go together to make up a data structure.
+
+This was a dumb idea in retrospect and it will be changed to `greenery.re` or `greenery.rx` in the near future. Vote now if you have an opinion.
