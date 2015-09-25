@@ -224,39 +224,34 @@ class fsm:
 		'''
 			If the present FSM accepts X, returns an FSM accepting X* (i.e. 0 or
 			more Xes). This is NOT as simple as naively connecting the final states
-			back to the initial state: see (b*ab)* for example. Instead we must create
-			an articial "omega state" which is our only accepting state and which
-			dives into the FSM and from which all exits return.
+			back to the initial state: see (b*ab)* for example.
 		'''
 		alphabet = self.alphabet
 
-		# We need a new state not already used
-		omega = object()
+		initial = self.finals
 
-		initial = frozenset([omega])
+		def follow(state, symbol):
+			next = set()
+			for substate in state:
+				if substate in self.map and symbol in self.map[substate]:
+					next.add(self.map[substate][symbol])
 
-		def follow(current, symbol):
-			next = []
-			for state in current:
-				# the special new starting "omega" state behaves exactly like the
-				# original starting state did
-				if state == omega:
-					state = self.initial
-				if state in self.map and symbol in self.map[state]:
-					substate = self.map[state][symbol]
-					next.append(substate)
-					# loop back to beginning
-					if substate in self.finals:
-						next.append(omega)
+				# If one of our substates is final, then we can also consider
+				# transitions from the initial state of the original FSM.
+				if substate in self.finals \
+				and self.initial in self.map \
+				and symbol in self.map[self.initial]:
+					next.add(self.map[self.initial][symbol])
+
 			if len(next) == 0:
 				raise OblivionError
+
 			return frozenset(next)
 
-		# final if state contains omega
 		def final(state):
-			return omega in state
+			return any(substate in self.finals for substate in state)
 
-		return crawl(alphabet, initial, final, follow).reduce()
+		return crawl(alphabet, initial, final, follow)
 
 	def times(self, multiplier):
 		'''

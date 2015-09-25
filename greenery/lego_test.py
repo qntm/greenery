@@ -158,7 +158,7 @@ def test_conc_subtraction():
 			mult(charclass("X"), one),
 			mult(charclass("Y"), plus),
 		)
-	)== conc(
+	) == conc(
 		mult(charclass("Z"), one),
 	)
 
