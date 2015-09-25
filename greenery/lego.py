@@ -928,6 +928,18 @@ class multiplier:
 
 		raise nomatch
 
+	@classmethod
+	def parse(cls, string):
+		'''
+			Parse the entire supplied string as an instance of the present class.
+			Mainly for internal use in unit tests because it drops through to match()
+			in a convenient way.
+		'''
+		obj, i = cls.match(string, 0)
+		if i != len(string):
+			raise Exception("Could not parse '" + string + "' beyond index " + str(i))
+		return obj
+
 	def canmultiplyby(self, other):
 		'''
 			Multiplication is not well-defined for all pairs of multipliers because
