@@ -1323,3 +1323,7 @@ def test_block_comment_regex():
 	assert c.matches("/**/")
 	assert c.matches("/***/")
 	assert c.matches("/****/")
+
+def test_named_groups():
+	a = parse("(?P<ng1>abc)")
+	assert a.matches("abc")

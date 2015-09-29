@@ -151,6 +151,23 @@ def static(string, i, static):
 		return j
 	raise nomatch
 
+def select_static(string, i, *statics):
+	for st in statics:
+		j = i+len(st)
+		if string[i:j] == st:
+			return j, st
+	raise nomatch
+
+def read_until(string, i, stop_char):
+	start = i
+	while True:
+		if i >= len(string):
+			raise nomatch
+		if string[i] == stop_char:
+			break
+		i += 1
+	return i + 1, string[start:i]
+
 class lego:
 	'''
 		Parent class for all lego pieces.
@@ -1241,7 +1258,10 @@ class mult(lego):
 		def matchMultiplicand(string, i):
 			# explicitly non-capturing "(?:...)" syntax. No special significance
 			try:
-				j = static(string, i, "(?:")
+				j = static(string, i, "(?")
+				j, st = select_static(string, j, ':', 'P<')
+				if st == 'P<':
+					j, group_name = read_until(string, j, '>')
 				multiplicand, j = pattern.match(string, j)
 				j = static(string, j, ")")
 				return multiplicand, j
