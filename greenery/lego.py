@@ -146,7 +146,7 @@ def from_fsm(f):
 	return brz[f.initial][outside].reduce()
 
 def static(string, i, static):
-	j = i+len(static)
+	j = i + len(static)
 	if string[i:j] == static:
 		return j
 	raise nomatch
@@ -248,9 +248,7 @@ class lego:
 
 	def __add__(self, other):
 		'''
-			Concatenate any two lego pieces, regardless of differing classes. Because
-			reduce() (above) is always called afterwards, the result is as simplified
-			as possible.
+			Concatenate any two lego pieces, regardless of differing classes.
 			Call using "a = b + c"
 		'''
 		raise Exception("Not implemented")
@@ -260,14 +258,12 @@ class lego:
 			Equivalent to repeated concatenation. Multiplier consists of a minimum
 			and a maximum; maximum may be infinite (for Kleene star closure).
 			Call using "a = b * qm"
-			Reduce() is always called afterwards.
 		'''
 		raise Exception("Not implemented")
 
 	def __or__(self, other):
 		'''
 			Alternate between any two lego pieces, regardless of differing classes.
-			Again, reduce() is called afterwards, usually with excellent results.
 			Call using "a = b | c".
 			This method MUST NOT call the to_fsm() method, because this method is used
 			in turn when converting an FSM back to a regex.
@@ -469,11 +465,14 @@ class charclass(lego):
 
 		def recordRange():
 			# there's no point in putting a range when the whole thing is
-			# 3 characters or fewer.
-			if len(currentRange) < 4:
-				return "".join(escapeChar(char) for char in currentRange)
-			else:
-				return escapeChar(currentRange[0]) + "-" + escapeChar(currentRange[-1])
+			# 3 characters or fewer. "abc" -> "abc" but "abcd" -> "a-d"
+			strs = [
+				# "ab" or "abc" or "abcd"
+				"".join(escapeChar(char) for char in currentRange),
+				# "a-b" or "a-c" or "a-d"
+				escapeChar(currentRange[0]) + "-" + escapeChar(currentRange[-1]),
+			]
+			return sorted(strs, key=lambda str: len(str))[0]
 
 		output = ""
 
@@ -498,7 +497,8 @@ class charclass(lego):
 
 			currentRange += char
 
-		output += recordRange()
+		if len(currentRange) > 0:
+			output += recordRange()
 
 		return output
 
@@ -1193,7 +1193,7 @@ class mult(lego):
 		# e.g. ([ab])* -> [ab]*
 		try:
 			if len(self.multiplicand.concs) == 1:
-				singleton = [c for c in self.multiplicand.concs][0]
+				(singleton,) = self.multiplicand.concs
 				if len(singleton.mults) == 1:
 					singlemult = singleton.mults[0]
 					if singlemult.multiplier.canmultiplyby(self.multiplier):
@@ -1220,7 +1220,7 @@ class mult(lego):
 		# Pick whatever is shorter/more comprehensible.
 		# e.g. "aa" beats "a{2}", "ababab" beats "(ab){3}"
 		if self.multiplier.min == self.multiplier.max \
-		and len(output) * self.multiplier.min.v <= len(output) + len(suffix):
+		and len(output * self.multiplier.min.v) <= len(output + suffix):
 			return output * self.multiplier.min.v
 
 		return output + suffix
@@ -1374,13 +1374,13 @@ class conc(lego):
 		# squish those together
 		# e.g. ab?b?c -> ab{0,2}c
 		if len(self.mults) > 1:
-			for i in range(len(self.mults)-1):
-				if self.mults[i].multiplicand == self.mults[i+1].multiplicand:
+			for i in range(len(self.mults) - 1):
+				if self.mults[i].multiplicand == self.mults[i + 1].multiplicand:
 					squished = mult(
 						self.mults[i].multiplicand,
-						self.mults[i].multiplier + self.mults[i+1].multiplier
+						self.mults[i].multiplier + self.mults[i + 1].multiplier
 					)
-					new = self.mults[:i] + (squished,) + self.mults[i+2:]
+					new = self.mults[:i] + (squished,) + self.mults[i + 2:]
 					return conc(*new)
 
 		# Conc contains (among other things) a *singleton* mult containing a pattern
@@ -1392,7 +1392,7 @@ class conc(lego):
 			m = self.mults[i]
 			try:
 				if m.multiplier == one and len(m.multiplicand.concs) == 1:
-					single = [c for c in m.multiplicand.concs][0]
+					(single,) = m.multiplicand.concs
 					new = self.mults[:i] + single.mults + self.mults[i+1:]
 					return conc(*new)
 			except AttributeError:
@@ -1613,7 +1613,7 @@ class pattern(lego):
 
 		# no point alternating among one possibility
 		if len(self.concs) == 1:
-			return [e for e in self.concs][0]
+			return list(self.concs)[0]
 
 		# Try recursively reducing our internals first.
 		reduced = [c.reduce() for c in self.concs]

@@ -136,7 +136,7 @@ class fsm:
 		# other rows
 		for state in self.states:
 			row = []
-			if(state == self.initial):
+			if state == self.initial:
 				row.append("*")
 			else:
 				row.append("")
@@ -481,7 +481,7 @@ class fsm:
 
 	def __iter__(self):
 		'''
-			This allows you to do `for string in fsm1` as a list comprehensions!
+			This allows you to do `for string in fsm1` as a list comprehension!
 		'''
 		return self.strings()
 
