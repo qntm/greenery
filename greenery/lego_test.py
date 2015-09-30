@@ -1327,3 +1327,13 @@ def test_block_comment_regex():
 def test_named_groups():
 	a = parse("(?P<ng1>abc)")
 	assert a.matches("abc")
+
+def test_lazy_quantifier():
+	a = parse('a*?b+?c')
+	assert a.matches('abc')
+	assert a.matches('bbc')
+
+def test_special_cases_for_first_character_in_char_class():
+	a = parse('[- ]')
+	assert a.matches('-')
+	assert a.matches(' ')

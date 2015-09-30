@@ -155,7 +155,7 @@ def select_static(string, i, *statics):
 	for st in statics:
 		j = i+len(st)
 		if string[i:j] == st:
-			return j, st
+			return st, j
 	raise nomatch
 
 def read_until(string, i, stop_char):
@@ -409,6 +409,9 @@ class charclass(lego):
 	# hyphen and caret do NOT appear above.
 	classSpecial = set("\\[]^-")
 
+	# These are the characters which may be first inside char class definition and may not be escaped
+	classFirstCharSpecialCases = set('-')
+
 	# Shorthand codes for use inside charclasses e.g. [abc\d]
 	w = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz"
 	d = "0123456789"
@@ -607,6 +610,13 @@ class charclass(lego):
 
 			return char, j
 
+		def matchClassInteriorFirst(string, i):
+			try:
+				return select_static(string, i, *charclass.classFirstCharSpecialCases)
+			except nomatch:
+				pass
+			return matchClassInterior1(string, i)
+
 		def matchClassInterior1(string, i):
 
 			# Attempt 1: shorthand e.g. "\w"
@@ -642,6 +652,8 @@ class charclass(lego):
 		def matchClassInterior(string, i):
 			internals = ""
 			try:
+				internal, i = matchClassInteriorFirst(string, i)
+				internals += internal
 				while True:
 					internal, i = matchClassInterior1(string, i)
 					internals += internal
@@ -871,7 +883,7 @@ class multiplier:
 		"zero" to exist, which actually are quite useful in their own special way.
 	'''
 
-	def __init__(self, min, max):
+	def __init__(self, min, max, greedy=True):
 		if min == inf:
 			raise Exception("Minimum bound of a multiplier can't be " + repr(inf))
 		if min > max:
@@ -884,12 +896,13 @@ class multiplier:
 
 		self.__dict__['min'] = min
 		self.__dict__['max'] = max
+		self.__dict__['greedy'] = greedy
 		self.__dict__['mandatory'] = mandatory
 		self.__dict__['optional'] = optional
 
 	def __eq__(self, other):
 		try:
-			return self.min == other.min and self.max == other.max
+			return self.min == other.min and self.max == other.max and self.greedy == other.greedy
 		except AttributeError:
 			return False
 
@@ -897,7 +910,7 @@ class multiplier:
 		return not self.__eq__(other)
 
 	def __hash__(self):
-		return hash((self.min, self.max))
+		return hash((self.min, self.max, self.greedy))
 
 	def __repr__(self):
 		return "multiplier(" + repr(self.min) + ", " + repr(self.max) + ")"
@@ -934,7 +947,7 @@ class multiplier:
 		except nomatch:
 			pass
 
-		# "?"/"*"/"+"/""
+		# "*?"/"+?"/"?"/"*"/"+"/""
 		# we do these in reverse order of symbol length, because
 		# that forces "" to be done last
 		for key in sorted(symbolic, key=lambda key: -len(symbolic[key])):
@@ -1259,7 +1272,7 @@ class mult(lego):
 			# explicitly non-capturing "(?:...)" syntax. No special significance
 			try:
 				j = static(string, i, "(?")
-				j, st = select_static(string, j, ':', 'P<')
+				st, j = select_static(string, j, ':', 'P<')
 				if st == 'P<':
 					j, group_name = read_until(string, j, '>')
 				multiplicand, j = pattern.match(string, j)
@@ -1826,6 +1839,8 @@ qm   = multiplier(bound(0), bound(1))
 one  = multiplier(bound(1), bound(1))
 star = multiplier(bound(0), inf)
 plus = multiplier(bound(1), inf)
+lazy_star = multiplier(bound(0), inf, greedy=False)
+lazy_plus = multiplier(bound(1), inf, greedy=False)
 
 # Symbol lookup table for preset multipliers.
 symbolic = {
@@ -1833,6 +1848,8 @@ symbolic = {
 	one  : "" ,
 	star : "*",
 	plus : "+",
+	lazy_star: '*?',
+	lazy_plus: '+?',
 }
 
 # A very special conc expressing the empty string, ""
