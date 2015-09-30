@@ -213,7 +213,7 @@ def test_charclass_str():
 	assert str(charclass("\\")) == "\\\\"
 	assert str(charclass("a^")) == "[\\^a]"
 	assert str(charclass("0123456789a")) == "[0-9a]"
-	assert str(charclass("\t\v\r A")) == "[\\t\\v\\r A]"
+	assert str(charclass("\t\v\r' \"'A")) == "[\\t\\v\\r \\\"\\'A]"
 	assert str(charclass("\n\f A")) == "[\\n\\f A]"
 	assert str(charclass("\t\n\v\f\r A")) == "[\\t-\\r A]"
 	assert str(charclass("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz|")) == "[0-9A-Z_a-z|]"

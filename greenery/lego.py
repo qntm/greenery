@@ -1885,6 +1885,8 @@ escapes = {
 	"\v" : "\\v", # vertical tab
 	"\f" : "\\f", # form feed
 	"\r" : "\\r", # carriage return
+	"'": "\\'",  # single quote
+	"\"":  "\\\"", # double quote
 }
 
 # Use this for cases where no upper bound is needed
