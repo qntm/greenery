@@ -1333,8 +1333,11 @@ def test_lazy_quantifier():
 	assert a.matches('abc')
 	assert a.matches('bbc')
 
-def test_special_cases_for_first_character_in_char_class():
+def test_special_cases_for_charclass():
 	a = parse('[- ]')
+	assert a.matches('-')
+	assert a.matches(' ')
+	a = parse('[ -]')
 	assert a.matches('-')
 	assert a.matches(' ')
 

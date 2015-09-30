@@ -454,7 +454,7 @@ class charclass(lego):
 	classSpecial = set("\\[]^-")
 
 	# These are the characters which may be first inside char class definition and may not be escaped
-	classFirstCharSpecialCases = set('-')
+	classFirstOrLastCharSpecialCases = set('-')
 
 	# Shorthand codes for use inside charclasses e.g. [abc\d]
 	w = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz"
@@ -656,7 +656,14 @@ class charclass(lego):
 
 		def matchClassInteriorFirst(string, i):
 			try:
-				return select_static(string, i, *charclass.classFirstCharSpecialCases)
+				return select_static(string, i, *charclass.classFirstOrLastCharSpecialCases)
+			except nomatch:
+				pass
+			return matchClassInterior1(string, i)
+
+		def matchClassInteriorLast(string, i):
+			try:
+				return select_static(string, i, *charclass.classFirstOrLastCharSpecialCases)
 			except nomatch:
 				pass
 			return matchClassInterior1(string, i)
@@ -699,7 +706,10 @@ class charclass(lego):
 				internal, i = matchClassInteriorFirst(string, i)
 				internals += internal
 				while True:
-					internal, i = matchClassInterior1(string, i)
+					if string[i+1:i+2] == ']':
+						internal, i = matchClassInteriorLast(string, i)
+					else:
+						internal, i = matchClassInterior1(string, i)
 					internals += internal
 			except nomatch:
 				pass
