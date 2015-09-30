@@ -3,7 +3,7 @@
 if __name__ == "__main__":
 	raise Exception("Test files can't be run directly. Use `python -m pytest greenery`")
 
-from greenery.lego import conc, mult, charclass, one, emptystring, star, plus, nothing, pattern, qm, d, multiplier, bound, w, s, W, D, S, dot, nomatch, inf, zero, parse, from_fsm
+from greenery.lego import conc, mult, charclass, one, emptystring, star, plus, nothing, pattern, qm, d, multiplier, bound, w, s, W, D, S, dot, nomatch, inf, zero, parse, from_fsm, dollar, caret
 from greenery import fsm
 
 def test_new_reduce():
@@ -1337,3 +1337,13 @@ def test_special_cases_for_first_character_in_char_class():
 	a = parse('[- ]')
 	assert a.matches('-')
 	assert a.matches(' ')
+
+def test_parse_anchors():
+	assert str(parse(r"\ba\b")) == r"\ba\b"
+	assert str(parse(r"^a$")) == r"^a$"
+	assert str(parse(r"\Aa\Z")) == r"\Aa\Z"
+	assert str(parse(r"\Ga\z")) == r"\Ga\z"
+	a = parse(r"^a$")
+	mults = list(list(a.concs)[0].mults)
+	assert mults[0] == caret
+	assert mults[2] == dollar

@@ -360,6 +360,50 @@ class lego:
 
 			yield "".join(string)
 
+
+class anchor(lego):
+	def __init__(self, v):
+		self.__dict__["v"] = v
+
+	def __eq__(self, other):
+		try:
+			return self.v == other.v
+		except AttributeError:
+			return False
+
+	def __ne__(self, other):
+		return not self.__eq__(other)
+
+	def __hash__(self):
+		return hash(self.v)
+
+	def __str__(self):
+		return anchors[self]
+
+	@reduce_after
+	def reduce(self):
+		return self
+
+	def __repr__(self):
+		return "anchor(%s)" % anchors[self]
+
+	def empty(self):
+		return False
+
+	@classmethod
+	def match(cls, string, i = 0):
+		for _anchor, value in anchors.iteritems():
+			try:
+				return _anchor, static(string, i, value)
+			except nomatch:
+				pass
+
+		raise nomatch
+
+	def __reversed__(self):
+		return self
+
+
 class charclass(lego):
 	'''
 		A charclass is basically a frozenset of symbols. The reason for the
@@ -1441,7 +1485,10 @@ class conc(lego):
 		mults = list()
 		try:
 			while True:
-				m, i = mult.match(string, i)
+				try:
+					m, i = anchor.match(string, i)
+				except nomatch:
+					m, i = mult.match(string, i)
 				mults.append(m)
 		except nomatch:
 			pass
@@ -1828,6 +1875,8 @@ escapes = {
 	"\v" : "\\v", # vertical tab
 	"\f" : "\\f", # form feed
 	"\r" : "\\r", # carriage return
+	"\\b": "\\b",
+	"\\B": "\\B",
 }
 
 # Use this for cases where no upper bound is needed
@@ -1854,3 +1903,23 @@ symbolic = {
 
 # A very special conc expressing the empty string, ""
 emptystring = conc()
+
+b = anchor("\\b")
+B = anchor("\\B")
+G = anchor("\\G")
+z = anchor("\\z")
+Z = anchor("\\Z")
+A = anchor("\\A")
+dollar = anchor("$")
+caret = anchor("^")
+
+anchors = {
+	b: b.v,
+	B: B.v,
+	G: G.v,
+	z: z.v,
+	Z: Z.v,
+	A: A.v,
+	dollar: dollar.v,
+	caret: caret.v,
+}
