@@ -3,7 +3,7 @@
 if __name__ == "__main__":
 	raise Exception("Test files can't be run directly. Use `python -m pytest greenery`")
 
-from greenery.lego import conc, mult, charclass, one, emptystring, star, plus, nothing, pattern, qm, d, multiplier, bound, w, s, W, D, S, dot, nomatch, inf, zero, parse, from_fsm
+from greenery.lego import conc, mult, charclass, one, emptystring, star, plus, nothing, pattern, qm, d, multiplier, bound, w, s, W, D, S, dot, nomatch, inf, zero, parse, from_fsm, dollar, caret
 from greenery import fsm
 
 def test_new_reduce():
@@ -213,7 +213,7 @@ def test_charclass_str():
 	assert str(charclass("\\")) == "\\\\"
 	assert str(charclass("a^")) == "[\\^a]"
 	assert str(charclass("0123456789a")) == "[0-9a]"
-	assert str(charclass("\t\v\r A")) == "[\\t\\v\\r A]"
+	assert str(charclass("\t\v\r' \"'A")) == "[\\t\\v\\r \\\"\\'A]"
 	assert str(charclass("\n\f A")) == "[\\n\\f A]"
 	assert str(charclass("\t\n\v\f\r A")) == "[\\t-\\r A]"
 	assert str(charclass("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz|")) == "[0-9A-Z_a-z|]"
@@ -1327,3 +1327,26 @@ def test_block_comment_regex():
 def test_named_groups():
 	a = parse("(?P<ng1>abc)")
 	assert a.matches("abc")
+
+def test_lazy_quantifier():
+	a = parse('a*?b+?c')
+	assert a.matches('abc')
+	assert a.matches('bbc')
+
+def test_special_cases_for_charclass():
+	a = parse('[- ]')
+	assert a.matches('-')
+	assert a.matches(' ')
+	a = parse('[ -]')
+	assert a.matches('-')
+	assert a.matches(' ')
+
+def test_parse_anchors():
+	assert str(parse(r"\ba\b")) == r"\ba\b"
+	assert str(parse(r"^a$")) == r"^a$"
+	assert str(parse(r"\Aa\Z")) == r"\Aa\Z"
+	assert str(parse(r"\Ga\z")) == r"\Ga\z"
+	a = parse(r"^a$")
+	mults = list(list(a.concs)[0].mults)
+	assert mults[0] == caret
+	assert mults[2] == dollar
