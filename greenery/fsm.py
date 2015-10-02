@@ -530,16 +530,15 @@ class fsm:
 			set, or raise an OverflowError if there are infinitely many
 		'''
 		num_strings = {}
-		computing = object() # special value indicating we are mid-computation
 		def get_num_strings(state):
 			# Many FSMs have at least one oblivion state
 			if self.islive(state):
 				if state in num_strings:
-					if num_strings[state] == computing:
+					if num_strings[state] is None: # "computing..."
 						# Recursion! There are infinitely many strings recognised
 						raise OverflowError(state)
 					return num_strings[state]
-				num_strings[state] = computing
+				num_strings[state] = None # i.e. "computing..."
 
 				n = 0
 				if state in self.finals:

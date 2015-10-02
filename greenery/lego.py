@@ -151,6 +151,23 @@ def static(string, i, static):
 		return j
 	raise nomatch
 
+def select_static(string, i, *statics):
+	for st in statics:
+		j = i+len(st)
+		if string[i:j] == st:
+			return j, st
+	raise nomatch
+
+def read_until(string, i, stop_char):
+	start = i
+	while True:
+		if i >= len(string):
+			raise nomatch
+		if string[i] == stop_char:
+			break
+		i += 1
+	return i + 1, string[start:i]
+
 class lego:
 	'''
 		Parent class for all lego pieces.
@@ -370,11 +387,11 @@ class charclass(lego):
 	def __hash__(self):
 		return hash((self.chars, self.negated))
 
-	def __mul__(self, multiplier):
+	def __mul__(self, ier):
 		# e.g. "a" * {0,1} = "a?"
-		if multiplier == one:
+		if ier == one:
 			return self
-		return multiplicand(self) * multiplier
+		return mult(self, ier)
 
 	# These are the characters carrying special meanings when they appear "outdoors"
 	# within a regular expression. To be interpreted literally, they must be
@@ -527,7 +544,7 @@ class charclass(lego):
 		return self
 
 	def __add__(self, other):
-		return multiplicand(self) + other
+		return mult(self, one) + other
 
 	def alphabet(self):
 		return {fsm.anything_else} | self.chars
@@ -711,7 +728,7 @@ class charclass(lego):
 		# "other" is not a charclass
 		# Never mind!
 		except AttributeError:
-			return multiplicand(self) | other
+			return mult(self, one) | other
 
 	def __and__(self, other):
 		try:
@@ -731,108 +748,10 @@ class charclass(lego):
 		# "other" is not a charclass
 		# Never mind!
 		except AttributeError:
-			return multiplicand(self) & other
+			return mult(self, one) & other
 
 	def __reversed__(self):
 		return self
-
-class multiplicand(lego):
-	'''
-		Contains a charclass or a pattern.
-	'''
-	def __init__(self, inner):
-		if not hasattr(inner, "chars") and not hasattr(inner, "concs"):
-			raise Exception("whoops")
-		self.__dict__["inner"] = inner
-
-	@classmethod
-	def match(cls, string, i = 0):
-
-		def select_static(string, i, *statics):
-			for st in statics:
-				j = i + len(st)
-				if string[i:j] == st:
-					return st, j
-			raise nomatch
-
-		def read_until(string, i, stop_char):
-			start = i
-			while True:
-				if i >= len(string):
-					raise nomatch
-				if string[i] == stop_char:
-					break
-				i += 1
-			return string[start:i], i + 1
-
-		# explicitly non-capturing "(?:...)" syntax. No special significance
-		try:
-			j = static(string, i, "(?")
-			st, j = select_static(string, j, ':', 'P<')
-			if st == 'P<':
-				_, j = read_until(string, j, '>')
-			inner, j = pattern.match(string, j)
-			j = static(string, j, ")")
-			return multiplicand(inner), j
-		except nomatch:
-			pass
-
-		# normal "(...)" syntax
-		try:
-			j = static(string, i, "(")
-			inner, j = pattern.match(string, j)
-			j = static(string, j, ")")
-			return multiplicand(inner), j
-		except nomatch:
-			pass
-
-		# Just a charclass on its own
-		inner, j = charclass.match(string, i)
-		return multiplicand(inner), j
-
-	def empty(self):
-		return self.inner.empty()
-
-	@reduce_after
-	def reduce(self):
-		return self.inner.reduce()
-
-	def to_fsm(self, alphabet):
-		return self.inner.to_fsm(alphabet)
-
-	def __eq__(self, other):
-		try:
-			return self.inner == other.inner
-		except AttributeError:
-			return False
-
-	def __repr__(self):
-		return "multiplicand(" + repr(self.inner) + ")"
-
-	def __hash__(self):
-		return hash(self.inner)
-
-	def __str__(self):
-		# recurse into subpattern
-		if hasattr(self.inner, "concs"):
-			return "(" + str(self.inner) + ")"
-
-		return str(self.inner)
-
-	def __reversed__(self):
-		return multiplicand(reversed(self.inner))
-
-	def alphabet(self):
-		return self.inner.alphabet()
-
-	def __or__(self, other):
-		return mult(self, one) | other
-
-	def __mul__(self, multiplier):
-		return mult(self, multiplier)
-
-	def __add__(self, other):
-		return mult(self, one) + other
 
 class bound:
 	'''An integer but sometimes also possibly infinite (None)'''
@@ -1133,11 +1052,9 @@ class mult(lego):
 		e.g. a, b{2}, c?, d*, [efg]{2,5}, f{2,}, (anysubpattern)+, .*, and so on
 	'''
 
-	def __init__(self, multiplicand, multiplier):
-		if not hasattr(multiplicand, "inner"):
-			raise Exception("Eeek")
-		self.__dict__["multiplicand"] = multiplicand
-		self.__dict__["multiplier"]   = multiplier
+	def __init__(self, cand, ier):
+		self.__dict__["multiplicand"] = cand
+		self.__dict__["multiplier"]   = ier
 
 	def __eq__(self, other):
 		try:
@@ -1164,7 +1081,7 @@ class mult(lego):
 			return self
 		if self.multiplier.canmultiplyby(multiplier):
 			return mult(self.multiplicand, self.multiplier * multiplier)
-		return conc(self) * multiplier
+		return mult(pattern(conc(self)), multiplier)
 
 	def __add__(self, other):
 		return conc(self) + other
@@ -1193,11 +1110,11 @@ class mult(lego):
 			return mult(self.multiplicand, self.multiplier.common(other.multiplier))
 
 		# Multiplicands disagree, no common part at all.
-		return mult(multiplicand(nothing), zero)
+		return mult(nothing, zero)
 
 	def __and__(self, other):
 		if hasattr(other, "chars"):
-			other = mult(multiplicand(other), one)
+			other = mult(other, one)
 
 		# If two mults are given which have a common multiplicand, the shortcut
 		# is just to take the intersection of the two multiplicands.
@@ -1227,30 +1144,18 @@ class mult(lego):
 		if self.empty():
 			return nothing
 
-		# Try recursively reducing our internal.
-		reduced = self.multiplicand.reduce()
-		# "bulk up" smaller lego pieces to pattern if need be
-		if hasattr(reduced, "multiplicand"):
-			reduced = conc(reduced)
-		if hasattr(reduced, "mults"):
-			reduced = pattern(reduced)
-		if hasattr(reduced, "concs") or hasattr(reduced, "chars"):
-			reduced = multiplicand(reduced)
-		if reduced != self.multiplicand:
-			return mult(reduced, self.multiplier)
-
 		# If our multiplicand is a pattern containing an empty conc()
 		# we can pull that "optional" bit out into our own multiplier
 		# instead.
-		# e.g. (AA|BB|CC|)D -> (AA|BB|CC)?D
-		# e.g. (AA|BB|CC|){2} -> (AA|BB|CC){0,2}
+		# e.g. (A|B|C|)D -> (A|B|C)?D
+		# e.g. (A|B|C|){2} -> (A|B|C){0,2}
 		try:
-			if emptystring in self.multiplicand.inner.concs \
+			if emptystring in self.multiplicand.concs \
 			and self.multiplier.canmultiplyby(qm):
 				return mult(
-					multiplicand(pattern(
-						*self.multiplicand.inner.concs.difference({emptystring})
-					)),
+					pattern(
+						*self.multiplicand.concs.difference({emptystring})
+					),
 					self.multiplier * qm,
 				)
 		except AttributeError:
@@ -1273,12 +1178,22 @@ class mult(lego):
 		if self.multiplier == one:
 			return self.multiplicand
 
+		# Try recursively reducing our internal.
+		reduced = self.multiplicand.reduce()
+		# "bulk up" smaller lego pieces to pattern if need be
+		if hasattr(reduced, "multiplicand"):
+			reduced = conc(reduced)
+		if hasattr(reduced, "mults"):
+			reduced = pattern(reduced)
+		if reduced != self.multiplicand:
+			return mult(reduced, self.multiplier)
+
 		# If our multiplicand is a pattern containing a single conc
 		# containing a single mult, we can separate that out a lot
 		# e.g. ([ab])* -> [ab]*
 		try:
-			if len(self.multiplicand.inner.concs) == 1:
-				(singleton,) = self.multiplicand.inner.concs
+			if len(self.multiplicand.concs) == 1:
+				(singleton,) = self.multiplicand.concs
 				if len(singleton.mults) == 1:
 					singlemult = singleton.mults[0]
 					if singlemult.multiplier.canmultiplyby(self.multiplier):
@@ -1287,13 +1202,19 @@ class mult(lego):
 							singlemult.multiplier * self.multiplier
 						)
 		except AttributeError:
-			# self.multiplicand.inner has no attribute "concs"; isn't a pattern; never mind
+			# self.multiplicand has no attribute "concs"; isn't a pattern; never mind
 			pass
 
 		return self
 
 	def __str__(self):
-		output = str(self.multiplicand)
+		# recurse into subpattern
+		if hasattr(self.multiplicand, "concs"):
+			output = "(" + str(self.multiplicand) + ")"
+
+		else:
+			output = str(self.multiplicand)
+
 		suffix = str(self.multiplier)
 
 		# Pick whatever is shorter/more comprehensible.
@@ -1333,9 +1254,35 @@ class mult(lego):
 
 	@classmethod
 	def match(cls, string, i = 0):
-		multiplicand_, j = multiplicand.match(string, i)
+
+		def matchMultiplicand(string, i):
+			# explicitly non-capturing "(?:...)" syntax. No special significance
+			try:
+				j = static(string, i, "(?")
+				j, st = select_static(string, j, ':', 'P<')
+				if st == 'P<':
+					j, group_name = read_until(string, j, '>')
+				multiplicand, j = pattern.match(string, j)
+				j = static(string, j, ")")
+				return multiplicand, j
+			except nomatch:
+				pass
+
+			# normal "(...)" syntax
+			try:
+				j = static(string, i, "(")
+				multiplicand, j = pattern.match(string, j)
+				j = static(string, j, ")")
+				return multiplicand, j
+			except nomatch:
+				pass
+
+			# Just a charclass on its own
+			return charclass.match(string, i)
+
+		multiplicand, j = matchMultiplicand(string, i)
 		multiplier_, j = multiplier.match(string, j)
-		return mult(multiplicand_, multiplier_), j
+		return mult(multiplicand, multiplier_), j
 
 	def __reversed__(self):
 		return mult(reversed(self.multiplicand), self.multiplier)
@@ -1378,8 +1325,6 @@ class conc(lego):
 	def __add__(self, other):
 		# other must be a conc too
 		if hasattr(other, "chars") or hasattr(other, "concs"):
-			other = multiplicand(other)
-		if hasattr(other, "inner"):
 			other = mult(other, one)
 		if hasattr(other, "multiplicand"):
 			other = conc(other)
@@ -1411,11 +1356,7 @@ class conc(lego):
 			for x in reduced
 		]
 		reduced = [
-			multiplicand(x) if hasattr(x, "chars") or hasattr(x, "concs") else x
-			for x in reduced
-		]
-		reduced = [
-			mult(x, one) if hasattr(x, "inner") else x
+			mult(x, one) if hasattr(x, "chars") or hasattr(x, "concs") else x
 			for x in reduced
 		]
 		reduced = tuple(reduced)
@@ -1425,8 +1366,8 @@ class conc(lego):
 		# Conc contains "()" (i.e. a mult containing only a pattern containing the
 		# empty string)? That can be removed e.g. "a()b" -> "ab"
 		for i in range(len(self.mults)):
-			if self.mults[i].multiplicand.inner == pattern(emptystring):
-				new = self.mults[:i] + self.mults[i + 1:]
+			if self.mults[i].multiplicand == pattern(emptystring):
+				new = self.mults[:i] + self.mults[i+1:]
 				return conc(*new)
 
 		# multiple mults with identical multiplicands in a row?
@@ -1450,12 +1391,12 @@ class conc(lego):
 		for i in range(len(self.mults)):
 			m = self.mults[i]
 			try:
-				if m.multiplier == one and len(m.multiplicand.inner.concs) == 1:
-					(single,) = m.multiplicand.inner.concs
+				if m.multiplier == one and len(m.multiplicand.concs) == 1:
+					(single,) = m.multiplicand.concs
 					new = self.mults[:i] + single.mults + self.mults[i+1:]
 					return conc(*new)
 			except AttributeError:
-				# m.multiplicand.inner has no attribute "concs"; isn't a pattern; never mind
+				# m.multiplicand has no attribute "concs"; isn't a pattern; never mind
 				pass
 
 		return self
@@ -1576,7 +1517,7 @@ class conc(lego):
 	def __reversed__(self):
 		return conc(*reversed([reversed(m) for m in self.mults]))
 
-class pattern(multiplicand):
+class pattern(lego):
 	'''
 		A pattern (also known as an "alt", short for "alternation") is a
 		set of concs. A pattern expresses multiple alternate possibilities.
@@ -1615,10 +1556,10 @@ class pattern(multiplicand):
 	def __mul__(self, multiplier):
 		if multiplier == one:
 			return self
-		return multiplicand(self) * multiplier
+		return mult(self, multiplier)
 
 	def __add__(self, other):
-		return multiplicand(self) + other
+		return mult(self, one) + other
 
 	def alphabet(self):
 		return {fsm.anything_else}.union(*[c.alphabet() for c in self.concs])
@@ -1640,8 +1581,6 @@ class pattern(multiplicand):
 	def __or__(self, other):
 		# other must be a pattern too
 		if hasattr(other, "chars"):
-			other = multiplicand(other)
-		if hasattr(other, "inner"):
 			other = mult(other, one)
 		if hasattr(other, "multiplicand"):
 			other = conc(other)
@@ -1680,11 +1619,7 @@ class pattern(multiplicand):
 		reduced = [c.reduce() for c in self.concs]
 		# "bulk up" smaller lego pieces to concs if need be
 		reduced = [
-			multiplicand(x) if hasattr(x, "chars") or hasattr(x, "concs") else x
-			for x in reduced
-		]
-		reduced = [
-			mult(x, one) if hasattr(x, "inner") else x
+			mult(x, one) if hasattr(x, "chars") or hasattr(x, "concs") else x
 			for x in reduced
 		]
 		reduced = [
@@ -1711,7 +1646,7 @@ class pattern(multiplicand):
 				multiplicand2 = conc2.mults[0].multiplicand
 				if multiplicand2 != multiplicand1:
 					continue
-				multiplicand_ = multiplicand1
+				multiplicand = multiplicand1
 				multiplier1 = conc1.mults[0].multiplier
 				multiplier2 = conc2.mults[0].multiplier
 				if not multiplier1.canunion(multiplier2):
@@ -1721,7 +1656,7 @@ class pattern(multiplicand):
 					oldconcs[:i] + \
 					oldconcs[i + 1:j] + \
 					oldconcs[j + 1:] + \
-					[conc(mult(multiplicand_, multiplier))]
+					[conc(mult(multiplicand, multiplier))]
 				return pattern(*newconcs)
 
 		# If this pattern contains several concs each containing just 1 mult
@@ -1734,16 +1669,16 @@ class pattern(multiplicand):
 		for c in self.concs:
 			if len(c.mults) == 1 \
 			and c.mults[0].multiplier == one \
-			and hasattr(c.mults[0].multiplicand.inner, "chars"):
+			and hasattr(c.mults[0].multiplicand, "chars"):
 				if merger is None:
-					merger = c.mults[0].multiplicand.inner
+					merger = c.mults[0].multiplicand
 				else:
-					merger |= c.mults[0].multiplicand.inner
+					merger |= c.mults[0].multiplicand
 					changed = True
 			else:
 				rest.append(c)
 		if changed:
-			rest.append(conc(mult(multiplicand(merger), one)))
+			rest.append(conc(mult(merger, one)))
 			return pattern(*rest)
 
 		# If one of the present pattern's concs is the empty string, and
@@ -1754,7 +1689,6 @@ class pattern(multiplicand):
 		# we can merge the empty string into that.
 		# E.g. "|(ab)+|def" => "(ab)*|def".
 		if conc() in self.concs:
-			# First case is preferred, avoids "a|b*|" -> "a?|b*" reduction
 			for c in self.concs:
 				if len(c.mults) != 1:
 					continue
@@ -1762,10 +1696,6 @@ class pattern(multiplicand):
 				if m.multiplier.min == bound(0):
 					rest = self.concs - {conc()}
 					return pattern(*rest)
-			for c in self.concs:
-				if len(c.mults) != 1:
-					continue
-				m = c.mults[0]
 				if m.multiplier.min == bound(1):
 					rest = self.concs - {conc(), c} | {m * qm}
 					return pattern(*rest)
@@ -1777,7 +1707,7 @@ class pattern(multiplicand):
 		prefix = self._commonconc()
 		if prefix != emptystring:
 			leftovers = self.behead(prefix)
-			mults = prefix.mults + (mult(multiplicand(leftovers), one),)
+			mults = prefix.mults + (mult(leftovers, one),)
 			return conc(*mults)
 
 		# Same but for suffixes.
@@ -1785,7 +1715,7 @@ class pattern(multiplicand):
 		suffix = self._commonconc(suffix=True)
 		if suffix != emptystring:
 			leftovers = self - suffix
-			mults = (mult(multiplicand(leftovers), one),) + suffix.mults
+			mults = (mult(leftovers, one),) + suffix.mults
 			return conc(*mults)
 
 		return self

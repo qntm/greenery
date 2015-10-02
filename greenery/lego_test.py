@@ -3,7 +3,7 @@
 if __name__ == "__main__":
 	raise Exception("Test files can't be run directly. Use `python -m pytest greenery`")
 
-from greenery.lego import conc, mult, charclass, one, emptystring, star, plus, nothing, pattern, qm, d, multiplier, bound, w, s, W, D, S, dot, nomatch, inf, zero, parse, from_fsm, multiplicand
+from greenery.lego import conc, mult, charclass, one, emptystring, star, plus, nothing, pattern, qm, d, multiplier, bound, w, s, W, D, S, dot, nomatch, inf, zero, parse, from_fsm
 from greenery import fsm
 
 def test_new_reduce():
@@ -11,8 +11,6 @@ def test_new_reduce():
 	# takes unnecessary time which the user may not wish to spend.
 	# This alters the behaviour of several methods and also exposes a new
 	# opportunity for conc.reduce()
-	assert conc.parse("a").reduce() == charclass.parse("a")
-	assert conc.parse("()").reduce() == conc.parse("")
 	assert conc.parse("a()").reduce() == charclass.parse("a")
 	assert conc.parse("a()()").reduce() == charclass.parse("a")
 	assert conc.parse("a.b()()").reduce() == conc.parse("a.b")
@@ -55,10 +53,10 @@ def test_conc_subtraction():
 
 def test_odd_bug():
 	# Odd bug with ([bc]*c)?[ab]*
-	int5A = mult(multiplicand(charclass("bc")), star).to_fsm({"a", "b", "c", fsm.anything_else})
+	int5A = mult(charclass("bc"), star).to_fsm({"a", "b", "c", fsm.anything_else})
 	assert int5A.accepts([])
 	assert int5A.accepts("")
-	int5B = mult(multiplicand(charclass("c")), one).to_fsm({"a", "b", "c", fsm.anything_else})
+	int5B = mult(charclass("c"), one).to_fsm({"a", "b", "c", fsm.anything_else})
 	assert int5B.accepts("c")
 	assert int5B.accepts(["c"])
 	int5C = int5A + int5B
@@ -68,24 +66,24 @@ def test_odd_bug():
 def test_empty_mult_suppression():
 	assert conc.parse("[]0\d").reduce() == charclass.parse("[]")
 	assert conc(
-		mult(multiplicand(pattern()), one), # this mult can never actually match anything
-		mult(multiplicand(charclass("0")), one),
-		mult(multiplicand(charclass("0123456789")), one),
+		mult(pattern(), one), # this mult can never actually match anything
+		mult(charclass("0"), one),
+		mult(charclass("0123456789"), one),
 	).reduce() == charclass.parse("[]")
 
 def test_empty_conc_suppression():
 	assert pattern.parse("[]0\d").reduce() == charclass.parse("[]")
 	assert pattern(
 		conc(
-			mult(multiplicand(pattern()), one), # this mult can never actually match anything
-			mult(multiplicand(charclass("0")), one),
-			mult(multiplicand(charclass("0123456789")), one),
+			mult(pattern(), one), # this mult can never actually match anything
+			mult(charclass("0"), one),
+			mult(charclass("0123456789"), one),
 		) # so neither can this conc
 	).reduce() == charclass.parse("[]")
 
 def test_empty_pattern_suppression():
 	assert mult.parse("[]?").reduce() == conc.parse("")
-	assert mult(multiplicand(pattern()), qm).reduce() == conc.parse("")
+	assert mult(pattern(), qm).reduce() == conc.parse("")
 
 def test_empty_pattern_reduction():
 	assert pattern().reduce() == charclass()
@@ -273,13 +271,13 @@ def test_charclass_intersection():
 	assert ~charclass("ab") & ~charclass("bc") == ~charclass("abc")
 
 def test_mult_equality():
-	assert mult(multiplicand(charclass("a")), one) == mult(multiplicand(charclass("a")), one)
-	assert mult(multiplicand(charclass("a")), one) != mult(multiplicand(charclass("b")), one)
-	assert mult(multiplicand(charclass("a")), one) != mult(multiplicand(charclass("a")), qm)
-	assert mult(multiplicand(charclass("a")), one) != mult(multiplicand(charclass("a")), multiplier(bound(1), bound(2)))
+	assert mult(charclass("a"), one) == mult(charclass("a"), one)
+	assert mult(charclass("a"), one) != mult(charclass("b"), one)
+	assert mult(charclass("a"), one) != mult(charclass("a"), qm)
+	assert mult(charclass("a"), one) != mult(charclass("a"), multiplier(bound(1), bound(2)))
 
 def test_mult_str():
-	a = multiplicand(charclass("a"))
+	a = charclass("a")
 	assert str(mult(a, one)) == "a"
 	assert str(mult(a, multiplier(bound(2), bound(2)))) == "aa"
 	assert str(mult(a, multiplier(bound(3), bound(3)))) == "aaa"
@@ -293,28 +291,28 @@ def test_mult_str():
 	assert str(inf) == ""
 	assert str(multiplier(bound(2), inf)) == "{2,}"
 	assert str(mult(a, multiplier(bound(2), inf))) == "a{2,}"
-	assert str(mult(multiplicand(d), one)) == "\\d"
-	assert str(mult(multiplicand(d), multiplier(bound(2), bound(2)))) == "\\d\\d"
-	assert str(mult(multiplicand(d), multiplier(bound(3), bound(3)))) == "\\d{3}"
+	assert str(mult(d, one)) == "\\d"
+	assert str(mult(d, multiplier(bound(2), bound(2)))) == "\\d\\d"
+	assert str(mult(d, multiplier(bound(3), bound(3)))) == "\\d{3}"
 
 def test_mult_parsing():
-	assert mult.parse("[a-g]+") == mult(multiplicand(charclass("abcdefg")), plus)
-	assert mult.parse("[a-g0-8$%]+") == mult(multiplicand(charclass("abcdefg012345678$%")), plus)
-	assert mult.parse("[a-g0-8$%\\^]+") == mult(multiplicand(charclass("abcdefg012345678$%^")), plus)
+	assert mult.parse("[a-g]+") == mult(charclass("abcdefg"), plus)
+	assert mult.parse("[a-g0-8$%]+") == mult(charclass("abcdefg012345678$%"), plus)
+	assert mult.parse("[a-g0-8$%\\^]+") == mult(charclass("abcdefg012345678$%^"), plus)
 	assert mult.match("abcde[^fg]*", 5) == (
-		mult(multiplicand(~charclass("fg")), star),
+		mult(~charclass("fg"), star),
 		11
 	)
 	assert mult.match("abcde[^fg]*h{5}[a-z]+", 11) == (
-		mult(multiplicand(charclass("h")), multiplier(bound(5), bound(5))),
+		mult(charclass("h"), multiplier(bound(5), bound(5))),
 		15
 	)
 	assert mult.match("abcde[^fg]*h{5}[a-z]+T{1,}", 15) == (
-		mult(multiplicand(charclass("abcdefghijklmnopqrstuvwxyz")), plus),
+		mult(charclass("abcdefghijklmnopqrstuvwxyz"), plus),
 		21
 	)
 	assert mult.match("abcde[^fg]*h{5}[a-z]+T{2,}", 21) == (
-		mult(multiplicand(charclass("T")), multiplier(bound(2), inf)),
+		mult(charclass("T"), multiplier(bound(2), inf)),
 		26
 	)
 
@@ -323,36 +321,25 @@ def test_mult_parsing():
 def test_mult_reduction_easy():
 	# mult -> mult
 	# mult -> charclass
-	assert mult(multiplicand(charclass("a")), one).reduce() == charclass("a")
-	assert mult(multiplicand(charclass("a")), qm).reduce() == mult(multiplicand(charclass("a")), qm)
-	assert mult(multiplicand(charclass("a")), zero).reduce() == emptystring
-	assert mult(multiplicand(nothing), one).reduce() == nothing
-	assert mult(multiplicand(nothing), qm).reduce() == emptystring
-	assert mult(multiplicand(nothing), zero).reduce() == emptystring
-	assert mult(multiplicand(nothing), multiplier(bound(0), bound(5))).reduce() == emptystring
-	assert mult(multiplicand(pattern()), one).reduce() == nothing
-	assert mult(multiplicand(pattern()), qm).reduce() == emptystring
-	assert mult(multiplicand(pattern()), zero).reduce() == emptystring
-	assert mult(multiplicand(pattern()), multiplier(bound(0), bound(5))).reduce() == emptystring
+	assert mult(charclass("a"), one).reduce() == charclass("a")
+	assert mult(charclass("a"), qm).reduce() == mult(charclass("a"), qm)
+	assert mult(charclass("a"), zero).reduce() == emptystring
+	assert mult(nothing, one).reduce() == nothing
+	assert mult(nothing, qm).reduce() == emptystring
+	assert mult(nothing, zero).reduce() == emptystring
+	assert mult(nothing, multiplier(bound(0), bound(5))).reduce() == emptystring
+	assert mult(pattern(), one).reduce() == nothing
+	assert mult(pattern(), qm).reduce() == emptystring
+	assert mult(pattern(), zero).reduce() == emptystring
+	assert mult(pattern(), multiplier(bound(0), bound(5))).reduce() == emptystring
 
 def test_mult_factor_out_qm():
-	# Other, slightly dumber unit tests which don't exhibit the behaviour tested
-	# later anymore
-	assert mult.parse("(a*|b|)").reduce() == pattern.parse("a*|b")
-	assert mult.parse("(a|b*|)").reduce() == pattern.parse("a|b*")
-	assert conc.parse("(a*|b|)c").reduce() == conc.parse("(a*|b)c")
-	assert conc.parse("(a|b*|)c").reduce() == conc.parse("(a|b*)c")
-	assert mult.parse("(at|b|)").reduce() == pattern.parse("at|b?")
-	assert mult.parse("(a|bt|)").reduce() == pattern.parse("a?|bt")
-	assert conc.parse("(at|b|)c").reduce() == conc.parse("(at|b?)c")
-	assert conc.parse("(a|bt|)c").reduce() == conc.parse("(a?|bt)c")
-
 	# mult contains a pattern containing an empty conc? Pull the empty
 	# part out where it's external
-	# e.g. (as|bt|) -> (as|bt)?
-	assert mult.parse("(as|bt|)").reduce() == mult.parse("(as|bt)?")
-	# e.g. (as|bt|)c -> (as|bt)?c
-	assert conc.parse("(as|bt|)c").reduce() == conc.parse("(as|bt)?c")
+	# e.g. (a|b*|) -> (a|b*)?
+	assert mult.parse("(a|b*|)").reduce() == mult.parse("(a|b*)?")
+	# e.g. (a|b*|)c -> (a|b*)?c
+	assert conc.parse("(a|b*|)c").reduce() == conc.parse("(a|b*)?c")
 	# This happens even if emptystring is the only thing left inside the mult
 	assert mult.parse("()").reduce() == conc.parse("")
 
@@ -367,9 +354,6 @@ def test_remove_unnecessary_parens():
 def test_obvious_reduction():
 	# recursive mult reduction
 	# (a|b)* -> [ab]*
-	assert pattern.parse("a").reduce() == charclass.parse("a")
-	assert pattern.parse("a|b").reduce() == charclass.parse("[ab]")
-	assert mult.parse("(a|b)").reduce() == charclass.parse("[ab]")
 	assert mult.parse("(a|b)*").reduce() == mult.parse("[ab]*")
 
 def test_mult_subtraction():
@@ -377,53 +361,53 @@ def test_mult_subtraction():
 	assert mult.parse("a{4,5}") - mult.parse("a{3}") == mult.parse("a{1,2}")
 
 def test_conc_equality():
-	assert conc(mult(multiplicand(charclass("a")), one)) == conc(mult(multiplicand(charclass("a")), one))
-	assert conc(mult(multiplicand(charclass("a")), one)) != conc(mult(multiplicand(charclass("b")), one))
-	assert conc(mult(multiplicand(charclass("a")), one)) != conc(mult(multiplicand(charclass("a")), qm))
-	assert conc(mult(multiplicand(charclass("a")), one)) != conc(mult(multiplicand(charclass("a")), multiplier(bound(1), bound(2))))
-	assert conc(mult(multiplicand(charclass("a")), one)) != emptystring
+	assert conc(mult(charclass("a"), one)) == conc(mult(charclass("a"), one))
+	assert conc(mult(charclass("a"), one)) != conc(mult(charclass("b"), one))
+	assert conc(mult(charclass("a"), one)) != conc(mult(charclass("a"), qm))
+	assert conc(mult(charclass("a"), one)) != conc(mult(charclass("a"), multiplier(bound(1), bound(2))))
+	assert conc(mult(charclass("a"), one)) != emptystring
 
 def test_conc_str():
 	assert str(conc(
-		mult(multiplicand(charclass("a")), one),
-		mult(multiplicand(charclass("b")), one),
-		mult(multiplicand(charclass("c")), one),
-		mult(multiplicand(charclass("d")), one),
-		mult(multiplicand(charclass("e")), one),
-		mult(multiplicand(~charclass("fg")), star),
-		mult(multiplicand(charclass("h")), multiplier(bound(5), bound(5))),
-		mult(multiplicand(charclass("abcdefghijklmnopqrstuvwxyz")), plus),
+		mult(charclass("a"), one),
+		mult(charclass("b"), one),
+		mult(charclass("c"), one),
+		mult(charclass("d"), one),
+		mult(charclass("e"), one),
+		mult(~charclass("fg"), star),
+		mult(charclass("h"), multiplier(bound(5), bound(5))),
+		mult(charclass("abcdefghijklmnopqrstuvwxyz"), plus),
 	)) == "abcde[^fg]*h{5}[a-z]+"
 
 def test_conc_parsing():
 	assert conc.parse("abcde[^fg]*h{5}[a-z]+") == conc(
-		mult(multiplicand(charclass("a")), one),
-		mult(multiplicand(charclass("b")), one),
-		mult(multiplicand(charclass("c")), one),
-		mult(multiplicand(charclass("d")), one),
-		mult(multiplicand(charclass("e")), one),
-		mult(multiplicand(~charclass("fg")), star),
-		mult(multiplicand(charclass("h")), multiplier(bound(5), bound(5))),
-		mult(multiplicand(charclass("abcdefghijklmnopqrstuvwxyz")), plus),
+		mult(charclass("a"), one),
+		mult(charclass("b"), one),
+		mult(charclass("c"), one),
+		mult(charclass("d"), one),
+		mult(charclass("e"), one),
+		mult(~charclass("fg"), star),
+		mult(charclass("h"), multiplier(bound(5), bound(5))),
+		mult(charclass("abcdefghijklmnopqrstuvwxyz"), plus),
 	)
 	assert conc.parse("[bc]*[ab]*") == conc(
-		mult(multiplicand(charclass("bc")), star),
-		mult(multiplicand(charclass("ab")), star),
+		mult(charclass("bc"), star),
+		mult(charclass("ab"), star),
 	)
 	assert conc.parse("abc...") == conc(
-		mult(multiplicand(charclass("a")), one),
-		mult(multiplicand(charclass("b")), one),
-		mult(multiplicand(charclass("c")), one),
-		mult(multiplicand(dot), one),
-		mult(multiplicand(dot), one),
-		mult(multiplicand(dot), one),
+		mult(charclass("a"), one),
+		mult(charclass("b"), one),
+		mult(charclass("c"), one),
+		mult(dot, one),
+		mult(dot, one),
+		mult(dot, one),
 	)
 	assert conc.parse("\\d{4}-\\d{2}-\\d{2}") == conc(
-		mult(multiplicand(charclass("0123456789")), multiplier(bound(4), bound(4))),
-		mult(multiplicand(charclass("-")), one),
-		mult(multiplicand(charclass("0123456789")), multiplier(bound(2), bound(2))),
-		mult(multiplicand(charclass("-")), one),
-		mult(multiplicand(charclass("0123456789")), multiplier(bound(2), bound(2))),
+		mult(charclass("0123456789"), multiplier(bound(4), bound(4))),
+		mult(charclass("-"), one),
+		mult(charclass("0123456789"), multiplier(bound(2), bound(2))),
+		mult(charclass("-"), one),
+		mult(charclass("0123456789"), multiplier(bound(2), bound(2))),
 	)
 
 def test_conc_reduction_basic():
@@ -447,51 +431,51 @@ def test_conc_reduce_advanced():
 
 def test_pattern_equality():
 	assert pattern(
-		conc(mult(multiplicand(charclass("a")), one)),
-		conc(mult(multiplicand(charclass("b")), one)),
+		conc(mult(charclass("a"), one)),
+		conc(mult(charclass("b"), one)),
 	) == pattern(
-		conc(mult(multiplicand(charclass("b")), one)),
-		conc(mult(multiplicand(charclass("a")), one)),
+		conc(mult(charclass("b"), one)),
+		conc(mult(charclass("a"), one)),
 	)
 	assert pattern(
-		conc(mult(multiplicand(charclass("a")), one)),
-		conc(mult(multiplicand(charclass("a")), one)),
+		conc(mult(charclass("a"), one)),
+		conc(mult(charclass("a"), one)),
 	) == pattern(
-		conc(mult(multiplicand(charclass("a")), one)),
+		conc(mult(charclass("a"), one)),
 	)
 
 def test_pattern_str():
 	assert str(pattern(
-		conc(mult(multiplicand(charclass("a")), one)),
-		conc(mult(multiplicand(charclass("b")), one)),
+		conc(mult(charclass("a"), one)),
+		conc(mult(charclass("b"), one)),
 	)) == "a|b"
 	assert str(pattern(
-		conc(mult(multiplicand(charclass("a")), one)),
-		conc(mult(multiplicand(charclass("a")), one)),
+		conc(mult(charclass("a"), one)),
+		conc(mult(charclass("a"), one)),
 	)) == "a"
 	assert str(pattern(
 		conc(
-			mult(multiplicand(charclass("a")), one),
-			mult(multiplicand(charclass("b")), one),
-			mult(multiplicand(charclass("c")), one),
+			mult(charclass("a"), one),
+			mult(charclass("b"), one),
+			mult(charclass("c"), one),
 		),
 		conc(
-			mult(multiplicand(charclass("d")), one),
-			mult(multiplicand(charclass("e")), one),
-			mult(multiplicand(charclass("f")), one),
+			mult(charclass("d"), one),
+			mult(charclass("e"), one),
+			mult(charclass("f"), one),
 			mult(
-				multiplicand(pattern(
+				pattern(
 					conc(
-						mult(multiplicand(charclass("g")), one),
-						mult(multiplicand(charclass("h")), one),
-						mult(multiplicand(charclass("i")), one),
+						mult(charclass("g"), one),
+						mult(charclass("h"), one),
+						mult(charclass("i"), one),
 					),
 					conc(
-						mult(multiplicand(charclass("j")), one),
-						mult(multiplicand(charclass("k")), one),
-						mult(multiplicand(charclass("l")), one),
+						mult(charclass("j"), one),
+						mult(charclass("k"), one),
+						mult(charclass("l"), one),
 					),
-				)), one
+				), one
 			),
 		),
 	)) == "abc|def(ghi|jkl)"
@@ -522,27 +506,27 @@ def test_common_prefix_pattern_reduction():
 def test_pattern_parsing():
 	assert pattern.parse("abc|def(ghi|jkl)") == pattern(
 		conc(
-			mult(multiplicand(charclass("a")), one),
-			mult(multiplicand(charclass("b")), one),
-			mult(multiplicand(charclass("c")), one),
+			mult(charclass("a"), one),
+			mult(charclass("b"), one),
+			mult(charclass("c"), one),
 		),
 		conc(
-			mult(multiplicand(charclass("d")), one),
-			mult(multiplicand(charclass("e")), one),
-			mult(multiplicand(charclass("f")), one),
+			mult(charclass("d"), one),
+			mult(charclass("e"), one),
+			mult(charclass("f"), one),
 			mult(
-				multiplicand(pattern(
+				pattern(
 					conc(
-						mult(multiplicand(charclass("g")), one),
-						mult(multiplicand(charclass("h")), one),
-						mult(multiplicand(charclass("i")), one),
+						mult(charclass("g"), one),
+						mult(charclass("h"), one),
+						mult(charclass("i"), one),
 					),
 					conc(
-						mult(multiplicand(charclass("j")), one),
-						mult(multiplicand(charclass("k")), one),
-						mult(multiplicand(charclass("l")), one),
+						mult(charclass("j"), one),
+						mult(charclass("k"), one),
+						mult(charclass("l"), one),
 					),
-				)), one
+				), one
 			),
 		)
 	)
