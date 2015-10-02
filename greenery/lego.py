@@ -47,6 +47,19 @@ def reduce_after(method):
 		return result.reduce()
 	return new_method
 
+def call_fsm(method):
+	'''
+		Take a method which acts on 0 or more regular expression objects... return a
+		new method which simply converts them all to FSMs, calls the FSM method
+		on them instead, then converts the result back to a regular expression.
+		We do this for several of the more annoying operations.
+	'''
+	fsm_method = getattr(fsm.fsm, method.__name__)
+	def new_method(*legos):
+		alphabet = set().union(*[lego.alphabet() for lego in legos])
+		return from_fsm(fsm_method(*[lego.to_fsm(alphabet) for lego in legos]))
+	return new_method
+
 def parse(string):
 	'''
 		Parse a full string and return a lego piece. Fail if the whole string
@@ -246,14 +259,19 @@ class lego:
 		'''
 		raise Exception("Not implemented")
 
-	def __add__(self, other):
+	@call_fsm
+	def concatenate(*legos):
 		'''
-			Concatenate any two lego pieces, regardless of differing classes.
+			Concatenate a sequence of lego pieces, regardless of differing classes.
 			Call using "a = b + c"
 		'''
-		raise Exception("Not implemented")
+		pass
 
-	def __mul__(self, multiplier):
+	def __add__(self, other):
+		return self.concatenate(other)
+
+	@call_fsm
+	def times(self, multiplier):
 		'''
 			Equivalent to repeated concatenation. Multiplier consists of a minimum
 			and a maximum; maximum may be infinite (for Kleene star closure).
@@ -261,16 +279,24 @@ class lego:
 		'''
 		raise Exception("Not implemented")
 
-	def __or__(self, other):
+	def __mul__(self, multiplier):
+		return self.times(multiplier)
+
+	@call_fsm
+	def union(*legos):
 		'''
 			Alternate between any two lego pieces, regardless of differing classes.
 			Call using "a = b | c".
 			This method MUST NOT call the to_fsm() method, because this method is used
 			in turn when converting an FSM back to a regex.
 		'''
-		raise Exception("Not implemented")
+		pass
 
-	def __and__(self, other):
+	def __or__(self, other):
+		return self.union(other)
+
+	@call_fsm
+	def intersection(self, other):
 		'''
 			Intersection function. Return a lego piece that can match any string
 			that both self and other can match. Fairly elementary results relating
@@ -280,7 +306,32 @@ class lego:
 			back to lego afterwards.
 			Call using "a = b & c"
 		'''
-		raise Exception("Not implemented")
+		pass
+
+	def __and__(self, other):
+		return self.intersection(other)
+
+	@call_fsm
+	def difference(*legos):
+		'''
+			Return a regular expression which matches any string which `self` matches
+			but none of the strings which `other` matches.
+		'''
+		pass
+
+	def __sub__(self, other):
+		return self.difference(other)
+
+	@call_fsm
+	def symmetric_difference(*legos):
+		'''
+			Return a regular expression matching only the strings recognised by
+			`self` or `other` but not both.
+		'''
+		pass
+
+	def __xor__(self, other):
+		return self.symmetric_difference(other)
 
 	def equivalent(self, other):
 		'''
@@ -301,6 +352,7 @@ class lego:
 		'''
 		raise Exception("Not implemented")
 
+	@call_fsm
 	def everythingbut(self):
 		'''
 			Return a lego object which will match any string not matched by self,
@@ -309,15 +361,18 @@ class lego:
 			utter garbage when actually printed), but becomes trivial to code
 			thanks to FSM routines.
 		'''
-		return from_fsm(self.to_fsm().everythingbut())
+		pass
 
-	def __reversed__(self):
+	def reversed(self):
 		'''
 			Return a lego object which will match any string which, when reversed,
 			self would match. E.g. if self matches "beer" then reversed(self) will
 			match "reeb".
 		'''
 		raise Exception("Not implemented")
+
+	def __reversed__(self):
+		return self.reversed()
 
 	def empty(self):
 		'''
@@ -329,6 +384,13 @@ class lego:
 
 	def matches(self, string):
 		return self.to_fsm().accepts(string)
+
+	def __contains__(self, string):
+		'''
+			This lets you use the syntax `"a" in pattern1` to see whether the string
+			"a" is in the set of strings matched by `pattern1`.
+		'''
+		return self.matches(string)
 
 	def strings(self, otherchar=None):
 		'''
@@ -356,6 +418,43 @@ class lego:
 
 			yield "".join(string)
 
+	def __iter__(self):
+		'''
+			This allows you to do `for string in pattern1` as a list comprehension!
+		'''
+		return self.strings()
+
+	def cardinality(self):
+		'''
+			Consider the regular expression as a set of strings and return the
+			cardinality of that set, or raise an OverflowError if there are infinitely
+			many.
+		'''
+		# There is no way to do this other than converting to an FSM, because the
+		# pattern may allow duplicate routes, such as "a|a".
+		return self.to_fsm().cardinality()
+
+	def __len__(self):
+		return self.cardinality()
+
+	@call_fsm
+	def isdisjoint(self, other):
+		'''
+			Treat `self` and `other` as sets of strings and see if they are disjoint
+		'''
+		pass
+
+	def copy(self):
+		'''
+			For completeness only, since `set.copy()` also exists. Regular expression
+			objects are immutable, so I can see only very odd reasons to need this.
+		'''
+		raise Exception("Not implemented")
+
+	def __hash__(self):
+		'''For dictionaries'''
+		raise Exception("Not implemented")
+
 class charclass(lego):
 	'''
 		A charclass is basically a frozenset of symbols. The reason for the
@@ -381,17 +480,14 @@ class charclass(lego):
 		except AttributeError:
 			return False
 
-	def __ne__(self, other):
-		return not self.__eq__(other)
-
 	def __hash__(self):
 		return hash((self.chars, self.negated))
 
-	def __mul__(self, ier):
+	def times(self, multiplier):
 		# e.g. "a" * {0,1} = "a?"
-		if ier == one:
+		if multiplier == one:
 			return self
-		return mult(self, ier)
+		return mult(self, multiplier)
 
 	# These are the characters carrying special meanings when they appear "outdoors"
 	# within a regular expression. To be interpreted literally, they must be
@@ -543,7 +639,7 @@ class charclass(lego):
 		# Charclasses cannot be reduced().
 		return self
 
-	def __add__(self, other):
+	def concatenate(self, other):
 		return mult(self, one) + other
 
 	def alphabet(self):
@@ -703,14 +799,17 @@ class charclass(lego):
 		return charclass(char), i
 
 	# set operations
-	def __invert__(self):
+	def negate(self):
 		'''
 			Negate the current charclass. e.g. [ab] becomes [^ab]. Call
 			using "charclass2 = ~charclass1"
 		'''
 		return charclass(self.chars, negateMe=not self.negated)
 
-	def __or__(self, other):
+	def __invert__(self):
+		return self.negate()
+
+	def union(self, other):
 		try:
 			# ¬A OR ¬B = ¬(A AND B)
 			# ¬A OR B = ¬(A - B)
@@ -730,7 +829,7 @@ class charclass(lego):
 		except AttributeError:
 			return mult(self, one) | other
 
-	def __and__(self, other):
+	def intersection(self, other):
 		try:
 			# ¬A AND ¬B = ¬(A OR B)
 			# ¬A AND B = B - A
@@ -750,8 +849,11 @@ class charclass(lego):
 		except AttributeError:
 			return mult(self, one) & other
 
-	def __reversed__(self):
+	def reversed(self):
 		return self
+
+	def copy(self):
+		return charclass(self.chars.copy(), negateMe=self.negated)
 
 class bound:
 	'''An integer but sometimes also possibly infinite (None)'''
@@ -808,9 +910,6 @@ class bound:
 		except AttributeError:
 			return False
 
-	def __ne__(self, other):
-		return not self == other
-
 	def __hash__(self):
 		return hash(self.v)
 
@@ -823,13 +922,6 @@ class bound:
 
 	def __ge__(self, other):
 		return not self < other
-
-	def __gt__(self, other):
-		if other == inf:
-			return False
-		if self == inf:
-			return True
-		return self.v > other.v
 
 	def __mul__(self, other):
 		'''Multiply this bound by another'''
@@ -859,6 +951,9 @@ class bound:
 		if self == inf:
 			return self
 		return bound(self.v - other.v)
+
+	def copy(self):
+		return bound(self.v)
 
 class multiplier:
 	'''
@@ -892,9 +987,6 @@ class multiplier:
 			return self.min == other.min and self.max == other.max
 		except AttributeError:
 			return False
-
-	def __ne__(self, other):
-		return not self.__eq__(other)
 
 	def __hash__(self):
 		return hash((self.min, self.max))
@@ -1041,6 +1133,9 @@ class multiplier:
 		optional = min(self.optional, other.optional)
 		return multiplier(mandatory, mandatory + optional)
 
+	def copy(self):
+		return multiplier(self.min.copy(), self.max.copy())
+
 class mult(lego):
 	'''
 		A mult is a combination of a multiplicand with
@@ -1052,9 +1147,9 @@ class mult(lego):
 		e.g. a, b{2}, c?, d*, [efg]{2,5}, f{2,}, (anysubpattern)+, .*, and so on
 	'''
 
-	def __init__(self, cand, ier):
-		self.__dict__["multiplicand"] = cand
-		self.__dict__["multiplier"]   = ier
+	def __init__(self, multiplicand, multiplier):
+		self.__dict__["multiplicand"] = multiplicand
+		self.__dict__["multiplier"]   = multiplier
 
 	def __eq__(self, other):
 		try:
@@ -1062,9 +1157,6 @@ class mult(lego):
 			and self.multiplier == other.multiplier
 		except AttributeError:
 			return False
-
-	def __ne__(self, other):
-		return not self.__eq__(other)
 
 	def __hash__(self):
 		return hash((self.multiplicand, self.multiplier))
@@ -1076,23 +1168,23 @@ class mult(lego):
 		string += ")"
 		return string
 
-	def __mul__(self, multiplier):
+	def times(self, multiplier):
 		if multiplier == one:
 			return self
 		if self.multiplier.canmultiplyby(multiplier):
 			return mult(self.multiplicand, self.multiplier * multiplier)
 		return mult(pattern(conc(self)), multiplier)
 
-	def __add__(self, other):
+	def concatenate(self, other):
 		return conc(self) + other
 
-	def __or__(self, other):
+	def union(self, other):
 		return conc(self) | other
 
-	def __sub__(self, other):
+	def dock(self, other):
 		'''
-			Subtract another mult from this one and return the result.
-			The reverse of concatenation. This is a lot trickier.
+			"Dock" another mult from this one (i.e. remove part of the tail) and
+			return the result. The reverse of concatenation. This is a lot trickier.
 			e.g. a{4,5} - a{3} = a{1,2}
 		'''
 		if other.multiplicand != self.multiplicand:
@@ -1112,7 +1204,7 @@ class mult(lego):
 		# Multiplicands disagree, no common part at all.
 		return mult(nothing, zero)
 
-	def __and__(self, other):
+	def intersection(self, other):
 		if hasattr(other, "chars"):
 			other = mult(other, one)
 
@@ -1284,8 +1376,11 @@ class mult(lego):
 		multiplier_, j = multiplier.match(string, j)
 		return mult(multiplicand, multiplier_), j
 
-	def __reversed__(self):
+	def reversed(self):
 		return mult(reversed(self.multiplicand), self.multiplier)
+
+	def copy(self):
+		return mult(self.multiplicand.copy(), self.multiplier.copy())
 
 class conc(lego):
 	'''
@@ -1304,9 +1399,6 @@ class conc(lego):
 		except AttributeError:
 			return False
 
-	def __ne__(self, other):
-		return not self.__eq__(other)
-
 	def __hash__(self):
 		return hash(self.mults)
 
@@ -1316,13 +1408,13 @@ class conc(lego):
 		string += ")"
 		return string
 
-	def __mul__(self, multiplier):
+	def times(self, multiplier):
 		if multiplier == one:
 			return self
 		# Have to replace self with a pattern unfortunately
 		return pattern(self) * multiplier
 
-	def __add__(self, other):
+	def concatenate(self, other):
 		# other must be a conc too
 		if hasattr(other, "chars") or hasattr(other, "concs"):
 			other = mult(other, one)
@@ -1331,10 +1423,10 @@ class conc(lego):
 
 		return conc(*(self.mults + other.mults))
 
-	def __or__(self, other):
+	def union(self, other):
 		return pattern(self) | other
 
-	def __and__(self, other):
+	def intersection(self, other):
 		return pattern(self) & other
 
 	@reduce_after
@@ -1477,7 +1569,7 @@ class conc(lego):
 
 		return conc(*mults)
 
-	def __sub__(self, other):
+	def dock(self, other):
 		'''
 			Subtract another conc from this one.
 			This is the opposite of concatenation. For example, if ABC + DEF = ABCDEF,
@@ -1490,7 +1582,7 @@ class conc(lego):
 		for i in reversed(range(len(other.mults))): # [2, 1, 0]
 			# e.g. i = 1, j = 7 - 3 + 1 = 5
 			j = len(self.mults) - len(other.mults) + i
-			new[j] -= other.mults[i]
+			new[j] = new[j].dock(other.mults[i])
 
 			if new[j].multiplier == zero:
 				# omit that mult entirely since it has been factored out
@@ -1508,14 +1600,17 @@ class conc(lego):
 
 	def behead(self, other):
 		'''
-			As with __sub__ but the other way around. For example, if
+			As with dock() but the other way around. For example, if
 			ABC + DEF = ABCDEF, then ABCDEF.behead(AB) = CDEF.
 		'''
 		# Observe that FEDCBA - BA = FEDC.
-		return reversed(reversed(self) - reversed(other))
+		return reversed(reversed(self).dock(reversed(other)))
 
-	def __reversed__(self):
+	def reversed(self):
 		return conc(*reversed([reversed(m) for m in self.mults]))
+
+	def copy(self):
+		return conc(*[m.copy() for m in self.mults])
 
 class pattern(lego):
 	'''
@@ -1541,9 +1636,6 @@ class pattern(lego):
 		except AttributeError:
 			return False
 
-	def __ne__(self, other):
-		return not self.__eq__(other)
-
 	def __hash__(self):
 		return hash(self.concs)
 
@@ -1553,12 +1645,12 @@ class pattern(lego):
 		string += ")"
 		return string
 
-	def __mul__(self, multiplier):
+	def times(self, multiplier):
 		if multiplier == one:
 			return self
 		return mult(self, multiplier)
 
-	def __add__(self, other):
+	def concatenate(self, other):
 		return mult(self, one) + other
 
 	def alphabet(self):
@@ -1570,7 +1662,7 @@ class pattern(lego):
 				return False
 		return True
 
-	def __and__(self, other):
+	def intersection(self, other):
 		# A deceptively simple method for an astoundingly difficult operation
 		alphabet = self.alphabet() | other.alphabet()
 
@@ -1578,7 +1670,7 @@ class pattern(lego):
 		combined = self.to_fsm(alphabet) & other.to_fsm(alphabet)
 		return from_fsm(combined)
 
-	def __or__(self, other):
+	def union(self, other):
 		# other must be a pattern too
 		if hasattr(other, "chars"):
 			other = mult(other, one)
@@ -1714,7 +1806,7 @@ class pattern(lego):
 		# e.g. "xyz|stz -> (xy|st)z"
 		suffix = self._commonconc(suffix=True)
 		if suffix != emptystring:
-			leftovers = self - suffix
+			leftovers = self.dock(suffix)
 			mults = (mult(leftovers, one),) + suffix.mults
 			return conc(*mults)
 
@@ -1737,17 +1829,17 @@ class pattern(lego):
 			except nomatch:
 				return pattern(*concs), i
 
-	def __sub__(self, other):
+	def dock(self, other):
 		'''
 			The opposite of concatenation. Remove a common suffix from the present
 			pattern; that is, from each of its constituent concs.
 			AYZ|BYZ|CYZ - YZ = A|B|C.
 		'''
-		return pattern(*[c - other for c in self.concs])
+		return pattern(*[c.dock(other) for c in self.concs])
 
 	def behead(self, other):
 		'''
-			Like __sub__ but the other way around. Remove a common prefix from the
+			Like dock() but the other way around. Remove a common prefix from the
 			present pattern; that is, from each of its constituent concs.
 			ZA|ZB|ZC.behead(Z) = A|B|C
 		'''
@@ -1782,8 +1874,11 @@ class pattern(lego):
 			fsm1 |= c.to_fsm(alphabet)
 		return fsm1
 
-	def __reversed__(self):
+	def reversed(self):
 		return pattern(*(reversed(c) for c in self.concs))
+
+	def copy(self):
+		return pattern(*(c.copy() for c in self.concs))
 
 # Special and useful values go here.
 

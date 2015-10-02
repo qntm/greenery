@@ -1,5 +1,5 @@
 import sys
-from greenery.lego import parse
+from greenery.lego import lego, parse
 
 regexes = sys.argv[1:]
 
@@ -8,18 +8,8 @@ if len(regexes) < 2:
 	print("E.g. \"19.*\" \"\\d{4}-\\d{2}-\\d{2}\"")
 
 else:
-	p = parse(regexes[0])
-	for regex in regexes[1:]:
-		p &= parse(regex)
-	print("Intersection:  %s" % ( p.reduce() ))
-
-	p = parse(regexes[0])
-	for regex in regexes[1:]:
-		p |= parse(regex)
-	print("Union:         %s" % ( p.reduce() ))
-
-	p = parse(regexes[0])
-	for regex in regexes[1:]:
-		p += parse(regex)
-	print("Concatenation: %s" % ( p.reduce() ))
+	regexes = [parse(regex) for regex in regexes]
+	print("Intersection:  %s" % ( lego.intersection(*regexes).reduce() ))
+	print("Union:         %s" % ( lego.union(*regexes).reduce() ))
+	print("Concatenation: %s" % ( lego.concatenate(*regexes).reduce() ))
 

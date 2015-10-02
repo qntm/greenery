@@ -382,8 +382,8 @@ def test_odd_bug():
 	assert int5B.accepts("c")
 	assert int5B.accepts(["c"])
 	int5C = int5A + int5B
-	assert (int5A + int5B).accepts("c")
-	assert (int5A + int5B).accepts(["c"])
+	assert int5C.accepts("c")
+	assert int5C.accepts(["c"])
 
 ################################################################################
 # Test matches(). Quite sparse at the moment
@@ -415,6 +415,11 @@ def test_block_comment_regex():
 def test_named_groups():
 	a = parse("(?P<ng1>abc)")
 	assert a.matches("abc")
+
+def test_in():
+	assert "a" in parse("a")
+	assert "abcdsasda" in parse("\\w{4,10}")
+	assert "abc" in parse("abc|def(ghi|jkl)")
 
 ################################################################################
 # Test string generators
@@ -523,6 +528,31 @@ def test_wildcard_generator():
 		assert False
 	except StopIteration:
 		assert True
+
+def test_forin():
+	assert [s for s in parse("abc|def(ghi|jkl)")] == ["abc", "defghi", "defjkl"]
+
+################################################################################
+# Test cardinality() and len()
+
+def test_cardinality():
+	assert charclass.parse("[]").cardinality() == 0
+	assert mult.parse("[]?").cardinality() == 1
+	assert mult.parse("[]{0,6}").cardinality() == 1
+	assert mult.parse("[ab]{3}").cardinality() == 8
+	assert mult.parse("[ab]{2,3}").cardinality() == 12
+	assert len(pattern.parse("abc|def(ghi|jkl)")) == 3
+	try:
+		len(pattern.parse(".*"))
+		assert False
+	except OverflowError:
+		assert True
+
+################################################################################
+
+def test_copy():
+	x = pattern.parse("abc|def(ghi|jkl)")
+	assert x.copy() == x
 
 ################################################################################
 # Test from_fsm()
@@ -881,6 +911,13 @@ def test_multiplier_union():
 		pass
 
 ################################################################################
+# Tests for some more set operations
+
+def test_set_ops():
+	assert parse("[abcd]") - parse("a") == charclass.parse("[bcd]")
+	assert parse("[abcd]") ^ parse("[cdef]") == charclass.parse("[abef]")
+
+################################################################################
 # Concatenation tests (+)
 
 def test_concatenation():
@@ -935,16 +972,16 @@ def test_pattern_commonconc_suffix():
 	assert pattern.parse("aa")._commonconc(suffix=True) == conc.parse("aa")
 
 ################################################################################
-# Subtraction (i.e. reverse of concatenation) tests, including behead() tests
+# Inverse concatenation tests: behead() and dock()
 
-def test_mult_subtraction():
-	assert mult.parse("a{4,5}") - mult.parse("a{3}") == mult.parse("a{1,2}")
+def test_mult_dock():
+	assert mult.parse("a{4,5}").dock(mult.parse("a{3}")) == mult.parse("a{1,2}")
 
-def test_conc_subtraction():
-	assert conc.parse("AZ") - conc.parse("Z") == conc.parse("A")
-	assert conc.parse("ABXY+Z") - conc.parse("XY+Z") == conc.parse("AB")
+def test_conc_dock():
+	assert conc.parse("AZ").dock(conc.parse("Z")) == conc.parse("A")
+	assert conc.parse("ABXY+Z").dock(conc.parse("XY+Z")) == conc.parse("AB")
 	assert conc.parse("ABXY+Z").behead(conc.parse("ABXY+")) == conc.parse("Z")
-	assert conc.parse("A") - conc.parse("") == conc.parse("A")
+	assert conc.parse("A").dock(conc.parse("")) == conc.parse("A")
 
 	try:
 		conc.parse("X{2}Y+Z").behead(conc.parse("XY+"))
@@ -954,12 +991,12 @@ def test_conc_subtraction():
 	except Exception:
 		pass
 
-def test_pattern_subtract_conc():
-	assert pattern.parse("a|bc") - conc.parse("") == pattern.parse("a|bc")
-	assert pattern.parse("aa|bca") - conc.parse("a") == pattern.parse("a|bc")
-	assert pattern.parse("xyza|abca|a") - conc.parse("a") == pattern.parse("xyz|abc|")
-	assert pattern.parse("f{2,3}c|fc") - conc.parse("fc") == pattern.parse("f{1,2}|")
-	assert pattern.parse("aa") - conc.parse("aa") == pattern.parse("")
+def test_pattern_dock():
+	assert pattern.parse("a|bc").dock(conc.parse("")) == pattern.parse("a|bc")
+	assert pattern.parse("aa|bca").dock(conc.parse("a")) == pattern.parse("a|bc")
+	assert pattern.parse("xyza|abca|a").dock(conc.parse("a")) == pattern.parse("xyz|abc|")
+	assert pattern.parse("f{2,3}c|fc").dock(conc.parse("fc")) == pattern.parse("f{1,2}|")
+	assert pattern.parse("aa").dock(conc.parse("aa")) == pattern.parse("")
 
 def test_pattern_beheading():
 	assert pattern.parse("aa").behead(conc.parse("a")) == pattern.parse("a")
