@@ -93,7 +93,7 @@ Method | Behaviour
 `fsm1.accepts("a")` <br/> `"a" in fsm1` | Returns `True` or `False` or throws an exception if the string contains a symbol which is not in the FSM's alphabet. The string should be an iterable of symbols.
 `fsm1.strings()` <br/> `for string in fsm1` | Returns a generator of all the strings that this FSM accepts.
 `fsm1.empty()` | Returns `True` if this FSM accepts no strings, otherwise `False`.
-`fsm1.cardinality()` <br/> `len(fsm1)` | Returns the number of strings which the FSM accepts. Throws a `ValueError` if this number is infinite.
+`fsm1.cardinality()` <br/> `len(fsm1)` | Returns the number of strings which the FSM accepts. Throws an `OverflowError` if this number is infinite.
 `fsm1.equivalent(fsm2)` <br/> `fsm1 == fsm2` | Returns `True` if the two FSMs accept exactly the same strings, otherwise `False`.
 `fsm1.different(fsm2)` <br/> `fsm1 != fsm2` | Returns `True` if the FSMs accept different strings, otherwise `False`.
 `fsm1.issubset(fsm2)` <br/> `fsm1 <= fsm2` | Returns `True` if the set of strings accepted by `fsm1` is a subset of those accepted by `fsm2`, otherwise `False`.
@@ -127,9 +127,21 @@ This module requires `greenery.fsm` in order to carry out many of its most impor
 
 A non-negative integer, or `inf`, plus a bunch of arithmetic methods which make it possible to compare, add and multiply them.
 
+##### Special bounds
+
+* `inf`
+
 #### `lego.multiplier`
 
 A combination of a finite lower `bound` and a possibly-infinite upper `bound`, plus a bunch of methods which make it possible to compare, add and multiply them.
+
+##### Special multipliers
+
+* `zero` (`multiplier(bound(0), bound(0)`) (has some occasional uses internally)
+* `qm` (`multiplier(bound(0), bound(1))`)
+* `star` (`multiplier(bound(0), inf)`)
+* `one` (`multiplier(bound(1), bound(1))`)
+* `plus` (`multiplier(bound(1), inf)`)
 
 #### `lego.lego`
 
@@ -139,29 +151,32 @@ Parent class for `charclass`, `mult`, `conc` and `pattern`. In general, this rep
 
 Represents a character class, e.g `a`, `[abc]`, `[^xyz]`, `\d`.
 
+##### Special character classes
+
+* `w` (`charclass("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz")`)
+* `d` (`charclass("0123456789")`)
+* `s` (`charclass("\t\n\v\f\r ")`)
+* `W` (any character except those matched by `w`)
+* `D` (any character except those matched by `d`)
+* `S` (any character except those matched by `s`)
+* `dot` (any character)
+* `nothing` (empty character class, no matches possible)
+
 #### `lego.mult`
 
-Represents a `charclass` combined with a `multiplier`, e.g. `[abc]*`.
-
-A `mult` may contain a `pattern` instead of a `charclass`, e.g. `(a|bc)*`.
+Represents a `charclass` or `pattern` combined with a `multiplier`, e.g. `[abc]*` or `(a|bc)*`.
 
 #### `lego.conc`
 
 Represents a sequence of zero or more `mult`s, e.g. `ab`, `[abc]*d`.
 
+##### Special concatenations
+
+* `emptystring`, the regular expression which only matches the empty string (`conc()`)
+
 #### `lego.pattern`
 
 Represents an alternation between one or more `conc`s, e.g. `[abc]*d|e`.
-
-### Constants in this module
-
-* the `bound` object `inf`
-* multiplier `qm` (`multiplier(bound(0), bound(1))`)
-* multiplier `star` (`multiplier(bound(0), inf)`)
-* multiplier `plus` (`multiplier(bound(1), inf)`)
-* the character classes `w`, `W`, `s`, `S`, `d`, `D` and `dot`
-* `emptystring`, the regular expression which only matches the empty string (`conc()`)
-* `nothing`, a regular expression which matches no strings (`charclass()`)
 
 ### Methods in this module
 
@@ -171,7 +186,7 @@ Uses the Brzozowski algebraic method to convert a `greenery.fsm` object into a `
 
 #### `lego.parse(string)`
 
-Returns a `lego` object, representing the regular expression in the string.
+Returns a `lego` object representing the regular expression in the string.
 
 The following metacharacters and formations have their usual meanings: `.`, `*`, `+`, `?`, `{m}`, `{m,}`, `{m,n}`, `()`, `|`, `[]`, `^` within `[]` character ranges only, `-` within `[]` character ranges only, and `\` to escape any of the preceding characters or itself.
 
@@ -204,35 +219,28 @@ An empty charclass `[]` is legal and matches no characters: when used in a regex
 
 ### Methods on the `lego` class
 
-#### `lego.__add__()` (e.g. `lego3 = lego1 + lego2`)
+All objects of class `lego` (`charclass`, `mult`, `conc` and `pattern`) share these methods.
 
-Return the concatenation of two regular expressions.
+Method | Behaviour
+---|---
+`lego1.to_fsm()` | Returns an `fsm` object, a finite state machine which recognises exactly the strings that the original regular expression can match. The majority of the other methods employ this one.
+`lego1.matches("a")` <br/> `"a" in lego1` | Returns `True` if the regular expression matches the string or `False` if not.
+`lego1.strings()` <br/> `for string in lego1` | Returns a generator of all the strings that this regular expression matches.
+`lego1.empty()` | Returns `True` if this regular expression matches no strings, otherwise `False`.
+`lego1.cardinality()` <br/> `len(lego1)` | Returns the number of strings which the regular expression matches. Throws an `OverflowError` if this number is infinite.
+`lego1.equivalent(lego2)` | Returns `True` if the two regular expressions match exactly the same strings, otherwise `False`.
+`lego1.copy()` | Returns a copy of `lego1`.
+`lego1.everythingbut()` | Returns a regular expression which matches every string not matched by the original. `x.everythingbut().everythingbut()` matches the same strings as `x` for all `lego` objects `x`, but is not necessarily identical.
+`lego1.reversed()` <br/> `reversed(lego1)` | Returns a reversed regular expression. For each string that `lego1` matched, `reversed(lego1)` will match the reversed string. `reversed(reversed(x))` matches the same strings as `x` for all `lego` objects `x`, but is not necessarily identical.
+`lego1.times(star)` <br/> `lego1 * star` | Returns the input regular expression multiplied  by any `multiplier`.
+`lego1.concatenate(lego2, ...)` <br/> `lego1 + lego2 + ...` | Returns the concatenation of the regular expressions.
+`lego1.union(lego2, ...)` <br/> `lego1 | lego2 | ...` | Returns the alternation of the two regular expressions.
+`lego1.intersection(lego2, ...)` <br/> `lego1 & lego2 & ...` | Returns a regular expression matching any string matched by all input regular expressions. The successful implementation of this method was the ultimate goal of this entire project.
+`lego1.difference(lego2, ...)` <br/> `lego1 - lego2 - ...` | Subtract the set of strings matched by `lego2` onwards from those matched by `lego1` and return the resulting regular expression.
+`lego1.symmetric_difference(lego2, ...)` <br/> `lego1 ^ lego2 ^ ...` | Returns a regular expression accepting any string accepted by `lego1` or `lego2` but not both.
+`lego1.reduce()` | Returns an FSM which accepts exactly the same strings as `lego1` but has a minimal number of states. See dedicated section below.
 
-#### `lego.__or__()` (e.g. `lego3 = lego1 | lego2`)
-
-Return the alternation of two regular expressions.
-
-#### `lego.__and__()` (e.g. `lego3 = lego1 & lego2`)
-
-Return the intersection of two regular expressions. The successful implementation of this method was the ultimate goal of this entire project.
-
-#### `lego.__mul__(multiplier)`
-
-Return the current regular expression after it has been multiplied by the supplied `multiplier` object. A `multiplier` object has a lower `bound` and an upper `bound`. The upper bound may be `inf`. For example:
-
-    x = parse("abc")
-    x = x * multiplier(bound(0), inf)
-    print(x) # "(abc)*"
-
-#### `lego.strings()`
-
-Returns a generator of all the strings that this regular expression accepts.
-
-#### `lego.to_fsm()`
-
-Returns an `fsm` object, a finite state machine which recognises exactly the strings that the original regular expression can match.
-
-#### `lego.reduce()`
+#### `reduce()`
 
 Call this method to try to simplify the regular expression object, according to the following patterns:
 
