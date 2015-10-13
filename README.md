@@ -237,8 +237,8 @@ Method | Behaviour
 `lego1.union(lego2, ...)` <br/> `lego1 | lego2 | ...` | Returns the alternation of the two regular expressions.
 `lego1.intersection(lego2, ...)` <br/> `lego1 & lego2 & ...` | Returns a regular expression matching any string matched by all input regular expressions. The successful implementation of this method was the ultimate goal of this entire project.
 `lego1.difference(lego2, ...)` <br/> `lego1 - lego2 - ...` | Subtract the set of strings matched by `lego2` onwards from those matched by `lego1` and return the resulting regular expression.
-`lego1.symmetric_difference(lego2, ...)` <br/> `lego1 ^ lego2 ^ ...` | Returns a regular expression accepting any string accepted by `lego1` or `lego2` but not both.
-`lego1.reduce()` | Returns an FSM which accepts exactly the same strings as `lego1` but has a minimal number of states. See dedicated section below.
+`lego1.symmetric_difference(lego2, ...)` <br/> `lego1 ^ lego2 ^ ...` | Returns a regular expression matching any string accepted by `lego1` or `lego2` but not both.
+`lego1.reduce()` | Returns a regular expression which matches exactly the same strings as `lego1` but is simplified as far as possible. See dedicated section below.
 
 #### `reduce()`
 
@@ -255,6 +255,8 @@ Call this method to try to simplify the regular expression object, according to 
 * `a{1,2}|a{3,4}` to `a{1,4}`
 
 The various `reduce()` methods are extensible.
+
+Note that in a few cases this did *not* result in a shorter regular expression.
 
 ### Name
 
