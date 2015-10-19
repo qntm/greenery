@@ -240,9 +240,9 @@ def test_mult_str():
 
 	a = charclass("a")
 	assert str(mult(a, one)) == "a"
-	assert str(mult(a, multiplier(bound(2), bound(2)))) == "aa"
-	assert str(mult(a, multiplier(bound(3), bound(3)))) == "aaa"
-	assert str(mult(a, multiplier(bound(4), bound(4)))) == "aaaa"
+	assert str(mult(a, multiplier(bound(2), bound(2)))) == "a{2}"
+	assert str(mult(a, multiplier(bound(3), bound(3)))) == "a{3}"
+	assert str(mult(a, multiplier(bound(4), bound(4)))) == "a{4}"
 	assert str(mult(a, multiplier(bound(5), bound(5)))) == "a{5}"
 	assert str(mult(a, qm)) == "a?"
 	assert str(mult(a, star)) == "a*"
@@ -250,7 +250,7 @@ def test_mult_str():
 	assert str(mult(a, multiplier(bound(2), bound(5)))) == "a{2,5}"
 	assert str(mult(a, multiplier(bound(2), inf))) == "a{2,}"
 	assert str(mult(d, one)) == "\\d"
-	assert str(mult(d, multiplier(bound(2), bound(2)))) == "\\d\\d"
+	assert str(mult(d, multiplier(bound(2), bound(2)))) == "\\d{2}"
 	assert str(mult(d, multiplier(bound(3), bound(3)))) == "\\d{3}"
 
 def test_conc_str():
@@ -787,7 +787,7 @@ def test_everythingbut():
 	beer = parse("beer")
 	notBeer = beer.everythingbut()
 	beer2 = notBeer.everythingbut()
-	assert str(beer2) == "beer"
+	assert str(beer2) == "be{2}r"
 
 	# ".*" becomes "[]" and vice versa under this call.
 	everything = parse(".*")
@@ -1103,7 +1103,7 @@ def test_parse_regex_intersection():
 	assert str(parse("[a-g0-8$%\\^]+") & parse("[^d]{0,8}")) == "[$%0-8\\^abcefg]{1,8}"
 	assert str(parse("[a-g0-8$%\\^]+") & parse("[^d]{2,8}")) == "[$%0-8\\^abcefg]{2,8}"
 	assert str(parse("\\W*") & parse("[a-g0-8$%\\^]+") & parse("[^d]{2,8}")) == "[$%\\^]{2,8}"
-	assert str(parse("\\d{4}-\\d{2}-\\d{2}") & parse("19.*")) == "19\\d\\d-\\d\\d-\\d\\d"
+	assert str(parse("\\d{4}-\\d{2}-\\d{2}") & parse("19.*")) == "19\\d{2}-\\d{2}-\\d{2}"
 
 def test_complexify():
 	# Complexify!

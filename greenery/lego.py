@@ -1309,12 +1309,6 @@ class mult(lego):
 
 		suffix = str(self.multiplier)
 
-		# Pick whatever is shorter/more comprehensible.
-		# e.g. "aa" beats "a{2}", "ababab" beats "(ab){3}"
-		if self.multiplier.min == self.multiplier.max \
-		and len(output * self.multiplier.min.v) <= len(output + suffix):
-			return output * self.multiplier.min.v
-
 		return output + suffix
 
 	def to_fsm(self, alphabet=None):
