@@ -173,14 +173,25 @@ class fsm:
 		'''
 		alphabet = set().union(*[fsm.alphabet for fsm in fsms])
 
+		def connect_all(i, substate):
+			'''
+				Take a state in the numbered FSM and return a set containing it, plus
+				(if it's final) the first state from the next FSM, plus (if that's
+				final) the first state from the next but one FSM, plus...
+			'''
+			result = {(i, substate)}
+			while i < len(fsms) - 1 and substate in fsms[i].finals:
+				i += 1
+				substate = fsms[i].initial
+				result.add((i, substate))
+			return result
+
 		# Use a superset containing states from all FSMs at once.
 		# We start at the start of the first FSM. If this state is final in the
 		# first FSM, then we are also at the start of the second FSM. And so on.
 		initial = set()
-		for (i, fsm) in enumerate(fsms):
-			initial.add((i, fsm.initial))
-			if not fsm.initial in fsm.finals:
-				break
+		if len(fsms) > 0:
+			initial.update(connect_all(0, fsms[0].initial))
 		initial = frozenset(initial)
 
 		def final(state):
@@ -200,10 +211,7 @@ class fsm:
 			for (i, substate) in current:
 				fsm = fsms[i]
 				if substate in fsm.map and symbol in fsm.map[substate]:
-					next.add((i, fsm.map[substate][symbol]))
-					# final of this FSM? merge with next FSM's initial
-					if i < len(fsms) - 1 and fsm.map[substate][symbol] in fsm.finals:
-						next.add((i + 1, fsms[i + 1].initial))
+					next.update(connect_all(i, fsm.map[substate][symbol]))
 			if len(next) == 0:
 				raise OblivionError
 			return frozenset(next)

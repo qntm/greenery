@@ -636,3 +636,8 @@ def test_oblivion_crawl(a):
 	assert len((abc & abc).states) == 4
 	assert len((abc ^ abc).states) == 1
 	assert len((abc - abc).states) == 1
+
+def test_concatenate_bug(a):
+	# This exposes a defect in fsm.concatenate.
+	assert fsm.concatenate(a, epsilon({"a"}), a).accepts("aa")
+	assert fsm.concatenate(a, epsilon({"a"}), epsilon({"a"}), a).accepts("aa")
