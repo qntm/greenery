@@ -10,7 +10,7 @@ This project was undertaken because I wanted to be able to **compute the interse
     >>> print(parse("abc...") & parse("...def"))
     abcdef
     >>> print(parse("\d{4}-\d{2}-\d{2}") & parse("19.*"))
-    19\d\d-\d\d-\d\d
+    19\d{2}-\d{2}-\d{2}
     >>> print(parse("\W*") & parse("[a-g0-8$%\^]+") & parse("[^d]{2,8}"))
     [$%\^]{2,8}
     >>> print(parse("[bc]*[ab]*") & parse("[ab]*[bc]*"))
