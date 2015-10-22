@@ -74,7 +74,7 @@ Ordinarily, you may only feed known alphabet symbols into the FSM. Any other sym
 
 #### `crawl(alphabet, initial, final, follow)`
 
-Crawl what is assumed to be an FSM and return a new `fsm` object representing it. Starts at state `initial`. At any given state, `crawl` calls `final(state)` to determine whether it is final. Then, for each symbol in `alphabet`, it calls `follow(state, symbol)` to try to discover new states. Obviously this procedure could go on for ever if your implementation of `follow` is faulty.
+Crawl what is assumed to be an FSM and return a new `fsm` object representing it. Starts at state `initial`. At any given state, `crawl` calls `final(state)` to determine whether it is final. Then, for each symbol in `alphabet`, it calls `follow(state, symbol)` to try to discover new states. Obviously this procedure could go on for ever if your implementation of `follow` is faulty. `follow` may also throw an `OblivionError` to indicate that you have reached an inescapable, non-final "oblivion state"; in this case, the transition will be omitted from the resulting FSM.
 
 #### `null(alphabet)`
 
