@@ -99,7 +99,7 @@ Method | Behaviour
 `fsm1.issubset(fsm2)` <br/> `fsm1 <= fsm2` | Returns `True` if the set of strings accepted by `fsm1` is a subset of those accepted by `fsm2`, otherwise `False`.
 `fsm1.ispropersubset(fsm2)` <br/> `fsm1 < fsm2` | Returns `True` if the set of strings accepted by `fsm1` is a proper subset of those accepted by `fsm2`, otherwise `False`.
 `fsm1.issuperset(fsm2)` <br/> `fsm1 >= fsm2` | Returns `True` if the set of strings accepted by `fsm1` is a superset of those accepted by `fsm2`, otherwise `False`.
-`fsm1.ispropersuperset(fsm2)` <br/> `fsm1 > fsm2` | Returns `True` if the set of strings accepted by `fsm1` is a proper superset of those accepted by `fsm2`, otherwise `False.
+`fsm1.ispropersuperset(fsm2)` <br/> `fsm1 > fsm2` | Returns `True` if the set of strings accepted by `fsm1` is a proper superset of those accepted by `fsm2`, otherwise `False`.
 `fsm1.isdisjoint(fsm2)` | Returns `True` if the set of strings accepted by `fsm1` is disjoint from those accepted by `fsm2`, otherwise `False`.
 `fsm1.copy()` | Returns a copy of `fsm1`.
 `fsm1.reduce()` | Returns an FSM which accepts exactly the same strings as `fsm1` but has a minimal number of states.
