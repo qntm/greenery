@@ -4,7 +4,7 @@
 	Finite state machine library.
 '''
 
-class anything_else:
+class anything_else_cls:
 	'''
 		This is a surrogate symbol which you can use in your finite state machines
 		to represent "any symbol not in the official alphabet". For example, if your
@@ -19,7 +19,7 @@ class anything_else:
 
 # We use a class instance because that gives us control over how the special
 # value gets serialised. Otherwise this would just be `object()`.
-anything_else = anything_else()
+anything_else = anything_else_cls()
 
 def key(symbol):
 	'''Ensure `fsm.anything_else` always sorts last'''
