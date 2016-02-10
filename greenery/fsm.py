@@ -236,7 +236,7 @@ class fsm:
 		'''
 		alphabet = self.alphabet
 
-		initial = self.finals
+		initial = [self.initial]
 
 		def follow(state, symbol):
 			next = set()
@@ -257,7 +257,7 @@ class fsm:
 			return frozenset(next)
 
 		def final(state):
-			return any(substate in self.finals for substate in state)
+			return any(substate in self.finals or substate in initial for substate in state)
 
 		return crawl(alphabet, initial, final, follow)
 
