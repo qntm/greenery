@@ -236,7 +236,7 @@ class fsm:
 		'''
 		alphabet = self.alphabet
 
-		initial = self.finals
+		initial = [self.initial]
 
 		def follow(state, symbol):
 			next = set()
@@ -259,7 +259,7 @@ class fsm:
 		def final(state):
 			return any(substate in self.finals for substate in state)
 
-		return crawl(alphabet, initial, final, follow)
+		return crawl(alphabet, initial, final, follow) | epsilon(alphabet)
 
 	def times(self, multiplier):
 		'''

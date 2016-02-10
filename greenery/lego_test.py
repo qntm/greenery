@@ -1260,3 +1260,7 @@ def test_main_bug():
 	assert parse("a{1,2}|a{4}|a{5,6}").reduce() == conc.parse("a{1,2}(a{3,4})?")
 	assert parse("a{1,2}|a{4}|a{5,6}|bc").reduce() == pattern.parse("a{1,2}|a{4,6}|bc")
 	assert (parse("a") | parse("a*")).reduce() == mult.parse("a*")
+
+def test_bug_28():
+        # Defect in lego.to_fsm()
+        assert not parse("(ab*)*").to_fsm().accepts("bb")
