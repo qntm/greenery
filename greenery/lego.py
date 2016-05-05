@@ -455,6 +455,9 @@ class lego:
 		'''For dictionaries'''
 		raise Exception("Not implemented")
 
+	def derive(self, string):
+		return from_fsm(self.to_fsm().derive(string))
+
 class charclass(lego):
 	'''
 		A charclass is basically a frozenset of symbols. The reason for the

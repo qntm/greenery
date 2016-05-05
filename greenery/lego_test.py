@@ -385,6 +385,11 @@ def test_odd_bug():
 	assert int5C.accepts("c")
 	assert int5C.accepts(["c"])
 
+def test_bug_28():
+	# Starification is broken in FSMs
+	assert not parse("(ab*)").to_fsm().star().accepts("bb")
+	assert not parse("(ab*)*").to_fsm().accepts("bb")
+
 ################################################################################
 # Test matches(). Quite sparse at the moment
 
@@ -1260,3 +1265,9 @@ def test_main_bug():
 	assert parse("a{1,2}|a{4}|a{5,6}").reduce() == conc.parse("a{1,2}(a{3,4})?")
 	assert parse("a{1,2}|a{4}|a{5,6}|bc").reduce() == pattern.parse("a{1,2}|a{4,6}|bc")
 	assert (parse("a") | parse("a*")).reduce() == mult.parse("a*")
+
+def test_derive():
+	assert parse("a+").derive("a") == mult.parse("a*")
+	assert parse("a+|b+").derive("a") == mult.parse("a*")
+	assert parse("abc|ade").derive("a") == pattern.parse("bc|de")
+	assert parse("abc|ade").derive("ab") == charclass.parse("c")

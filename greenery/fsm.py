@@ -236,7 +236,7 @@ class fsm:
 		'''
 		alphabet = self.alphabet
 
-		initial = self.finals
+		initial = {self.initial}
 
 		def follow(state, symbol):
 			next = set()
@@ -259,7 +259,7 @@ class fsm:
 		def final(state):
 			return any(substate in self.finals for substate in state)
 
-		return crawl(alphabet, initial, final, follow)
+		return crawl(alphabet, initial, final, follow) | epsilon(alphabet)
 
 	def times(self, multiplier):
 		'''
@@ -645,6 +645,43 @@ class fsm:
 			finals   = self.finals,
 			map      = self.map,
 		)
+
+	def derive(self, input):
+		'''
+			Compute the Brzozowski derivative of this FSM with respect to the input
+			string of symbols. <https://en.wikipedia.org/wiki/Brzozowski_derivative>
+			If any of the symbols are not members of the alphabet, that's a KeyError.
+			If you fall into oblivion, then the derivative is an FSM accepting no
+			strings.
+		'''
+		try:
+			# Consume the input string.
+			state = self.initial
+			for symbol in input:
+				if not symbol in self.alphabet:
+					if not anything_else in self.alphabet:
+						raise KeyError(symbol)
+					symbol = anything_else
+
+				# Missing transition = transition to dead state
+				if not (state in self.map and symbol in self.map[state]):
+					raise OblivionError
+
+				state = self.map[state][symbol]
+
+			# OK so now we have consumed that string, use the new location as the
+			# starting point.
+			return fsm(
+				alphabet = self.alphabet,
+				states   = self.states,
+				initial  = state,
+				finals   = self.finals,
+				map      = self.map,
+			)
+
+		except OblivionError:
+			# Fell out of the FSM. The derivative of this FSM is the empty FSM.
+			return null(self.alphabet)
 
 def null(alphabet):
 	'''

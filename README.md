@@ -112,6 +112,7 @@ Method | Behaviour
 `fsm1.intersection(fsm2, ...)` <br/> `fsm1 & fsm2 & ...` | Returns an FSM accepting any string accepted by all input FSMs.
 `fsm1.difference(fsm2, ...)` <br/> `fsm1 - fsm2 - ...` | Subtract the set of strings accepted by `fsm2` onwards from those accepted by `fsm1` and return the resulting new FSM.
 `fsm1.symmetric_difference(fsm2, ...)` <br/> `fsm1 ^ fsm2 ^ ...` | Returns an FSM accepting any string accepted by `fsm1` or `fsm2` but not both.
+`fsm1.derive("a")` | Return the [Brzozowski derivative](https://en.wikipedia.org/wiki/Brzozowski_derivative) of the original FSM with respect to the input string. E.g. if `fsm1` only accepts `"ab"` or `"ac+"`, returns an FSM only accepting `"b"` or `"c+"`.
 
 ## greenery.lego
 
@@ -239,6 +240,7 @@ Method | Behaviour
 `lego1.difference(lego2, ...)` <br/> `lego1 - lego2 - ...` | Subtract the set of strings matched by `lego2` onwards from those matched by `lego1` and return the resulting regular expression.
 `lego1.symmetric_difference(lego2, ...)` <br/> `lego1 ^ lego2 ^ ...` | Returns a regular expression matching any string accepted by `lego1` or `lego2` but not both.
 `lego1.reduce()` | Returns a regular expression which matches exactly the same strings as `lego1` but is simplified as far as possible. See dedicated section below.
+`lego1.derive("a")` | Return the [Brzozowski derivative](https://en.wikipedia.org/wiki/Brzozowski_derivative) of the input regular expression with respect to "a".
 
 #### `reduce()`
 

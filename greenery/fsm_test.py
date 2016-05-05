@@ -210,6 +210,28 @@ def test_crawl_reduction():
 	).reduce()
 	assert len(merged.states) == 2
 
+def test_bug_28():
+	# This is (ab*)* and it caused some defects.
+	abstar = fsm(
+		alphabet = {'a', 'b'},
+		states   = {0, 1},
+		initial  = 0,
+		finals   = {1},
+		map = {
+			0: {'a': 1},
+			1: {'b': 1}
+		}
+	)
+	assert abstar.accepts("a")
+	assert not abstar.accepts("b")
+	assert abstar.accepts("ab")
+	assert abstar.accepts("abb")
+	abstarstar = abstar.star()
+	assert abstarstar.accepts("a")
+	assert not abstarstar.accepts("b")
+	assert abstarstar.accepts("ab")
+	assert not abstar.star().accepts("bb")
+
 def test_star_advanced():
 	# This is (a*ba)*. Naively connecting the final states to the initial state
 	# gives the incorrect result here.
@@ -641,3 +663,15 @@ def test_concatenate_bug(a):
 	# This exposes a defect in fsm.concatenate.
 	assert fsm.concatenate(a, epsilon({"a"}), a).accepts("aa")
 	assert fsm.concatenate(a, epsilon({"a"}), epsilon({"a"}), a).accepts("aa")
+
+def test_derive(a, b):
+	# Just some basic tests because this is mainly a regex thing.
+	assert a.derive("a") == epsilon({"a", "b"})
+	assert a.derive("b") == null({"a", "b"})
+	try:
+		a.derive("c")
+		assert False
+	except KeyError:
+		assert True
+	assert (a * 3).derive("a") == a * 2
+	assert (a.star() - epsilon({"a", "b"})).derive("a") == a.star()
