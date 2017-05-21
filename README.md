@@ -1,6 +1,6 @@
 # greenery
 
-Tools for parsing and manipulating regular expressions (`greenery.lego`), for producing finite-state machines (`greenery.fsm`), and for freely converting between the two.
+Tools for parsing and manipulating regular expressions (`greenery.lego`), for producing finite-state machines (`greenery.fsm`), and for freely converting between the two. Python 3 only.
 
 This project was undertaken because I wanted to be able to **compute the intersection between two regular expressions**. The "intersection" is the set of strings which both regexes will accept, represented as a third regular expression.
 
