@@ -1275,3 +1275,19 @@ def test_derive():
 	assert parse("a+|b+").derive("a") == mult.parse("a*")
 	assert parse("abc|ade").derive("a") == pattern.parse("bc|de")
 	assert parse("abc|ade").derive("ab") == charclass.parse("c")
+
+def test_bug_36_1():
+	etc1 = parse(".*").to_fsm()
+	etc2 = parse("s.*").to_fsm()
+	assert etc1.accepts("s")
+	assert etc2.accepts("s")
+	assert not etc1.isdisjoint(etc2)
+	assert not etc2.isdisjoint(etc1)
+
+def test_bug_36_2():
+	etc1 = parse("/etc/.*").to_fsm()
+	etc2 = parse("/etc/something.*").to_fsm()
+	assert etc1.accepts("/etc/something")
+	assert etc2.accepts("/etc/something")
+	assert not etc1.isdisjoint(etc2)
+	assert not etc2.isdisjoint(etc1)

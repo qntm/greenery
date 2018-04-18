@@ -727,10 +727,14 @@ def parallel(fsms, test):
 	def follow(current, symbol):
 		next = {}
 		for i in range(len(fsms)):
+			if symbol not in fsms[i].alphabet and anything_else in fsms[i].alphabet:
+				actual_symbol = anything_else
+			else:
+				actual_symbol = symbol
 			if i in current \
 			and current[i] in fsms[i].map \
-			and symbol in fsms[i].map[current[i]]:
-				next[i] = fsms[i].map[current[i]][symbol]
+			and actual_symbol in fsms[i].map[current[i]]:
+				next[i] = fsms[i].map[current[i]][actual_symbol]
 		if len(next.keys()) == 0:
 			raise OblivionError
 		return next

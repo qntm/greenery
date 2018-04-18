@@ -675,3 +675,36 @@ def test_derive(a, b):
 		assert True
 	assert (a * 3).derive("a") == a * 2
 	assert (a.star() - epsilon({"a", "b"})).derive("a") == a.star()
+
+def test_bug_36():
+	etc1 = fsm(
+		alphabet = {anything_else},
+		states = {0},
+		initial = 0,
+		finals = {0},
+		map = {
+			0: {
+				anything_else: 0
+			}
+		}
+	)
+	etc2 = fsm(
+		alphabet = {'s', anything_else},
+		states = {0, 1},
+		initial = 0,
+		finals = {1},
+		map = {
+			0: {
+				's': 1
+			},
+			1: {
+				's': 1,
+				anything_else: 1
+			}
+		}
+	)
+	both = etc1 & etc2
+	assert etc1.accepts(["s"])
+	assert etc2.accepts(["s"])
+	assert both.alphabet == {anything_else, "s"}
+	assert both.accepts(["s"])
