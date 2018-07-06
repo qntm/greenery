@@ -1066,6 +1066,12 @@ def test_even_star_bug():
 	a2star = a2 * star
 	assert a2star == mult.parse("(a{2})*")
 
+def test_two_or_more_qm_bug():
+	assert mult.parse("a{2,}") * qm == mult.parse("(a{2,})?")
+
+def test_two_two_bug():
+	assert mult.parse("a{2}") * multiplier.parse("{2}") == mult.parse("a{4}")
+
 ################################################################################
 # Test intersection (&)
 
