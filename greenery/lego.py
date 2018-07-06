@@ -928,6 +928,8 @@ class bound:
 
 	def __mul__(self, other):
 		'''Multiply this bound by another'''
+		if self == bound(0) or other == bound(0):
+			return bound(0)
 		if self == inf or other == inf:
 			return inf
 		return bound(self.v * other.v)
@@ -1065,7 +1067,7 @@ class multiplier:
 			equal to {pr, (p+q)(r+s)} only if s=0 or qr+1 >= p. If not, then at least
 			one gap appears in the range. The first inaccessible number is (p+q)r + 1.
 		'''
-		return self.mandatory == zero or \
+		return other.optional == bound(0) or \
 		self.optional * other.mandatory + bound(1) >= self.mandatory
 
 	def __mul__(self, other):
