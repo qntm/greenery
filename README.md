@@ -108,7 +108,7 @@ Method | Behaviour
 `fsm1.reversed()` <br/> `reversed(fsm1)` | Returns a reversed FSM. For each string that `fsm1` accepted, `reversed(fsm1)` will accept the reversed string. `reversed(reversed(x))` accepts the same strings as `x` for all `fsm` objects `x`, but is not necessarily mechanically identical.
 `fsm1.times(7)` <br/> `fsm1 * 7` | Essentially, this is repeated self-concatenation. If `fsm1` only accepts `"z"`, `fsm2` only accepts `"zzzzzzz"`.
 `fsm1.concatenate(fsm2, ...)` <br/> `fsm1 + fsm2 + ...` | Returns the concatenation of the FSMs. If `fsm1` accepts all strings in *A* and `fsm2` accepts all strings in *B*, then `fsm1 + fsm2` accepts all strings of the form *a·b* where *a* is in *A* and *b* is in *B*.
-`fsm1.union(fsm2, ...)` <br/> `fsm1 | fsm2 | ...` | Returns an FSM accepting any string accepted by any input FSM. This is also called *alternation*.
+`fsm1.union(fsm2, ...)` <br/> `fsm1 \| fsm2 \| ...` | Returns an FSM accepting any string accepted by any input FSM. This is also called *alternation*.
 `fsm1.intersection(fsm2, ...)` <br/> `fsm1 & fsm2 & ...` | Returns an FSM accepting any string accepted by all input FSMs.
 `fsm1.difference(fsm2, ...)` <br/> `fsm1 - fsm2 - ...` | Subtract the set of strings accepted by `fsm2` onwards from those accepted by `fsm1` and return the resulting new FSM.
 `fsm1.symmetric_difference(fsm2, ...)` <br/> `fsm1 ^ fsm2 ^ ...` | Returns an FSM accepting any string accepted by `fsm1` or `fsm2` but not both.
