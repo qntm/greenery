@@ -138,7 +138,7 @@ def from_fsm(f):
 		del brz[a][a]
 
 		for right in brz[a]:
-			brz[a][right] = loop + brz[a][right]
+			brz[a][right] = (loop + brz[a][right]).reduce()
 
 		# Note: even if we're down to our final equation, the above step still
 		# needs to be performed before anything is returned.
@@ -154,7 +154,7 @@ def from_fsm(f):
 			del brz[b][a]
 
 			for right in brz[a]:
-				brz[b][right] |= univ + brz[a][right]
+				brz[b][right] = (brz[b][right] | (univ + brz[a][right])).reduce()
 
 	return brz[f.initial][outside].reduce()
 

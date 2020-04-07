@@ -1297,3 +1297,40 @@ def test_bug_36_2():
 	assert etc2.accepts("/etc/something")
 	assert not etc1.isdisjoint(etc2)
 	assert not etc2.isdisjoint(etc1)
+
+def test_bug_slow():
+	# issue #43
+	import time
+	m = fsm.fsm(
+		alphabet = {'R', 'L', 'U', 'D'},
+		states = {
+			0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+			11, 12, 13, 14, 15, 16, 17, 18, 19, 20},
+		initial = 0,
+		finals = {20},
+		map = {0: {'D': 1, 'U': 2},
+			   1: {'L': 3},
+			   2: {'L': 4},
+			   3: {'U': 5},
+			   4: {'D': 6},
+			   5: {'R': 7},
+			   6: {'R': 8},
+			   7: {'U': 9},
+			   8: {'D': 10},
+			   9: {'L': 11},
+			   10: {'L': 12},
+			   11: {'L': 13},
+			   12: {'L': 14},
+			   13: {'D': 15},
+			   14: {'U': 16},
+			   15: {'R': 17},
+			   16: {'R': 18},
+			   17: {'D': 19},
+			   18: {'U': 19},
+			   19: {'L': 20},
+			   20: {}})
+	t1 = time.time()
+	l = from_fsm(m)
+	t2 = time.time()
+	assert (t2 - t1) < 60 # should finish in way under 1s
+	assert l == parse("(DLURULLDRD|ULDRDLLURU)L").reduce()
