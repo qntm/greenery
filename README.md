@@ -235,7 +235,7 @@ Method | Behaviour
 `lego1.reversed()` <br/> `reversed(lego1)` | Returns a reversed regular expression. For each string that `lego1` matched, `reversed(lego1)` will match the reversed string. `reversed(reversed(x))` matches the same strings as `x` for all `lego` objects `x`, but is not necessarily identical.
 `lego1.times(star)` <br/> `lego1 * star` | Returns the input regular expression multiplied  by any `multiplier`.
 `lego1.concatenate(lego2, ...)` <br/> `lego1 + lego2 + ...` | Returns the concatenation of the regular expressions.
-`lego1.union(lego2, ...)` <br/> `lego1 | lego2 | ...` | Returns the alternation of the two regular expressions.
+`lego1.union(lego2, ...)` <br/> `lego1 \| lego2 \| ...` | Returns the alternation of the two regular expressions.
 `lego1.intersection(lego2, ...)` <br/> `lego1 & lego2 & ...` | Returns a regular expression matching any string matched by all input regular expressions. The successful implementation of this method was the ultimate goal of this entire project.
 `lego1.difference(lego2, ...)` <br/> `lego1 - lego2 - ...` | Subtract the set of strings matched by `lego2` onwards from those matched by `lego1` and return the resulting regular expression.
 `lego1.symmetric_difference(lego2, ...)` <br/> `lego1 ^ lego2 ^ ...` | Returns a regular expression matching any string accepted by `lego1` or `lego2` but not both.
