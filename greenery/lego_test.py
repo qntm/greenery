@@ -74,7 +74,7 @@ def test_charclass_ranges():
 	# Should accept arbitrary ranges of characters in charclasses. No longer
 	# limited to alphanumerics. (User beware...)
 	assert parse("[z{|}~]") == parse("[z-~]")
-	assert parse("[\w:;<=>?@\\[\\\\\]\\^`]") == parse("[0-z]")
+	assert parse("[\\w:;<=>?@\\[\\\\\\]\\^`]") == parse("[0-z]")
 
 def test_hex_escapes():
 	# Should be able to parse e.g. "\\x40"
@@ -85,10 +85,10 @@ def test_hex_escapes():
 
 def test_w_d_s():
 	# Allow "\w", "\d" and "\s" in charclasses
-	assert charclass.parse("\w") == charclass.parse("[0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz]")
-	assert charclass.parse("[\w~]") == charclass.parse("[0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz~]")
-	assert charclass.parse("[\da]") == charclass.parse("[0123456789a]")
-	assert charclass.parse("[\s]") == charclass.parse("[\t\n\r\f\v ]")
+	assert charclass.parse("\\w") == charclass.parse("[0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz]")
+	assert charclass.parse("[\\w~]") == charclass.parse("[0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz~]")
+	assert charclass.parse("[\\da]") == charclass.parse("[0123456789a]")
+	assert charclass.parse("[\\s]") == charclass.parse("[\t\n\r\f\v ]")
 
 def test_mult_parsing():
 	assert mult.parse("[a-g]+") == mult(charclass("abcdefg"), plus)
@@ -224,7 +224,7 @@ def test_charclass_str():
 	assert str(~charclass("^")) == "[^\\^]"
 
 	# Arbitrary ranges
-	assert str(parse("[\w:;<=>?@\\[\\\\\]\\^`]")) == "[0-z]"
+	assert str(parse("[\\w:;<=>?@\\[\\\\\\]\\^`]")) == "[0-z]"
 	# TODO: what if \d is a proper subset of `chars`?
 
 	# escape sequences are not preserved
@@ -395,9 +395,9 @@ def test_bug_28():
 
 def test_wildcards_in_charclasses():
 	# Allow "\w", "\d" and "\s" in charclasses
-	assert parse("[\w~]*").matches("a0~")
-	assert parse("[\da]*").matches("0129a")
-	assert parse("[\s]+").matches(" \t \t ")
+	assert parse("[\\w~]*").matches("a0~")
+	assert parse("[\\da]*").matches("0129a")
+	assert parse("[\\s]+").matches(" \t \t ")
 
 def test_block_comment_regex():
 	# I went through several incorrect regexes for C block comments. Here we show
@@ -1180,7 +1180,7 @@ def test_empty_pattern_reduction():
 	assert pattern().reduce() == charclass()
 
 def test_empty_mult_suppression():
-	assert conc.parse("[]0\d").reduce() == charclass.parse("[]")
+	assert conc.parse("[]0\\d").reduce() == charclass.parse("[]")
 	assert conc(
 		mult(pattern(), one), # this mult can never actually match anything
 		mult(charclass("0"), one),
@@ -1188,7 +1188,7 @@ def test_empty_mult_suppression():
 	).reduce() == charclass.parse("[]")
 
 def test_empty_conc_suppression():
-	assert pattern.parse("[]0\d").reduce() == charclass.parse("[]")
+	assert pattern.parse("[]0\\d").reduce() == charclass.parse("[]")
 	assert pattern(
 		conc(
 			mult(pattern(), one), # this mult can never actually match anything
@@ -1225,14 +1225,14 @@ def test_mult_squoosh():
 	# sequence squooshing of mults within a conc
 	assert conc.parse("[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]").reduce() == mult.parse("[0-9A-Fa-f]{3}")
 	assert conc.parse("[$%\\^]?[$%\\^]").reduce() == mult.parse("[$%\\^]{1,2}")
-	assert conc.parse("(|(|(|(|(|(|[$%\^])[$%\^])[$%\^])[$%\^])[$%\^])[$%\^])[$%\^][$%\^]").reduce() == mult.parse("[$%\^]{2,8}")
+	assert conc.parse("(|(|(|(|(|(|[$%\\^])[$%\\^])[$%\\^])[$%\\^])[$%\\^])[$%\\^])[$%\\^][$%\\^]").reduce() == mult.parse("[$%\\^]{2,8}")
 
 def test_bad_reduction_bug():
 	# DEFECT: "0{2}|1{2}" was erroneously reduced() to "[01]{2}"
 	assert parse("0{2}|1{2}").reduce() != parse("[01]{2}")
-	assert parse("0|[1-9]|ab").reduce() == pattern.parse("\d|ab")
-	assert parse("0|[1-9]|a{5,7}").reduce() == pattern.parse("\d|a{5,7}")
-	assert parse("0|(0|[1-9]|a{5,7})").reduce() == pattern.parse("0|(\d|a{5,7})")
+	assert parse("0|[1-9]|ab").reduce() == pattern.parse("\\d|ab")
+	assert parse("0|[1-9]|a{5,7}").reduce() == pattern.parse("\\d|a{5,7}")
+	assert parse("0|(0|[1-9]|a{5,7})").reduce() == pattern.parse("0|(\\d|a{5,7})")
 	# TODO: should do better than this! Merge that 0
 
 def test_common_prefix_pattern_reduction():
