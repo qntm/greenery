@@ -1334,3 +1334,42 @@ def test_bug_slow():
 	t2 = time.time()
 	assert (t2 - t1) < 60 # should finish in way under 1s
 	assert l == parse("(DLURULLDRD|ULDRDLLURU)L").reduce()
+
+def test_bug_48_simpler():
+    assert str(from_fsm(fsm.fsm(
+        alphabet = { 'd' },
+        states = { 0, 1 },
+        initial = 0,
+        finals = {1},
+        map = {
+            0: {'d': 1},
+        },
+    ))) == 'd'
+
+def test_bug_48():
+    S5, S26, S45, S63, S80, S97, S113, S127, S140, S152, S163, S175, S182 = range(13)
+    char0, char1, char2, char3, char4, char5, char6, char7, char8 = '_', 'a', 'd', 'e', 'g', 'm', 'n', 'o', 'p'
+
+    machine = fsm.fsm(
+        alphabet = { char0, char1, char2, char3, char4, char5, char6, char7, char8 },
+        states = { S5, S26, S45, S63, S80, S97, S113, S127, S140, S152, S163, S175, S182 },
+        initial = S5,
+        finals = {S182},
+        map = {
+            S113: {char0: S127},
+            S127: {char7: S140},
+            S140: {char6: S152},
+            S152: {char0: S163},
+            S163: {char5: S175},
+            S175: {char8: S182},
+            S26: {char1: S45},
+            S45: {char5: S63},
+            S5: {char2: S26},
+            S63: {char1: S80},
+            S80: {char4: S97},
+            S97: {char3: S113},
+        },
+    )
+
+    rex = from_fsm(machine)
+    assert str(rex) == 'damage_on_mp'

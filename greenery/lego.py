@@ -112,8 +112,9 @@ def from_fsm(f):
 	brz = {}
 	for a in f.states:
 		brz[a] = {}
-		for b in f.states | {outside}:
+		for b in f.states:
 			brz[a][b] = nothing
+		brz[a][outside] = emptystring if a in f.finals else nothing
 
 	# Populate it with some initial data.
 	for a in f.map:
@@ -123,8 +124,6 @@ def from_fsm(f):
 				brz[a][b] |= ~charclass(f.alphabet - {fsm.anything_else})
 			else:
 				brz[a][b] |= charclass({symbol})
-		if a in f.finals:
-			brz[a][outside] |= emptystring
 
 	# Now perform our back-substitution
 	for i in reversed(range(len(states))):
