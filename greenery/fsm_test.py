@@ -708,3 +708,20 @@ def test_bug_36():
 	assert etc2.accepts(["s"])
 	assert both.alphabet == {anything_else, "s"}
 	assert both.accepts(["s"])
+
+def test_add_anything_else():
+	fsm1=fsm( # [^a]
+		alphabet={"a",anything_else},
+		states={0,1},
+		initial=0,
+		finals={1},
+		map={0:{anything_else:1}}
+	)
+	fsm2=fsm( # [^b]
+		alphabet={"b",anything_else},
+		states={0,1},
+		initial=0,
+		finals={1},
+		map={0:{anything_else:1}}
+	)
+	assert (fsm1+fsm2).accepts("ba")
