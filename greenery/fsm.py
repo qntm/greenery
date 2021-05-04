@@ -210,8 +210,11 @@ class fsm:
 			next = set()
 			for (i, substate) in current:
 				fsm = fsms[i]
-				if substate in fsm.map and symbol in fsm.map[substate]:
-					next.update(connect_all(i, fsm.map[substate][symbol]))
+				if substate in fsm.map:
+					if symbol in fsm.map[substate]:
+						next.update(connect_all(i, fsm.map[substate][symbol]))
+					elif  anything_else in fsm.map[substate] and symbol not in fsm.alphabet:
+						next.update(connect_all(i,fsm.map[substate][anything_else]))
 			if len(next) == 0:
 				raise OblivionError
 			return frozenset(next)
