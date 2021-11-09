@@ -64,6 +64,7 @@ class Conc():
                 # Conc contains "()" (i.e. a `Mult` containing only a `Pattern`
                 # containing the empty string)? That can be removed
                 # e.g. "a()b" -> "ab"
+
                 (
                     mult.multiplicand == Pattern(EMPTYSTRING)
                 ) \
@@ -71,6 +72,7 @@ class Conc():
                 # If a `Mult` has an empty multiplicand, we can only match it
                 # zero times => empty string => remove it entirely
                 # e.g. "a[]{0,3}b" -> "ab"
+
                 or (
                     mult.multiplicand.empty()
                     and mult.multiplier.min == Bound(0)
@@ -407,6 +409,7 @@ def call_fsm(method):
     def new_method(*elems):
         alphabet = set().union(*[elem.alphabet() for elem in elems])
         return from_fsm(fsm_method(*[elem.to_fsm(alphabet) for elem in elems]))
+
     return new_method
 
 
@@ -788,6 +791,7 @@ class Mult:
 
         e.g. a, b{2}, c?, d*, [efg]{2,5}, f{2,}, (anysubpattern)+, .*, ...
     '''
+
     multiplicand: Charclass | Pattern
     multiplier: Multiplier
 

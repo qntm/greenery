@@ -11,6 +11,7 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class Bound:
     '''An integer but sometimes also possibly infinite (None)'''
+
     v: int | None
 
     def __post_init__(self):

@@ -29,6 +29,7 @@ class Charclass:
         if the full alphabet is extremely large, but also requires dedicated
         combination functions.
     '''
+
     chars: frozenset[str] | str
     negated: bool = False
 

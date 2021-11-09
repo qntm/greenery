@@ -16,6 +16,7 @@ class NoMatch(Exception):
         Thrown when parsing fails.
         Almost always caught and almost never fatal
     '''
+
     pass
 
 

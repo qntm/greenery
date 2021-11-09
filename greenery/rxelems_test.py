@@ -19,6 +19,7 @@ if __name__ == "__main__":
 ###############################################################################
 # Stringification tests
 
+
 def test_charclass_str():
     # Arbitrary ranges
     assert str(parse("[\\w:;<=>?@\\[\\\\\\]\\^`]")) == "[0-z]"
@@ -40,6 +41,7 @@ def test_parse_str_round_trip():
 
 ###############################################################################
 # Test to_fsm() and alphabet-related functionality
+
 
 def test_alphabet():
     # `.alphabet()` should include `ANYTHING_ELSE`
@@ -110,6 +112,7 @@ def test_bug_28():
 ###############################################################################
 # Test matches(). Quite sparse at the moment
 
+
 def test_wildcards_in_charclasses():
     # Allow "\w", "\d" and "\s" in `Charclass`es
     assert parse("[\\w~]*").matches("a0~")
@@ -149,6 +152,7 @@ def test_in():
 
 ###############################################################################
 # Test string generators
+
 
 def test_charclass_gen():
     gen = parse("[xyz]").strings()
@@ -257,6 +261,7 @@ def test_forin():
 ###############################################################################
 # Test cardinality() and len()
 
+
 def test_cardinality():
     assert parse("[]").cardinality() == 0
     assert parse("[]?").cardinality() == 1
@@ -271,6 +276,7 @@ def test_cardinality():
 
 ###############################################################################
 
+
 def test_copy():
     x = parse("abc|def(ghi|jkl)")
     assert x.copy() == x
@@ -278,6 +284,7 @@ def test_copy():
 
 ###############################################################################
 # Test from_fsm()
+
 
 def test_dot():
     # not "a[ab]b"
@@ -485,6 +492,7 @@ def test_dead_default():
 ###############################################################################
 # charclass set operations
 
+
 def test_charclass_union():
     assert (parse("[ab]") | parse("[bc]")).reduce() == parse("[abc]")
     assert (parse("[ab]") | parse("[^bc]")).reduce() == parse("[^c]")
@@ -502,6 +510,7 @@ def test_charclass_intersection():
 ###############################################################################
 # Emptiness detection
 
+
 def test_empty():
     assert not parse("a{0}").empty()
     assert parse("[]").empty()
@@ -514,6 +523,7 @@ def test_empty():
 
 ###############################################################################
 # Test everythingbut()
+
 
 def test_everythingbut():
     # Regexes are usually gibberish but we make a few claims
@@ -549,6 +559,7 @@ def test_isinstance_bug():
 
 ###############################################################################
 
+
 def test_equivalence():
     assert parse("aa*").equivalent(parse("a*a"))
     assert parse("([ab]*a|[bc]*c)?b*").equivalent(parse("b*(a[ab]*|c[bc]*)?"))
@@ -556,6 +567,7 @@ def test_equivalence():
 
 ###############################################################################
 # Test reversed()
+
 
 def test_regex_reversal():
     assert parse("b").reversed() == parse("b")
@@ -569,6 +581,7 @@ def test_regex_reversal():
 ###############################################################################
 # Tests for some more set operations
 
+
 def test_set_ops():
     assert parse("[abcd]") - parse("a") == parse("[bcd]")
     assert parse("[abcd]") ^ parse("[cdef]") == parse("[abef]")
@@ -576,6 +589,7 @@ def test_set_ops():
 
 ###############################################################################
 # Test methods for finding common parts of regular expressions.
+
 
 def test_pattern_commonconc():
     assert str(parse("aa|aa")._commonconc()) == "aa"
@@ -597,6 +611,7 @@ def test_pattern_commonconc_suffix():
 
 ###############################################################################
 # Basic concatenation reduction tests
+
 
 def test_reduce_concatenations():
     assert str(parse("aa").reduce()) == "a{2}"
@@ -629,6 +644,7 @@ def test_reduce_concatenations():
 ###############################################################################
 # Multiplication tests
 
+
 def test_mult_multiplication():
     assert parse("(a{2,3}){1,1}").reduce() == \
         parse("a{2,3}").reduce()
@@ -657,6 +673,7 @@ def test_two_two_bug():
 
 ###############################################################################
 # Test intersection (&)
+
 
 def test_mult_intersection():
     assert str(parse("a") & parse("a")) == "a"
@@ -749,6 +766,7 @@ def test_silly_reduction():
 
 ###############################################################################
 # reduce() tests
+
 
 def test_mult_reduction_easy():
     assert str(parse("a").reduce()) == "a"

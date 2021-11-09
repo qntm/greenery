@@ -28,6 +28,7 @@ class Multiplier:
         `ZERO` to exist, which actually are quite useful in their own special
         way.
     '''
+
     min: Bound
     max: Bound
     mandatory: Bound = field(init=False)

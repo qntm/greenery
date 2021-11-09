@@ -64,6 +64,7 @@ class OblivionError(Exception):
         warrants an out-of-band signal which will reduce the complexity of the
         new FSM's map.
     '''
+
     pass
 
 
@@ -88,6 +89,7 @@ class Fsm:
         closure), intersected, and simplified.
         The majority of these methods are available using operator overloads.
     '''
+
     initial: state_type
     finals: set[state_type]
     alphabet: set[alpha_type]
