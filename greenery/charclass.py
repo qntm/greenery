@@ -206,7 +206,7 @@ class Charclass:
 
     def __repr__(self, /) -> str:
         string = ""
-        if self.negated is True:
+        if self.negated:
             string += "~"
         string += "Charclass("
         string += repr("".join(str(char) for char in sorted(self.chars, key=str)))
