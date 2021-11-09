@@ -148,7 +148,7 @@ class Fsm:
                         f" in transition from {state!r}"
                         f" to {map[state][symbol]!r}"
                     )
-                if not map[state][symbol] in states:
+                if map[state][symbol] not in states:
                     raise Exception(
                         f"Transition for state {state!r}"
                         f" and symbol {symbol!r}"
