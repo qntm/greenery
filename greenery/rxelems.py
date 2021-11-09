@@ -245,7 +245,7 @@ class Conc:
             # subtracts the C successfully but leaves something behind,
             # then tries to subtract the B too, which isn't possible
             else:
-                if i != 0:
+                if i:
                     raise Exception(f"Can't subtract {other!r} from {self!r}")
 
         return Conc(*new)
@@ -447,7 +447,7 @@ class Pattern:
         return self.union(other)
 
     def __str__(self, /) -> str:
-        if len(self.concs) == 0:
+        if not self.concs:
             raise Exception(f"Can't serialise {self!r}")
         return "|".join(sorted(str(conc) for conc in self.concs))
 
@@ -625,7 +625,7 @@ class Pattern:
 
         If "suffix" is True, the same result but for suffixes.
         """
-        if len(self.concs) == 0:
+        if not self.concs:
             raise Exception(f"Can't call _commonconc on {self!r}")
 
         return reduce(lambda x, y: x.common(y, suffix=suffix), self.concs)
@@ -833,9 +833,7 @@ class Mult:
             and self.multiplier.canmultiplyby(QM)
         ):
             return Mult(
-                Pattern(
-                    *filter(lambda conc: len(conc.mults) != 0, self.multiplicand.concs)
-                ),
+                Pattern(*filter(lambda conc: conc.mults, self.multiplicand.concs)),
                 self.multiplier * QM,
             ).reduce()
 

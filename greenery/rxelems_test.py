@@ -265,6 +265,7 @@ def test_forin() -> None:
 
 
 def test_cardinality() -> None:
+    # pylint: disable-next=compare-to-zero
     assert parse("[]").cardinality() == 0
     assert parse("[]?").cardinality() == 1
     assert parse("[]{0,6}").cardinality() == 1

@@ -662,6 +662,7 @@ def test_new_set_methods(a: FixtureA, b: FixtureB) -> None:
 
     # set.union() imitation
     assert Fsm.union(a, b) == a.union(b)
+    # pylint: disable-next=compare-to-zero
     assert len(Fsm.union()) == 0
     assert Fsm.intersection(a, b) == a.intersection(b)
 

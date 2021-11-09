@@ -158,7 +158,7 @@ class Charclass:
         currentRange = ""
         for char in sorted(self.chars, key=ord):
             # range is not empty: new char must fit after previous one
-            if len(currentRange) > 0:
+            if currentRange:
                 i = ord(char)
 
                 # char doesn't fit old range: restart
@@ -168,7 +168,7 @@ class Charclass:
 
             currentRange += char
 
-        if len(currentRange) > 0:
+        if currentRange:
             output += recordRange()
 
         return output
@@ -221,7 +221,7 @@ class Charclass:
         return self.chars | {ANYTHING_ELSE}
 
     def empty(self, /) -> bool:
-        return len(self.chars) == 0 and not self.negated
+        return not self.chars and not self.negated
 
     # set operations
     def negate(self, /) -> Charclass:

@@ -283,7 +283,7 @@ class Fsm:
         # first FSM, then we are also at the start of the second FSM. And so
         # on.
         initial_: set[tuple[int, state_type]] = set()
-        if len(fsms) > 0:
+        if fsms:
             initial_.update(connect_all(0, fsms[0].initial))
         initial: frozenset[tuple[int, state_type]] = frozenset(initial_)
 
@@ -315,7 +315,7 @@ class Fsm:
                         and symbol not in fsm.alphabet
                     ):
                         next.update(connect_all(i, fsm.map[substate][ANYTHING_ELSE]))
-            if len(next) == 0:
+            if not next:
                 raise OblivionError
             return frozenset(next)
 
@@ -360,7 +360,7 @@ class Fsm:
                 ):
                     next.add(self.map[self.initial][symbol])
 
-            if len(next) == 0:
+            if not next:
                 raise OblivionError
 
             return frozenset(next)
@@ -409,7 +409,7 @@ class Fsm:
                     # final of self? merge with initial on next iteration
                     if self.map[substate][symbol] in self.finals:
                         next.append((self.initial, iteration + 1))
-            if len(next) == 0:
+            if not next:
                 raise OblivionError
             return frozenset(next)
 
@@ -529,7 +529,7 @@ class Fsm:
                     if symbol in self.map[prev] and self.map[prev][symbol] == state
                 ]
             )
-            if len(next) == 0:
+            if not next:
                 raise OblivionError
             return next
 
@@ -886,7 +886,7 @@ def parallel(
                 and actual_symbol in fsms[i].map[current[i]]
             ):
                 next[i] = fsms[i].map[current[i]][actual_symbol]
-        if len(next.keys()) == 0:
+        if not next:
             raise OblivionError
         return next
 
