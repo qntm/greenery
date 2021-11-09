@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import pytest
+
 from .bound import Bound, INF
 from .multiplier import Multiplier, ZERO, ONE, QM, STAR, PLUS
 
@@ -108,10 +110,6 @@ def test_multiplier_union():
             Bound(4)
         )
     )
-    try:
+
+    with pytest.raises(Exception, match="Can't compute the union"):
         ZERO | Multiplier(Bound(7), Bound(8))
-        assert False
-    except AssertionError:
-        assert False
-    except Exception:
-        pass

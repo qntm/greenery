@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import pytest
+
 from .bound import Bound
 from .multiplier import Multiplier, ZERO, QM, ONE, STAR, PLUS
 from .charclass import Charclass
@@ -60,13 +62,8 @@ def test_conc_dock():
     assert Conc(a, b, x, yplus, z).behead(Conc(a, b, x, yplus)) == Conc(z)
     assert Conc(a).dock(Conc()) == Conc(a)
 
-    try:
+    with pytest.raises(Exception, match="Can't subtract"):
         Conc(x2, yplus, z).behead(Conc(x, yplus))
-        assert False
-    except AssertionError:
-        assert False
-    except Exception:
-        pass
 
 
 def test_mult_reduction_easy():

@@ -5,6 +5,8 @@ if __name__ == "__main__":
         "Test files can't be run directly. Use `python -m pytest greenery`"
     )
 
+import pytest
+
 from .bound import Bound, INF
 from .charclass import Charclass, DOT, NULLCHARCLASS, DIGIT
 from .multiplier import Multiplier, ONE, STAR, PLUS
@@ -17,16 +19,13 @@ def test_charclass_matching():
     assert match_charclass("aa", 1) == (Charclass("a"), 2)
     assert match_charclass("a$", 1) == (Charclass("$"), 2)
     assert match_charclass(".", 0) == (DOT, 1)
-    try:
+
+    with pytest.raises(IndexError):
         match_charclass("[", 0)
-        assert False
-    except IndexError:
-        pass
-    try:
+
+    with pytest.raises(NoMatch):
         match_charclass("a", 1)
-        assert False
-    except NoMatch:
-        pass
+
     assert match_charclass("[\\d]", 0) == (DIGIT, 4)
 
 

@@ -6,6 +6,7 @@ if __name__ == "__main__":
     )
 
 import pickle
+import pytest
 
 from .fsm import Fsm, ANYTHING_ELSE
 from .rxelems import from_fsm
@@ -152,11 +153,9 @@ def test_charclass_gen():
     assert next(gen) == "x"
     assert next(gen) == "y"
     assert next(gen) == "z"
-    try:
+
+    with pytest.raises(StopIteration):
         next(gen)
-        assert False
-    except StopIteration:
-        assert True
 
 
 def test_mult_gen():
@@ -164,20 +163,16 @@ def test_mult_gen():
     gen = parse("[ab]").strings()
     assert next(gen) == "a"
     assert next(gen) == "b"
-    try:
+
+    with pytest.raises(StopIteration):
         next(gen)
-        assert False
-    except StopIteration:
-        assert True
 
     # No terms
     gen = parse("[ab]{0}").strings()
     assert next(gen) == ""
-    try:
+
+    with pytest.raises(StopIteration):
         next(gen)
-        assert False
-    except StopIteration:
-        assert True
 
     # Many terms
     gen = parse("[ab]*").strings()
@@ -197,11 +192,9 @@ def test_conc_generator():
     assert next(gen) == "ad"
     assert next(gen) == "bc"
     assert next(gen) == "bd"
-    try:
+
+    with pytest.raises(StopIteration):
         next(gen)
-        assert False
-    except StopIteration:
-        assert True
 
 
 def test_pattern_generator():
@@ -211,11 +204,9 @@ def test_pattern_generator():
     assert next(gen) == "c"
     assert next(gen) == "d"
     assert next(gen) == "e"
-    try:
+
+    with pytest.raises(StopIteration):
         next(gen)
-        assert False
-    except StopIteration:
-        assert True
 
     # more complex
     gen = parse("abc|def(ghi|jkl)").strings()
@@ -251,11 +242,9 @@ def test_wildcard_generator():
     assert next(gen) == "aab"
     assert next(gen) == "abb"
     assert next(gen) == "a*b"
-    try:
+
+    with pytest.raises(StopIteration):
         next(gen)
-        assert False
-    except StopIteration:
-        assert True
 
 
 def test_forin():
@@ -273,11 +262,9 @@ def test_cardinality():
     assert parse("[ab]{3}").cardinality() == 8
     assert parse("[ab]{2,3}").cardinality() == 12
     assert len(parse("abc|def(ghi|jkl)")) == 3
-    try:
+
+    with pytest.raises(OverflowError):
         len(parse(".*"))
-        assert False
-    except OverflowError:
-        assert True
 
 
 ###############################################################################
@@ -472,13 +459,9 @@ def test_bad_alphabet():
                 0: {bad_symbol: 0}
             },
         )
-        try:
+
+        with pytest.raises(Exception, match="Symbol.*cannot be used"):
             from_fsm(f)
-            assert False
-        except AssertionError:
-            raise Exception(f"Accepted bad symbol: {repr(bad_symbol)}")
-        except Exception:
-            pass
 
 
 def test_dead_default():
