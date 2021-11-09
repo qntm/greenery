@@ -871,7 +871,7 @@ class Mult:
             return f"({str(self.multiplicand)}){str(self.multiplier)}"
         if isinstance(self.multiplicand, Charclass):
             return f"{str(self.multiplicand)}{str(self.multiplier)}"
-        raise Exception(f"Unknown type {str(type(self.inner))}")
+        raise Exception(f"Unknown type {str(type(self.multiplicand))}")
 
     def to_fsm(self, alphabet=None):
         if alphabet is None:
