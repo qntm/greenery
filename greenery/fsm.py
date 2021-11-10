@@ -833,9 +833,7 @@ def null(alphabet: Iterable[alpha_type]) -> Fsm:
         states={0},
         initial=0,
         finals=(),
-        map={
-            0: dict([(symbol, 0) for symbol in alphabet]),
-        },
+        map={0: {symbol: 0 for symbol in alphabet}},
     )
 
 
@@ -865,9 +863,7 @@ def parallel(
     """
     alphabet = set().union(*[fsm.alphabet for fsm in fsms])
 
-    initial: Mapping[int, state_type] = dict(
-        [(i, fsm.initial) for i, fsm in enumerate(fsms)]
-    )
+    initial: Mapping[int, state_type] = {i: fsm.initial for i, fsm in enumerate(fsms)}
 
     # dedicated function accepts a "superset" and returns the next "superset"
     # obtained by following this transition in the new FSM

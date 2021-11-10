@@ -426,22 +426,18 @@ def test_base_N() -> None:
             states=frozenset(range(N)) | {"initial", "zero", None},
             initial="initial",
             finals={"zero", 0},
-            map=dict(
-                [  # type: ignore
-                    (
-                        "initial",
-                        dict(
-                            [(str(j), j % N) for j in range(1, base)] + [("0", "zero")]
-                        ),
-                    ),
-                    ("zero", dict([(str(j), None) for j in range(base)])),
-                    (None, dict([(str(j), None) for j in range(base)])),
-                ]
-                + [
-                    (i, dict([(str(j), (i * base + j) % N) for j in range(base)]))
+            map={
+                "initial": {
+                    "0": "zero",
+                    **{str(j): j % N for j in range(1, base)},
+                },
+                "zero": {str(j): None for j in range(base)},
+                None: {str(j): None for j in range(base)},
+                **{
+                    i: {str(j): (i * base + j) % N for j in range(base)}
                     for i in range(N)
-                ]
-            ),
+                },
+            },
         )
     )
     gen = divN.strings()

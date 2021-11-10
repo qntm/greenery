@@ -125,7 +125,6 @@ disable=
         consider-using-any-or-all,
         consider-using-assignment-expr,
         consider-using-augmented-assign,
-        consider-using-dict-comprehension,
         consider-using-f-string,
         docstring-first-line-empty,
         duplicate-code,

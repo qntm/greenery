@@ -186,15 +186,11 @@ class Charclass:
 
         # If negated, make a singular FSM accepting any other characters
         if self.negated:
-            transitions = {
-                0: dict([(symbol, 1) for symbol in alphabet - self.chars]),
-            }
+            transitions = {0: {symbol: 1 for symbol in alphabet - self.chars}}
 
         # If normal, make a singular FSM accepting only these characters
         else:
-            transitions = {
-                0: dict([(symbol, 1) for symbol in self.chars]),
-            }
+            transitions = {0: {symbol: 1 for symbol in self.chars}}
 
         return Fsm(
             alphabet=set(alphabet),
