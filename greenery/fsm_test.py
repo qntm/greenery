@@ -448,6 +448,18 @@ def test_invalid_fsms():
             }
         )
 
+    # invalid transition from unknown state
+    with pytest.raises(Exception, match="Transition.+unknown state"):
+        Fsm(
+            alphabet={"a"},
+            states={1, 2},
+            initial=1,
+            finals=set(),
+            map={
+                3: {"a": 2}
+            }
+        )
+
 
 def test_bad_multiplier(a):
     with pytest.raises(Exception, match="Can't multiply"):
