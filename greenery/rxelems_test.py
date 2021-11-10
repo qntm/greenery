@@ -421,7 +421,7 @@ def test_base_N():
     divN = from_fsm(
         Fsm(
             alphabet={str(i) for i in range(base)},
-            states=set(range(N)) | {"initial", "zero", None},
+            states=frozenset(range(N)) | {"initial", "zero", None},
             initial="initial",
             finals={"zero", 0},
             map=dict(

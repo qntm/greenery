@@ -163,7 +163,8 @@ class Conc:
         return fsm1
 
     def alphabet(self, /):
-        return {ANYTHING_ELSE}.union(*[mult.alphabet() for mult in self.mults])
+        components = self.mults
+        return frozenset().union(*(c.alphabet() for c in components)) | {ANYTHING_ELSE}
 
     def empty(self, /):
         return any(mult.empty() for mult in self.mults)
@@ -380,7 +381,7 @@ def call_fsm(method):
     fsm_method = getattr(Fsm, method.__name__)
 
     def new_method(*elems):
-        alphabet = set().union(*[elem.alphabet() for elem in elems])
+        alphabet = frozenset().union(*(elem.alphabet() for elem in elems))
         return from_fsm(fsm_method(*[elem.to_fsm(alphabet) for elem in elems]))
 
     return new_method
@@ -420,7 +421,8 @@ class Pattern:
         return f"Pattern({args})"
 
     def alphabet(self, /):
-        return {ANYTHING_ELSE}.union(*[c.alphabet() for c in self.concs])
+        components = self.concs
+        return frozenset().union(*(c.alphabet() for c in components)) | {ANYTHING_ELSE}
 
     def empty(self, /):
         return all(conc.empty() for conc in self.concs)
@@ -801,7 +803,8 @@ class Mult:
         return Mult(NULLCHARCLASS, ZERO)
 
     def alphabet(self, /):
-        return {ANYTHING_ELSE} | self.multiplicand.alphabet()
+        components = (self.multiplicand,)
+        return frozenset().union(*(c.alphabet() for c in components)) | {ANYTHING_ELSE}
 
     def empty(self, /):
         return self.multiplicand.empty() and self.multiplier.min > Bound(0)
