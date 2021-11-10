@@ -121,7 +121,6 @@ confidence=
 disable=
         bad-builtin,
         broad-exception-raised,
-        consider-iterating-dictionary,
         consider-ternary-expression,
         consider-using-any-or-all,
         consider-using-assignment-expr,

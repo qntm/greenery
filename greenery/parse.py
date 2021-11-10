@@ -74,7 +74,7 @@ def unescape_hex(string: str, i: int) -> MatchResult[str]:
 
 def match_internal_char(string: str, i: int) -> MatchResult[str]:
     # e.g. if we see "\\t", return "\t"
-    for key in escapes.keys():
+    for key in escapes:
         try:
             return key, static(string, i, escapes[key])
         except NoMatch:
@@ -163,7 +163,7 @@ def match_charclass(string: str, i: int) -> MatchResult[Charclass]:
         raise NoMatch
 
     # wildcard ".", "\\w", "\\d", etc.
-    for key in shorthand.keys():
+    for key in shorthand:
         try:
             return key, static(string, i, shorthand[key])
         except NoMatch:
@@ -188,7 +188,7 @@ def match_charclass(string: str, i: int) -> MatchResult[Charclass]:
         pass
 
     # e.g. if seeing "\\t", return "\t"
-    for ekey in escapes.keys():
+    for ekey in escapes:
         try:
             return Charclass(ekey), static(string, i, escapes[ekey])
         except NoMatch:

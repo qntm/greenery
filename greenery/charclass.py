@@ -91,7 +91,7 @@ class Charclass:
         # pylint: disable=too-many-return-statements
 
         # e.g. \w
-        if self in shorthand.keys():
+        if self in shorthand:
             return shorthand[self]
 
         # e.g. [^a]
@@ -104,7 +104,7 @@ class Charclass:
             char = "".join(self.chars)
 
             # e.g. if char is "\t", return "\\t"
-            if char in escapes.keys():
+            if char in escapes:
                 return escapes[char]
 
             if char in Charclass.allSpecial:
@@ -125,7 +125,7 @@ class Charclass:
         def escapeChar(char: str, /) -> str:
             if char in Charclass.classSpecial:
                 return "\\" + char
-            if char in escapes.keys():
+            if char in escapes:
                 return escapes[char]
 
             # If char is an ASCII control character, don't print it directly,
