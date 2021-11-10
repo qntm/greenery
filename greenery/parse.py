@@ -74,9 +74,9 @@ def unescape_hex(string: str, i: int) -> MatchResult[str]:
 
 def match_internal_char(string: str, i: int) -> MatchResult[str]:
     # e.g. if we see "\\t", return "\t"
-    for key in escapes:
+    for char, escaped_mnemonic in escapes.items():
         try:
-            return key, static(string, i, escapes[key])
+            return char, static(string, i, escaped_mnemonic)
         except NoMatch:
             pass
 
@@ -163,9 +163,9 @@ def match_charclass(string: str, i: int) -> MatchResult[Charclass]:
         raise NoMatch
 
     # wildcard ".", "\\w", "\\d", etc.
-    for key in shorthand:
+    for shorthand_charclass, shorthand_abbrev in shorthand.items():
         try:
-            return key, static(string, i, shorthand[key])
+            return shorthand_charclass, static(string, i, shorthand_abbrev)
         except NoMatch:
             pass
 
@@ -188,9 +188,9 @@ def match_charclass(string: str, i: int) -> MatchResult[Charclass]:
         pass
 
     # e.g. if seeing "\\t", return "\t"
-    for ekey in escapes:
+    for char, escaped_mnemonic in escapes.items():
         try:
-            return Charclass(ekey), static(string, i, escapes[ekey])
+            return Charclass(char), static(string, i, escaped_mnemonic)
         except NoMatch:
             pass
 
@@ -301,9 +301,9 @@ def match_multiplier(string: str, i: int) -> MatchResult[Multiplier]:
     # "?"/"*"/"+"/""
     # we do these in reverse order of symbol length, because
     # that forces "" to be done last
-    for key in sorted(symbolic, key=lambda key: -len(symbolic[key])):
+    for mult, symbol in sorted(symbolic.items(), key=lambda kv: -len(kv[1])):
         try:
-            return key, static(string, i, symbolic[key])
+            return mult, static(string, i, symbol)
         except NoMatch:
             pass
 
