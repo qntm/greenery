@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import reduce
 from typing import Union
 
 from .fsm import Fsm, ANYTHING_ELSE, null, epsilon, alphabet_key
@@ -630,7 +631,6 @@ class Pattern:
         if len(self.concs) == 0:
             raise Exception(f"Can't call _commonconc on {repr(self)}")
 
-        from functools import reduce
         return reduce(
             lambda x, y: x.common(y, suffix=suffix),
             self.concs

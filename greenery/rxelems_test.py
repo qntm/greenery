@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import pickle
+import time
+
 import pytest
 
 from .fsm import Fsm, ANYTHING_ELSE
@@ -930,7 +932,6 @@ def test_isdisjoint():
 
 def test_bug_slow():
     # issue #43
-    import time
     m = Fsm(
         alphabet={'R', 'L', 'U', 'D'},
         states={
