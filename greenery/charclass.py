@@ -62,14 +62,14 @@ class Charclass:
     # These are the characters carrying special meanings when they appear
     # "outdoors" within a regular expression. To be interpreted literally, they
     # must be escaped with a backslash.
-    allSpecial = set("\\[]|().?*+{}")
+    allSpecial = frozenset("\\[]|().?*+{}")
 
     # These are the characters carrying special meanings when they appear
     # INSIDE a character class (delimited by square brackets) within a regular
     # expression. To be interpreted literally, they must be escaped with a
     # backslash. Notice how much smaller this class is than the one above; note
     # also that the hyphen and caret do NOT appear above.
-    classSpecial = set("\\[]^-")
+    classSpecial = frozenset("\\[]^-")
 
     # Shorthand codes for use inside `Charclass`es e.g. [abc\d]
     w = frozenset(
@@ -181,8 +181,7 @@ class Charclass:
         return output
 
     def to_fsm(self, alphabet=None):
-        if alphabet is None:
-            alphabet = self.alphabet()
+        alphabet = self.alphabet() if alphabet is None else frozenset(alphabet)
 
         # 0 is initial, 1 is final
 
@@ -199,7 +198,7 @@ class Charclass:
             }
 
         return Fsm(
-            alphabet=alphabet,
+            alphabet=set(alphabet),
             states={0, 1},
             initial=0,
             finals={1},
@@ -222,7 +221,7 @@ class Charclass:
         return self
 
     def alphabet(self):
-        return {ANYTHING_ELSE} | self.chars
+        return self.chars | {ANYTHING_ELSE}
 
     def empty(self):
         return len(self.chars) == 0 and not self.negated
