@@ -60,8 +60,12 @@ class Multiplier:
     def __str__(self, /) -> str:
         if self.max == Bound(0):
             raise Exception(f"Can't serialise a multiplier with bound {self.max!r}")
-        if self in symbolic.keys():
+
+        try:
             return symbolic[self]
+        except LookupError:
+            pass
+
         if self.min == self.max:
             return "{" + str(self.min) + "}"
         return "{" + str(self.min) + "," + str(self.max) + "}"
