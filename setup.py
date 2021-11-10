@@ -12,11 +12,25 @@ setup(
     author_email="qntm <qntm@users.noreply.github.com>",
     description="Greenery allows manipulation of regular expressions",
     license="MIT License",
-    keywords=" ".join([
-        "re", "regex", "regexp", "regular", "expression", "deterministic",
-        "finite", "state", "machine", "automaton", "fsm", "dfsm", "fsa",
-        "dfsa", "greenery",
-    ]),
+    keywords=" ".join(
+        [
+            "re",
+            "regex",
+            "regexp",
+            "regular",
+            "expression",
+            "deterministic",
+            "finite",
+            "state",
+            "machine",
+            "automaton",
+            "fsm",
+            "dfsm",
+            "fsa",
+            "dfsa",
+            "greenery",
+        ]
+    ),
     url="https://github.com/qntm/greenery",
     classifiers=[
         "License :: OSI Approved :: MIT License",

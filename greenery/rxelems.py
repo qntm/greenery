@@ -730,7 +730,6 @@ class Pattern:
         # single example. You must supply your own "otherchar" to stand in for
         # all of these possibilities.
         for string in self.to_fsm().strings():
-
             # Have to represent `ANYTHING_ELSE` somehow.
             if ANYTHING_ELSE in string:
                 if otherchar is None:

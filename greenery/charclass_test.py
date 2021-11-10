@@ -65,9 +65,14 @@ def test_charclass_str() -> None:
     assert str(Charclass("\t\v\r A")) == "[\\t\\v\\r A]"
     assert str(Charclass("\n\f A")) == "[\\n\\f A]"
     assert str(Charclass("\t\n\v\f\r A")) == "[\\t-\\r A]"
-    assert str(Charclass(
-        "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz|"
-    )) == "[0-9A-Z_a-z|]"
+    assert (
+        str(
+            Charclass(
+                "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz|"
+            )
+        )
+        == "[0-9A-Z_a-z|]"
+    )
     assert str(NONWORDCHAR) == "\\W"
     assert str(NONDIGITCHAR) == "\\D"
     assert str(NONSPACECHAR) == "\\S"

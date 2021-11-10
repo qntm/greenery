@@ -201,13 +201,15 @@ class Fsm:
         return self.reversed().reversed()
 
     def __repr__(self, /) -> str:
-        args = ", ".join([
-            f"alphabet={self.alphabet!r}",
-            f"states={self.states!r}",
-            f"initial={self.initial!r}",
-            f"finals={self.finals!r}",
-            f"map={self.map!r}",
-        ])
+        args = ", ".join(
+            [
+                f"alphabet={self.alphabet!r}",
+                f"states={self.states!r}",
+                f"initial={self.initial!r}",
+                f"finals={self.finals!r}",
+                f"map={self.map!r}",
+            ]
+        )
         return f"Fsm({args})"
 
     def __str__(self, /) -> str:
@@ -520,12 +522,14 @@ class Fsm:
             current: frozenset[state_type],
             symbol: alpha_type,
         ) -> frozenset[state_type]:
-            next = frozenset([
-                prev
-                for prev in self.map
-                for state in current
-                if symbol in self.map[prev] and self.map[prev][symbol] == state
-            ])
+            next = frozenset(
+                [
+                    prev
+                    for prev in self.map
+                    for state in current
+                    if symbol in self.map[prev] and self.map[prev][symbol] == state
+                ]
+            )
             if len(next) == 0:
                 raise OblivionError
             return next
@@ -861,7 +865,8 @@ def parallel(
     alphabet = set().union(*[fsm.alphabet for fsm in fsms])
 
     initial: Mapping[int, state_type] = dict(
-        [(i, fsm.initial) for i, fsm in enumerate(fsms)])
+        [(i, fsm.initial) for i, fsm in enumerate(fsms)]
+    )
 
     # dedicated function accepts a "superset" and returns the next "superset"
     # obtained by following this transition in the new FSM

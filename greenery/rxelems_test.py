@@ -326,18 +326,25 @@ def test_adotb():
 
 def test_rxelems_recursion_error():
     # Catch a recursion error
-    assert str(from_fsm(Fsm(
-        alphabet={"0", "1"},
-        states={0, 1, 2, 3},
-        initial=3,
-        finals={1},
-        map={
-            0: {"0": 1, "1": 1},
-            1: {"0": 2, "1": 2},
-            2: {"0": 2, "1": 2},
-            3: {"0": 0, "1": 2},
-        }
-    ))) == "0[01]"
+    assert (
+        str(
+            from_fsm(
+                Fsm(
+                    alphabet={"0", "1"},
+                    states={0, 1, 2, 3},
+                    initial=3,
+                    finals={1},
+                    map={
+                        0: {"0": 1, "1": 1},
+                        1: {"0": 2, "1": 2},
+                        2: {"0": 2, "1": 2},
+                        3: {"0": 0, "1": 2},
+                    },
+                )
+            )
+        )
+        == "0[01]"
+    )
 
 
 def test_even_star_bug1():
@@ -376,20 +383,22 @@ def test_binary_3():
     # Binary numbers divisible by 3.
     # Disallows the empty string
     # Allows "0" on its own, but not leading zeroes.
-    div3 = from_fsm(Fsm(
-        alphabet={"0", "1"},
-        states={"initial", "zero", 0, 1, 2, None},
-        initial="initial",
-        finals={"zero", 0},
-        map={
-            "initial": {"0": "zero", "1": 1},
-            "zero": {"0": None, "1": None},
-            0: {"0": 0, "1": 1},
-            1: {"0": 2, "1": 0},
-            2: {"0": 1, "1": 2},
-            None: {"0": None, "1": None},
-        },
-    ))
+    div3 = from_fsm(
+        Fsm(
+            alphabet={"0", "1"},
+            states={"initial", "zero", 0, 1, 2, None},
+            initial="initial",
+            finals={"zero", 0},
+            map={
+                "initial": {"0": "zero", "1": 1},
+                "zero": {"0": None, "1": None},
+                0: {"0": 0, "1": 1},
+                1: {"0": 2, "1": 0},
+                2: {"0": 1, "1": 2},
+                None: {"0": None, "1": None},
+            },
+        )
+    )
     assert str(parse("(0|1)").reduce()) == "[01]"
     assert str(parse("(0|12)").reduce()) == "0|12"
     assert str(parse("(0|1(01*0|10*1)*10*)").reduce()) == "0|1(01*0|10*1)*10*"
@@ -409,43 +418,30 @@ def test_base_N():
     base = 2
     N = 3
     assert base <= 10
-    divN = from_fsm(Fsm(
-        alphabet={str(i) for i in range(base)},
-        states=set(range(N)) | {"initial", "zero", None},
-        initial="initial",
-        finals={"zero", 0},
-        map=dict(
-            [
-                (
-                    "initial",
-                    dict(
-                        [(str(j), j % N) for j in range(1, base)]
-                        + [("0", "zero")]
-                    )
-                ),
-                (
-                    "zero",
-                    dict(
-                        [(str(j), None) for j in range(base)]
-                    )
-                ),
-                (
-                    None,
-                    dict(
-                        [(str(j), None) for j in range(base)]
-                    )
-                ),
-            ] + [
-                (
-                    i,
-                    dict(
-                        [(str(j), (i * base + j) % N) for j in range(base)]
-                    )
-                )
-                for i in range(N)
-            ]
-        ),
-    ))
+    divN = from_fsm(
+        Fsm(
+            alphabet={str(i) for i in range(base)},
+            states=set(range(N)) | {"initial", "zero", None},
+            initial="initial",
+            finals={"zero", 0},
+            map=dict(
+                [
+                    (
+                        "initial",
+                        dict(
+                            [(str(j), j % N) for j in range(1, base)] + [("0", "zero")]
+                        ),
+                    ),
+                    ("zero", dict([(str(j), None) for j in range(base)])),
+                    (None, dict([(str(j), None) for j in range(base)])),
+                ]
+                + [
+                    (i, dict([(str(j), (i * base + j) % N) for j in range(base)]))
+                    for i in range(N)
+                ]
+            ),
+        )
+    )
     gen = divN.strings()
     a = next(gen)
     assert a == "0"
@@ -473,18 +469,20 @@ def test_bad_alphabet():
 
 
 def test_dead_default():
-    blockquote = from_fsm(Fsm(
-        alphabet={"/", "*", ANYTHING_ELSE},
-        states={0, 1, 2, 3, 4},
-        initial=0,
-        finals={4},
-        map={
-            0: {"/": 1},
-            1: {"*": 2},
-            2: {"/": 2, ANYTHING_ELSE: 2, "*": 3},
-            3: {"/": 4, ANYTHING_ELSE: 2, "*": 3},
-        },
-    ))
+    blockquote = from_fsm(
+        Fsm(
+            alphabet={"/", "*", ANYTHING_ELSE},
+            states={0, 1, 2, 3, 4},
+            initial=0,
+            finals={4},
+            map={
+                0: {"/": 1},
+                1: {"*": 2},
+                2: {"/": 2, ANYTHING_ELSE: 2, "*": 3},
+                3: {"/": 4, ANYTHING_ELSE: 2, "*": 3},
+            },
+        )
+    )
     assert str(blockquote) == "/\\*([^*]|\\*+[^*/])*\\*+/"
 
 
@@ -925,8 +923,28 @@ def test_bug_slow():
     m = Fsm(
         alphabet={"R", "L", "U", "D"},
         states={
-            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
-            11, 12, 13, 14, 15, 16, 17, 18, 19, 20},
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+        },
         initial=0,
         finals={20},
         map={
@@ -961,15 +979,22 @@ def test_bug_slow():
 
 
 def test_bug_48_simpler():
-    assert str(from_fsm(Fsm(
-        alphabet={"d"},
-        states={0, 1},
-        initial=0,
-        finals={1},
-        map={
-            0: {"d": 1},
-        },
-    ))) == "d"
+    assert (
+        str(
+            from_fsm(
+                Fsm(
+                    alphabet={"d"},
+                    states={0, 1},
+                    initial=0,
+                    finals={1},
+                    map={
+                        0: {"d": 1},
+                    },
+                )
+            )
+        )
+        == "d"
+    )
 
 
 def test_bug_48():

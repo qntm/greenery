@@ -21,16 +21,21 @@ def test_conc_equality():
 
 
 def test_conc_str():
-    assert str(Conc(
-        Mult(Charclass("a"), ONE),
-        Mult(Charclass("b"), ONE),
-        Mult(Charclass("c"), ONE),
-        Mult(Charclass("d"), ONE),
-        Mult(Charclass("e"), ONE),
-        Mult(~Charclass("fg"), STAR),
-        Mult(Charclass("h"), Multiplier(Bound(5), Bound(5))),
-        Mult(Charclass("abcdefghijklmnopqrstuvwxyz"), PLUS),
-    )) == "abcde[^fg]*h{5}[a-z]+"
+    assert (
+        str(
+            Conc(
+                Mult(Charclass("a"), ONE),
+                Mult(Charclass("b"), ONE),
+                Mult(Charclass("c"), ONE),
+                Mult(Charclass("d"), ONE),
+                Mult(Charclass("e"), ONE),
+                Mult(~Charclass("fg"), STAR),
+                Mult(Charclass("h"), Multiplier(Bound(5), Bound(5))),
+                Mult(Charclass("abcdefghijklmnopqrstuvwxyz"), PLUS),
+            )
+        )
+        == "abcde[^fg]*h{5}[a-z]+"
+    )
 
 
 def test_conc_common():

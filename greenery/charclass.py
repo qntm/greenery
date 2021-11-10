@@ -155,10 +155,8 @@ class Charclass:
         # look for ranges
         currentRange = ""
         for char in sorted(self.chars, key=ord):
-
             # range is not empty: new char must fit after previous one
             if len(currentRange) > 0:
-
                 i = ord(char)
 
                 # char doesn't fit old range: restart
