@@ -550,8 +550,8 @@ def test_equivalent(a, b):
 
 def test_dead_default():
     '''
-        You may now omit a transition, or even an entire state, from the map.
-        This affects every usage of `Fsm.map`.
+    You may now omit a transition, or even an entire state, from the map.
+    This affects every usage of `Fsm.map`.
     '''
     blockquote = Fsm(
         alphabet={"/", "*", ANYTHING_ELSE},

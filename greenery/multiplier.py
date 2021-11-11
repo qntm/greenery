@@ -18,15 +18,15 @@ from .bound import INF, Bound
 @dataclass(frozen=True)
 class Multiplier:
     '''
-        A min and a max. The vast majority of characters in regular expressions
-        occur without a specific multiplier, which is implicitly equivalent to
-        a min of 1 and a max of 1, but many more have explicit multipliers like
-        "*" (min = 0, max = inf) and so on.
+    A min and a max. The vast majority of characters in regular expressions
+    occur without a specific multiplier, which is implicitly equivalent to
+    a min of 1 and a max of 1, but many more have explicit multipliers like
+    "*" (min = 0, max = inf) and so on.
 
-        Although it seems odd and can lead to some confusing edge cases, we do
-        also permit a max of 0 (iff min is 0 too). This allows the multiplier
-        `ZERO` to exist, which actually are quite useful in their own special
-        way.
+    Although it seems odd and can lead to some confusing edge cases, we do
+    also permit a max of 0 (iff min is 0 too). This allows the multiplier
+    `ZERO` to exist, which actually are quite useful in their own special
+    way.
     '''
 
     min: Bound
@@ -72,19 +72,19 @@ class Multiplier:
 
     def canmultiplyby(self, other):
         '''
-            Multiplication is not well-defined for all pairs of multipliers
-            because the resulting possibilities do not necessarily form a
-            continuous range.
+        Multiplication is not well-defined for all pairs of multipliers
+        because the resulting possibilities do not necessarily form a
+        continuous range.
 
-            For example:
-                {0,x} * {0,y} = {0,x*y}
-                {2} * {3} = {6}
-                {2} * {1,2} = ERROR
+        For example:
+            {0,x} * {0,y} = {0,x*y}
+            {2} * {3} = {6}
+            {2} * {1,2} = ERROR
 
-            The proof isn't simple but suffice it to say that {p,p+q} * {r,r+s}
-            is equal to {pr, (p+q)(r+s)} only if s=0 or qr+1 >= p. If not, then
-            at least one gap appears in the range. The first inaccessible
-            number is (p+q)r+1. And no, multiplication is not commutative
+        The proof isn't simple but suffice it to say that {p,p+q} * {r,r+s}
+        is equal to {pr, (p+q)(r+s)} only if s=0 or qr+1 >= p. If not, then
+        at least one gap appears in the range. The first inaccessible
+        number is (p+q)r+1. And no, multiplication is not commutative
         '''
         return other.optional == Bound(0) \
             or self.optional * other.mandatory + Bound(1) >= self.mandatory
@@ -103,9 +103,9 @@ class Multiplier:
 
     def __sub__(self, other):
         '''
-            Subtract another multiplier from this one.
-            Caution: multipliers are not totally ordered.
-            This operation is not meaningful for all pairs of multipliers.
+        Subtract another multiplier from this one.
+        Caution: multipliers are not totally ordered.
+        This operation is not meaningful for all pairs of multipliers.
         '''
         mandatory = self.mandatory - other.mandatory
         optional = self.optional - other.optional
@@ -113,19 +113,19 @@ class Multiplier:
 
     def canintersect(self, other):
         '''
-            Intersection is not well-defined for all pairs of multipliers.
-            For example:
-                {2,3} & {3,4} = {3}
-                {2,} & {1,7} = {2,7}
-                {2} & {5} = ERROR
+        Intersection is not well-defined for all pairs of multipliers.
+        For example:
+            {2,3} & {3,4} = {3}
+            {2,} & {1,7} = {2,7}
+            {2} & {5} = ERROR
         '''
         return not (self.max < other.min or other.max < self.min)
 
     def __and__(self, other):
         '''
-            Find the intersection of two multipliers: that is, a third
-            multiplier expressing the range covered by both of the originals.
-            This is not defined for all multipliers since they may not overlap.
+        Find the intersection of two multipliers: that is, a third
+        multiplier expressing the range covered by both of the originals.
+        This is not defined for all multipliers since they may not overlap.
         '''
         if not self.canintersect(other):
             raise Exception(
@@ -137,8 +137,8 @@ class Multiplier:
 
     def canunion(self, other):
         '''
-            Union is not defined for all pairs of multipliers.
-            E.g. {0,1} | {3,4} -> nope
+        Union is not defined for all pairs of multipliers.
+        E.g. {0,1} | {3,4} -> nope
         '''
         return not (
             self.max + Bound(1) < other.min
@@ -147,9 +147,9 @@ class Multiplier:
 
     def __or__(self, other):
         '''
-            Find the union of two multipliers: that is, a third multiplier
-            expressing the range covered by either of the originals. This is
-            not defined for all multipliers since they may not intersect.
+        Find the union of two multipliers: that is, a third multiplier
+        expressing the range covered by either of the originals. This is
+        not defined for all multipliers since they may not intersect.
         '''
         if not self.canunion(other):
             raise Exception(
@@ -161,9 +161,9 @@ class Multiplier:
 
     def common(self, other):
         '''
-            Find the shared part of two multipliers. This is the largest
-            multiplier which can be safely subtracted from both the originals.
-            This may return the `ZERO` multiplier.
+        Find the shared part of two multipliers. This is the largest
+        multiplier which can be safely subtracted from both the originals.
+        This may return the `ZERO` multiplier.
         '''
         mandatory = min(self.mandatory, other.mandatory)
         optional = min(self.optional, other.optional)

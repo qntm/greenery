@@ -59,8 +59,8 @@ class Bound:
 
     def __sub__(self, other):
         '''
-            Subtract another bound from this one.
-            Caution: this operation is not meaningful for all bounds.
+        Subtract another bound from this one.
+        Caution: this operation is not meaningful for all bounds.
         '''
         if other == INF:
             if self != INF:

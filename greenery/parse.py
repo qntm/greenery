@@ -13,8 +13,8 @@ from .rxelems import Conc, Mult, Pattern
 
 class NoMatch(Exception):
     '''
-        Thrown when parsing fails.
-        Almost always caught and almost never fatal
+    Thrown when parsing fails.
+    Almost always caught and almost never fatal
     '''
 
     pass
@@ -345,8 +345,8 @@ def match_pattern(string: str, i):
 
 def parse(string: str):
     '''
-        Parse a full string and return a `Pattern` object. Fail if
-        the whole string wasn't parsed
+    Parse a full string and return a `Pattern` object. Fail if
+    the whole string wasn't parsed
     '''
     obj, i = match_pattern(string, 0)
     if i != len(string):
