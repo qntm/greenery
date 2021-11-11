@@ -156,7 +156,6 @@ disable=
         unnecessary-lambda,
         unused-argument,
         use-implicit-booleaness-not-comparison,
-        use-list-literal,
         useless-suppression,
         while-used,
 

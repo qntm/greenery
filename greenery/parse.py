@@ -317,7 +317,7 @@ def match_mult(string: str, i: int) -> MatchResult[Mult]:
 
 
 def match_conc(string: str, i: int) -> MatchResult[Conc]:
-    mults = list()
+    mults = []
     try:
         while True:
             m, i = match_mult(string, i)
@@ -328,7 +328,7 @@ def match_conc(string: str, i: int) -> MatchResult[Conc]:
 
 
 def match_pattern(string: str, i: int) -> MatchResult[Pattern]:
-    concs = list()
+    concs = []
 
     # first one
     c, i = match_conc(string, i)
