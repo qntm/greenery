@@ -294,13 +294,13 @@ def test_dot():
 def test_abstar():
     # Buggggs.
     abstar = Fsm(
-        alphabet={'a', ANYTHING_ELSE, 'b'},
+        alphabet={"a", ANYTHING_ELSE, "b"},
         states={0, 1},
         initial=0,
         finals={0},
         map={
-            0: {'a': 0, ANYTHING_ELSE: 1, 'b': 0},
-            1: {'a': 1, ANYTHING_ELSE: 1, 'b': 1}
+            0: {"a": 0, ANYTHING_ELSE: 1, "b": 0},
+            1: {"a": 1, ANYTHING_ELSE: 1, "b": 1}
         }
     )
     assert str(from_fsm(abstar)) == "[ab]*"
@@ -308,16 +308,16 @@ def test_abstar():
 
 def test_adotb():
     adotb = Fsm(
-        alphabet={'a', ANYTHING_ELSE, 'b'},
+        alphabet={"a", ANYTHING_ELSE, "b"},
         states={0, 1, 2, 3, 4},
         initial=0,
         finals={4},
         map={
-            0: {'a': 2, ANYTHING_ELSE: 1, 'b': 1},
-            1: {'a': 1, ANYTHING_ELSE: 1, 'b': 1},
-            2: {'a': 3, ANYTHING_ELSE: 3, 'b': 3},
-            3: {'a': 1, ANYTHING_ELSE: 1, 'b': 4},
-            4: {'a': 1, ANYTHING_ELSE: 1, 'b': 1}
+            0: {"a": 2, ANYTHING_ELSE: 1, "b": 1},
+            1: {"a": 1, ANYTHING_ELSE: 1, "b": 1},
+            2: {"a": 3, ANYTHING_ELSE: 3, "b": 3},
+            3: {"a": 1, ANYTHING_ELSE: 1, "b": 4},
+            4: {"a": 1, ANYTHING_ELSE: 1, "b": 1}
         }
     )
     assert str(from_fsm(adotb)) == "a.b"
@@ -950,33 +950,33 @@ def test_isdisjoint():
 def test_bug_slow():
     # issue #43
     m = Fsm(
-        alphabet={'R', 'L', 'U', 'D'},
+        alphabet={"R", "L", "U", "D"},
         states={
             0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
             11, 12, 13, 14, 15, 16, 17, 18, 19, 20},
         initial=0,
         finals={20},
         map={
-            0: {'D': 1, 'U': 2},
-            1: {'L': 3},
-            2: {'L': 4},
-            3: {'U': 5},
-            4: {'D': 6},
-            5: {'R': 7},
-            6: {'R': 8},
-            7: {'U': 9},
-            8: {'D': 10},
-            9: {'L': 11},
-            10: {'L': 12},
-            11: {'L': 13},
-            12: {'L': 14},
-            13: {'D': 15},
-            14: {'U': 16},
-            15: {'R': 17},
-            16: {'R': 18},
-            17: {'D': 19},
-            18: {'U': 19},
-            19: {'L': 20},
+            0: {"D": 1, "U": 2},
+            1: {"L": 3},
+            2: {"L": 4},
+            3: {"U": 5},
+            4: {"D": 6},
+            5: {"R": 7},
+            6: {"R": 8},
+            7: {"U": 9},
+            8: {"D": 10},
+            9: {"L": 11},
+            10: {"L": 12},
+            11: {"L": 13},
+            12: {"L": 14},
+            13: {"D": 15},
+            14: {"U": 16},
+            15: {"R": 17},
+            16: {"R": 18},
+            17: {"D": 19},
+            18: {"U": 19},
+            19: {"L": 20},
             20: {}
         }
     )
@@ -989,21 +989,21 @@ def test_bug_slow():
 
 def test_bug_48_simpler():
     assert str(from_fsm(Fsm(
-        alphabet={'d'},
+        alphabet={"d"},
         states={0, 1},
         initial=0,
         finals={1},
         map={
-            0: {'d': 1},
+            0: {"d": 1},
         },
-    ))) == 'd'
+    ))) == "d"
 
 
 def test_bug_48():
     S5, S26, S45, S63, S80, S97, S113, S127, S140, S152, S163, S175, S182 = \
         range(13)
     char0, char1, char2, char3, char4, char5, char6, char7, char8 = \
-        '_', 'a', 'd', 'e', 'g', 'm', 'n', 'o', 'p'
+        "_", "a", "d", "e", "g", "m", "n", "o", "p"
 
     machine = Fsm(
         alphabet={
@@ -1033,7 +1033,7 @@ def test_bug_48():
     )
 
     rex = from_fsm(machine)
-    assert str(rex) == 'damage_on_mp'
+    assert str(rex) == "damage_on_mp"
 
 
 def test_pickle():

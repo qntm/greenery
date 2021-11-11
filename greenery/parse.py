@@ -219,9 +219,9 @@ def match_multiplicand(string, i):
     # explicitly non-capturing "(?:...)" syntax. No special significance
     try:
         j = static(string, i, "(?")
-        j, st = select_static(string, j, ':', 'P<')
-        if st == 'P<':
-            j, group_name = read_until(string, j, '>')
+        j, st = select_static(string, j, ":", "P<")
+        if st == "P<":
+            j, group_name = read_until(string, j, ">")
         pattern, j = match_pattern(string, j)
         j = static(string, j, ")")
         return pattern, j

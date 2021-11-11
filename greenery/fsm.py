@@ -47,10 +47,10 @@ class AnythingElse(Enum):
         return hash(type(self))
 
     def __str__(self, /) -> str:
-        return 'ANYTHING_ELSE'
+        return "ANYTHING_ELSE"
 
     def __repr__(self, /) -> str:
-        return 'ANYTHING_ELSE'
+        return "ANYTHING_ELSE"
 
 
 ANYTHING_ELSE = AnythingElse.TOKEN
