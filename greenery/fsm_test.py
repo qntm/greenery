@@ -176,7 +176,7 @@ def test_optional_mul(a: FixtureA, b: FixtureB) -> None:
     unit = a + b
     # accepts "ab"
 
-    optional = (epsilon(a.alphabet) | unit)
+    optional = epsilon(a.alphabet) | unit
     # accepts "(ab)?
     assert optional.accepts([])
     assert not optional.accepts(["a"])

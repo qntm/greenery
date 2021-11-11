@@ -296,7 +296,7 @@ class Fsm:
 
         def final(state: frozenset[tuple[int, state_type]]) -> bool:
             """If you're in a final state of the final FSM, it's final"""
-            for (i, substate) in state:
+            for i, substate in state:
                 if i == len(fsms) - 1 and substate in fsms[i].finals:
                     return True
             return False
@@ -312,7 +312,7 @@ class Fsm:
             metastates?
             """
             next: set[tuple[int, state_type]] = set()
-            for (i, substate) in current:
+            for i, substate in current:
                 fsm = fsms[i]
                 if substate in fsm.map:
                     if symbol in fsm.map[substate]:
@@ -395,7 +395,7 @@ class Fsm:
             If the initial state is final then multiplying doesn't alter
             that
             """
-            for (substate, iteration) in state:
+            for substate, iteration in state:
                 if substate == self.initial \
                    and (
                        self.initial in self.finals
@@ -409,7 +409,7 @@ class Fsm:
             symbol: alpha_type,
         ) -> Collection[tuple[state_type, int]]:
             next = []
-            for (substate, iteration) in current:
+            for substate, iteration in current:
                 if iteration < multiplier \
                    and substate in self.map \
                    and symbol in self.map[substate]:
@@ -612,7 +612,7 @@ class Fsm:
         # Fixed point calculation
         i = 0
         while i < len(strings):
-            (cstring, cstate) = strings[i]
+            cstring, cstate = strings[i]
             if cstate in self.map:
                 for symbol in sorted(self.map[cstate]):
                     nstate = self.map[cstate][symbol]
@@ -871,7 +871,7 @@ def parallel(
     alphabet = set().union(*[fsm.alphabet for fsm in fsms])
 
     initial: Mapping[int, state_type] = dict(
-        [(i, fsm.initial) for (i, fsm) in enumerate(fsms)])
+        [(i, fsm.initial) for i, fsm in enumerate(fsms)])
 
     # dedicated function accepts a "superset" and returns the next "superset"
     # obtained by following this transition in the new FSM
@@ -900,7 +900,7 @@ def parallel(
     def final(state: Mapping[int, state_type]) -> bool:
         accepts = [
             i in state and state[i] in fsm.finals
-            for (i, fsm) in enumerate(fsms)
+            for i, fsm in enumerate(fsms)
         ]
         return test(accepts)
 

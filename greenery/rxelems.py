@@ -27,7 +27,7 @@ from .multiplier import ONE, QM, STAR, ZERO, Multiplier
 
 
 @dataclass(frozen=True)
-class Conc():
+class Conc:
     """
     A `Conc` (short for "concatenation") is a tuple of `Mult`s i.e. an
     unbroken string of mults occurring one after the other.
@@ -68,10 +68,7 @@ class Conc():
                 # Conc contains "()" (i.e. a `Mult` containing only a `Pattern`
                 # containing the empty string)? That can be removed
                 # e.g. "a()b" -> "ab"
-
-                (
-                    mult.multiplicand == Pattern(EMPTYSTRING)
-                ) \
+                mult.multiplicand == Pattern(EMPTYSTRING) \
 
                 # If a `Mult` has an empty multiplicand, we can only match it
                 # zero times => empty string => remove it entirely
