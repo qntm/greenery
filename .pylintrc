@@ -167,7 +167,6 @@ disable=
         unnecessary-comprehension,
         unnecessary-dict-index-lookup,
         unnecessary-lambda,
-        unnecessary-pass,
         unused-argument,
         unused-variable,
         use-implicit-booleaness-not-comparison,

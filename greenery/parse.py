@@ -21,8 +21,6 @@ class NoMatch(Exception):
     Almost always caught and almost never fatal
     """
 
-    pass
-
 
 MatchResult = Tuple[T_co, int]
 

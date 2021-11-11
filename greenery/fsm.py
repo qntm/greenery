@@ -74,8 +74,6 @@ class OblivionError(Exception):
     new FSM's map.
     """
 
-    pass
-
 
 alpha_type = Union[str, AnythingElse]
 
