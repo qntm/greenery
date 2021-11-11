@@ -122,7 +122,7 @@ class Conc:
                     if rm_sm_intersection.equivalent(rm_pattern):
                         trimmed = Mult(
                             rm_pattern,
-                            Multiplier(r.multiplier.min, r.multiplier.min)
+                            Multiplier(r.multiplier.min, r.multiplier.min),
                         )
                         new = self.mults[:i] + (trimmed, s) + self.mults[i + 2:]
                         return Conc(*new).reduce()
@@ -140,7 +140,7 @@ class Conc:
                     if rm_sm_intersection.equivalent(sm_pattern):
                         trimmed = Mult(
                             sm_pattern,
-                            Multiplier(s.multiplier.min, s.multiplier.min)
+                            Multiplier(s.multiplier.min, s.multiplier.min),
                         )
                         new = self.mults[:i] + (r, trimmed) + self.mults[i + 2:]
                         return Conc(*new).reduce()
@@ -890,7 +890,7 @@ class Mult:
             ):
                 return Mult(
                     conc.mults[0].multiplicand,
-                    conc.mults[0].multiplier * self.multiplier
+                    conc.mults[0].multiplier * self.multiplier,
                 ).reduce()
 
         # no reduction possible

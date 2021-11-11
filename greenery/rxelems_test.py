@@ -303,8 +303,8 @@ def test_abstar():
         finals={0},
         map={
             0: {"a": 0, ANYTHING_ELSE: 1, "b": 0},
-            1: {"a": 1, ANYTHING_ELSE: 1, "b": 1}
-        }
+            1: {"a": 1, ANYTHING_ELSE: 1, "b": 1},
+        },
     )
     assert str(from_fsm(abstar)) == "[ab]*"
 
@@ -320,8 +320,8 @@ def test_adotb():
             1: {"a": 1, ANYTHING_ELSE: 1, "b": 1},
             2: {"a": 3, ANYTHING_ELSE: 3, "b": 3},
             3: {"a": 1, ANYTHING_ELSE: 1, "b": 4},
-            4: {"a": 1, ANYTHING_ELSE: 1, "b": 1}
-        }
+            4: {"a": 1, ANYTHING_ELSE: 1, "b": 1},
+        },
     )
     assert str(from_fsm(adotb)) == "a.b"
 
@@ -485,7 +485,7 @@ def test_dead_default():
             1: {"*": 2},
             2: {"/": 2, ANYTHING_ELSE: 2, "*": 3},
             3: {"/": 4, ANYTHING_ELSE: 2, "*": 3},
-        }
+        },
     ))
     assert str(blockquote) == "/\\*([^*]|\\*+[^*/])*\\*+/"
 
@@ -689,7 +689,7 @@ def test_parse_regex_intersection():
     assert str(parse("abc...") & parse("...def")) == "abcdef"
     assert str(parse("[bc]*[ab]*") & parse("[ab]*[bc]*")) in {
         "([ab]*a|[bc]*c)?b*",
-        "b*(a[ab]*|c[bc]*)?"
+        "b*(a[ab]*|c[bc]*)?",
     }
     assert str(parse("\\W*")) == "\\W*"
     assert str(parse("[a-g0-8$%\\^]+")) == "[$%0-8\\^a-g]+"
@@ -963,8 +963,8 @@ def test_bug_slow():
             17: {"D": 19},
             18: {"U": 19},
             19: {"L": 20},
-            20: {}
-        }
+            20: {},
+        },
     )
     t1 = time.time()
     ll = from_fsm(m)

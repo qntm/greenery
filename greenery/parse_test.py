@@ -72,15 +72,15 @@ def test_mult_matching():
     assert match_mult("abcde[^fg]*", 5) == (Mult(~Charclass("fg"), STAR), 11)
     assert match_mult("abcde[^fg]*h{5}[a-z]+", 11) == (
         Mult(Charclass("h"), Multiplier(Bound(5), Bound(5))),
-        15
+        15,
     )
     assert match_mult("abcde[^fg]*h{5}[a-z]+T{1,}", 15) == (
         Mult(Charclass("abcdefghijklmnopqrstuvwxyz"), PLUS),
-        21
+        21,
     )
     assert match_mult("abcde[^fg]*h{5}[a-z]+T{2,}", 21) == (
         Mult(Charclass("T"), Multiplier(Bound(2), INF)),
-        26
+        26,
     )
 
 
