@@ -242,10 +242,7 @@ def test_bug_28() -> None:
         states={0, 1},
         initial=0,
         finals={1},
-        map={
-            0: {"a": 1},
-            1: {"b": 1}
-        }
+        map={0: {"a": 1}, 1: {"b": 1}}
     )
     assert abstar.accepts("a")
     assert not abstar.accepts("b")
@@ -426,23 +423,11 @@ def test_binary_3() -> None:
 def test_invalid_fsms() -> None:
     # initial state 1 is not a state
     with pytest.raises(Exception, match="Initial state"):
-        Fsm(
-            alphabet={},
-            states={},
-            initial=1,
-            finals=(),
-            map={}
-        )
+        Fsm(alphabet={}, states={}, initial=1, finals=(), map={})
 
     # final state 2 not a state
     with pytest.raises(Exception, match="Final states"):
-        Fsm(
-            alphabet={},
-            states={1},
-            initial=1,
-            finals={2},
-            map={}
-        )
+        Fsm(alphabet={}, states={1}, initial=1, finals={2}, map={})
 
     # invalid transition for state 1, symbol "a"
     with pytest.raises(Exception, match="Transition.+leads to.+not a state"):
@@ -490,9 +475,7 @@ def test_anything_else_acceptance() -> None:
         states={1},
         initial=1,
         finals={1},
-        map={
-            1: {"a": 1, "b": 1, "c": 1, ANYTHING_ELSE: 1}
-        },
+        map={1: {"a": 1, "b": 1, "c": 1, ANYTHING_ELSE: 1}},
     )
     assert a.accepts("d")
 
@@ -690,12 +673,7 @@ def test_new_set_methods(a: FixtureA, b: FixtureB) -> None:
     for string in four:
         assert string == ["a", "a"]
         break
-    assert [s for s in four] == [
-        ["a", "a"],
-        ["a", "b"],
-        ["b", "a"],
-        ["b", "b"]
-    ]
+    assert [s for s in four] == [["a", "a"], ["a", "b"], ["b", "a"], ["b", "b"]]
 
     # set.union() imitation
     assert Fsm.union(a, b) == a.union(b)
@@ -793,26 +771,14 @@ def test_bug_36() -> None:
         states={0},
         initial=0,
         finals={0},
-        map={
-            0: {
-                ANYTHING_ELSE: 0
-            }
-        }
+        map={0: {ANYTHING_ELSE: 0}}
     )
     etc2 = Fsm(
         alphabet={"s", ANYTHING_ELSE},
         states={0, 1},
         initial=0,
         finals={1},
-        map={
-            0: {
-                "s": 1
-            },
-            1: {
-                "s": 1,
-                ANYTHING_ELSE: 1
-            }
-        }
+        map={0: {"s": 1}, 1: {"s": 1, ANYTHING_ELSE: 1}}
     )
     both = etc1 & etc2
     assert etc1.accepts(["s"])

@@ -258,8 +258,7 @@ def test_wildcard_generator():
 
 
 def test_forin():
-    assert [s for s in parse("abc|def(ghi|jkl)")] \
-        == ["abc", "defghi", "defjkl"]
+    assert [s for s in parse("abc|def(ghi|jkl)")] == ["abc", "defghi", "defjkl"]
 
 
 ###############################################################################
@@ -468,9 +467,7 @@ def test_bad_alphabet():
             states={0},
             initial=0,
             finals=(),
-            map={
-                0: {bad_symbol: 0}
-            },
+            map={0: {bad_symbol: 0}},
         )
 
         with pytest.raises(Exception, match="Symbol.*cannot be used"):
@@ -552,9 +549,7 @@ def test_isinstance_bug():
     # Problem relating to isinstance(). The class `Mult` was occurring as both
     # rxelems.Mult and as __main__.Mult and apparently these count as different
     # classes for some reason, so isinstance(m, Mult) was returning false.
-    var = str(parse("").everythingbut()) \
-        + "aa" \
-        + str(parse("").everythingbut())
+    var = str(parse("").everythingbut()) + "aa" + str(parse("").everythingbut())
     assert var == ".+aa.+"
 
     starfree = parse(var).everythingbut()
@@ -650,16 +645,11 @@ def test_reduce_concatenations():
 
 
 def test_mult_multiplication():
-    assert parse("(a{2,3}){1,1}").reduce() \
-        == parse("a{2,3}").reduce()
-    assert parse("(a{2,3}){1}").reduce() \
-        == parse("a{2,3}").reduce()
-    assert parse("(a{2,3})").reduce() \
-        == parse("a{2,3}").reduce()
-    assert parse("(a{2,3}){4,5}").reduce() \
-        == parse("a{8,15}").reduce()
-    assert parse("(a{2,}){2,}").reduce() \
-        == parse("a{4,}").reduce()
+    assert parse("(a{2,3}){1,1}").reduce() == parse("a{2,3}").reduce()
+    assert parse("(a{2,3}){1}").reduce() == parse("a{2,3}").reduce()
+    assert parse("(a{2,3})").reduce() == parse("a{2,3}").reduce()
+    assert parse("(a{2,3}){4,5}").reduce() == parse("a{8,15}").reduce()
+    assert parse("(a{2,}){2,}").reduce() == parse("a{4,}").reduce()
 
 
 def test_even_star_bug2():
@@ -711,23 +701,17 @@ def test_parse_regex_intersection():
     assert parse("[ab]{0,2}").matches("")
     assert parse("[^a]{0,2}").matches("")
     assert parse("b{0,2}").matches("")
-    assert str(parse("[ab]{0,2}") & parse("[^a]{0,2}")) \
-        == "b{0,2}"
-    assert str(parse("[ab]{0,4}") & parse("[^a]{0,4}")) \
-        == "b{0,4}"
-    assert str(parse("[abc]{0,8}") & parse("[^a]{0,8}")) \
-        == "[bc]{0,8}"
+    assert str(parse("[ab]{0,2}") & parse("[^a]{0,2}")) == "b{0,2}"
+    assert str(parse("[ab]{0,4}") & parse("[^a]{0,4}")) == "b{0,4}"
+    assert str(parse("[abc]{0,8}") & parse("[^a]{0,8}")) == "[bc]{0,8}"
     assert str(parse("[a-g0-8$%\\^]{0,8}") & parse("[^d]{0,8}")) \
         == "[$%0-8\\^abcefg]{0,8}"
     assert str(parse("[a-g0-8$%\\^]+") & parse("[^d]{0,8}")) \
         == "[$%0-8\\^abcefg]{1,8}"
     assert str(parse("[a-g0-8$%\\^]+") & parse("[^d]{2,8}")) \
         == "[$%0-8\\^abcefg]{2,8}"
-    assert str(
-        parse("\\W*")
-        & parse("[a-g0-8$%\\^]+")
-        & parse("[^d]{2,8}")
-    ) == "[$%\\^]{2,8}"
+    assert str(parse("\\W*") & parse("[a-g0-8$%\\^]+") & parse("[^d]{2,8}")) \
+        == "[$%\\^]{2,8}"
     assert str(parse("\\d{4}-\\d{2}-\\d{2}") & parse("19.*")) \
         == "19\\d{2}-\\d{2}-\\d{2}"
 
@@ -835,8 +819,7 @@ def test_mult_squoosh():
     # sequence squooshing of mults within a `Conc`
     assert str(parse("[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]").reduce()) \
         == "[0-9A-Fa-f]{3}"
-    assert str(parse("[$%\\^]?[$%\\^]").reduce()) \
-        == "[$%\\^]{1,2}"
+    assert str(parse("[$%\\^]?[$%\\^]").reduce()) == "[$%\\^]{1,2}"
     assert str(parse(
         "(|(|(|(|(|[$%\\^])[$%\\^])[$%\\^])[$%\\^])[$%\\^])[$%\\^][$%\\^]"
     ).reduce()) \
@@ -845,14 +828,10 @@ def test_mult_squoosh():
 
 def test_bad_reduction_bug():
     # DEFECT: "0{2}|1{2}" was erroneously reduced() to "[01]{2}"
-    assert parse("0{2}|1{2}").reduce() \
-        != parse("[01]{2}")
-    assert parse("0|[1-9]|ab").reduce() \
-        == parse("\\d|ab")
-    assert parse("0|[1-9]|a{5,7}").reduce() \
-        == parse("\\d|a{5,7}")
-    assert parse("0|(0|[1-9]|a{5,7})").reduce() \
-        == parse("0|(\\d|a{5,7})")
+    assert parse("0{2}|1{2}").reduce() != parse("[01]{2}")
+    assert parse("0|[1-9]|ab").reduce() == parse("\\d|ab")
+    assert parse("0|[1-9]|a{5,7}").reduce() == parse("\\d|a{5,7}")
+    assert parse("0|(0|[1-9]|a{5,7})").reduce() == parse("0|(\\d|a{5,7})")
     # TODO: should do better than this! Merge that 0
 
 
@@ -864,10 +843,7 @@ def test_epsilon_reduction():
     assert str(parse("|(ab)*|def").reduce()) == "(ab)*|def"
     assert str(parse("|(ab)+|def").reduce()) == "(ab)*|def"
     assert str(parse("|.+").reduce()) == ".*"
-    assert str(parse("|a+|b+").reduce()) in {
-        "a+|b*",
-        "a*|b+"
-    }
+    assert str(parse("|a+|b+").reduce()) in {"a+|b*", "a*|b+"}
 
 
 def test_charclass_intersection_2():
@@ -891,26 +867,16 @@ def test_new_reduce():
 
 
 def test_main_bug():
-    assert str(parse("a*").reduce()) \
-        == "a*"
-    assert str(parse("a|a*").reduce()) \
-        == "a*"
-    assert str(parse("a{1,2}|a{3,4}|bc").reduce()) \
-        == "a{1,4}|bc"
-    assert str(parse("a{1,2}|bc|a{3,4}").reduce()) \
-        == "a{1,4}|bc"
-    assert str(parse("a{1,2}|a{3,4}|a{5,6}|bc").reduce()) \
-        == "a{1,6}|bc"
-    assert str(parse("a{1,2}|a{3}|a{5,6}").reduce()) \
-        == "a{1,2}(a?|a{4})"
-    assert str(parse("a{1,2}|a{3}|a{5,6}|bc").reduce()) \
-        == "a{1,3}|a{5,6}|bc"
-    assert str(parse("a{1,2}|a{4}|a{5,6}").reduce()) \
-        == "a{1,2}(a{3,4})?"
-    assert str(parse("a{1,2}|a{4}|a{5,6}|bc").reduce()) \
-        == "a{1,2}|a{4,6}|bc"
-    assert str((parse("a") | parse("a*")).reduce()) \
-        == "a*"
+    assert str(parse("a*").reduce()) == "a*"
+    assert str(parse("a|a*").reduce()) == "a*"
+    assert str(parse("a{1,2}|a{3,4}|bc").reduce()) == "a{1,4}|bc"
+    assert str(parse("a{1,2}|bc|a{3,4}").reduce()) == "a{1,4}|bc"
+    assert str(parse("a{1,2}|a{3,4}|a{5,6}|bc").reduce()) == "a{1,6}|bc"
+    assert str(parse("a{1,2}|a{3}|a{5,6}").reduce()) == "a{1,2}(a?|a{4})"
+    assert str(parse("a{1,2}|a{3}|a{5,6}|bc").reduce()) == "a{1,3}|a{5,6}|bc"
+    assert str(parse("a{1,2}|a{4}|a{5,6}").reduce()) == "a{1,2}(a{3,4})?"
+    assert str(parse("a{1,2}|a{4}|a{5,6}|bc").reduce()) == "a{1,2}|a{4,6}|bc"
+    assert str((parse("a") | parse("a*")).reduce()) == "a*"
 
 
 def test_bug_28_b():

@@ -16,10 +16,7 @@ def test_conc_equality():
     assert a == Conc(Mult(Charclass("a"), ONE))
     assert a != Conc(Mult(Charclass("b"), ONE))
     assert a != Conc(Mult(Charclass("a"), QM))
-    assert a != Conc(Mult(
-        Charclass("a"),
-        Multiplier(Bound(1), Bound(2)))
-    )
+    assert a != Conc(Mult(Charclass("a"), Multiplier(Bound(1), Bound(2))))
     assert a != Conc()
 
 
@@ -70,7 +67,4 @@ def test_conc_dock():
 
 
 def test_mult_reduction_easy():
-    assert Conc(Mult(
-        Charclass("a"),
-        ZERO
-    )).reduce() == Conc()
+    assert Conc(Mult(Charclass("a"), ZERO)).reduce() == Conc()

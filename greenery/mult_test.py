@@ -15,10 +15,7 @@ def test_mult_equality():
     assert a == a
     assert a != Mult(Charclass("b"), ONE)
     assert a != Mult(Charclass("a"), QM)
-    assert a != Mult(
-        Charclass("a"),
-        Multiplier(Bound(1), Bound(2))
-    )
+    assert a != Mult(Charclass("a"), Multiplier(Bound(1), Bound(2)))
 
 
 def test_mult_str():

@@ -76,9 +76,7 @@ def test_mult_reduction_easy():
                 ZERO,
             )
         )
-    ).reduce() == Pattern(
-        Conc()
-    )
+    ).reduce() == Pattern(Conc())
     assert str(
         Pattern(
             Conc(

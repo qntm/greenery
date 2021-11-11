@@ -108,10 +108,7 @@ class Conc:
                 # If R = S, then we can squish the multipliers together
                 # e.g. ab?b?c -> ab{0,2}c
                 if rm_pattern == sm_pattern:
-                    squished = Mult(
-                        rm_pattern,
-                        r.multiplier + s.multiplier
-                    )
+                    squished = Mult(rm_pattern, r.multiplier + s.multiplier)
                     new = self.mults[:i] + (squished,) + self.mults[i + 2:]
                     return Conc(*new).reduce()
 
@@ -127,9 +124,7 @@ class Conc:
                             rm_pattern,
                             Multiplier(r.multiplier.min, r.multiplier.min)
                         )
-                        new = self.mults[:i] \
-                            + (trimmed, s) \
-                            + self.mults[i + 2:]
+                        new = self.mults[:i] + (trimmed, s) + self.mults[i + 2:]
                         return Conc(*new).reduce()
 
                 # Conversely, if R is superset of S, then R{c,}S{a,b} reduces
@@ -145,9 +140,7 @@ class Conc:
                             sm_pattern,
                             Multiplier(s.multiplier.min, s.multiplier.min)
                         )
-                        new = self.mults[:i] \
-                            + (r, trimmed) \
-                            + self.mults[i + 2:]
+                        new = self.mults[:i] + (r, trimmed) + self.mults[i + 2:]
                         return Conc(*new).reduce()
 
         # Conc contains (among other things) a *singleton* `Mult` containing
@@ -256,9 +249,7 @@ class Conc:
             # then tries to subtract the B too, which isn't possible
             else:
                 if i != 0:
-                    raise Exception(
-                        f"Can't subtract {other!r} from {self!r}"
-                    )
+                    raise Exception(f"Can't subtract {other!r} from {self!r}")
 
         return Conc(*new)
 
@@ -389,10 +380,7 @@ def from_fsm(f: Fsm) -> Pattern:
             for right in brz[a]:
                 brz[b][right] = Pattern(
                     *brz[b][right].concs,
-                    Conc(
-                        Mult(univ, ONE),
-                        Mult(brz[a][right], ONE)
-                    )
+                    Conc(Mult(univ, ONE), Mult(brz[a][right], ONE)),
                 ).reduce()
 
     return brz[f.initial][outside].reduce()
@@ -657,10 +645,7 @@ class Pattern:
         if len(self.concs) == 0:
             raise Exception(f"Can't call _commonconc on {self!r}")
 
-        return reduce(
-            lambda x, y: x.common(y, suffix=suffix),
-            self.concs
-        )
+        return reduce(lambda x, y: x.common(y, suffix=suffix), self.concs)
 
     def to_fsm(self, alphabet=None):
         if alphabet is None:
@@ -815,9 +800,7 @@ class Mult:
         e.g. a{4,5} - a{3} = a{1,2}
         """
         if other.multiplicand != self.multiplicand:
-            raise Exception(
-                f"Can't subtract {other!r} from {self!r}"
-            )
+            raise Exception(f"Can't subtract {other!r} from {self!r}")
         return Mult(self.multiplicand, self.multiplier - other.multiplier)
 
     def common(self, other):

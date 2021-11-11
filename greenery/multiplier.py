@@ -39,9 +39,7 @@ class Multiplier:
 
     def __post_init__(self):
         if self.min == INF:
-            raise Exception(
-                f"Minimum bound of a multiplier can't be {INF!r}"
-            )
+            raise Exception(f"Minimum bound of a multiplier can't be {INF!r}")
         if self.min > self.max:
             raise Exception(
                 "Invalid multiplier bounds:"
@@ -95,9 +93,7 @@ class Multiplier:
     def __mul__(self, other):
         """Multiply this multiplier by another"""
         if not self.canmultiplyby(other):
-            raise Exception(
-                f"Can't multiply {self!r} by {other!r}"
-            )
+            raise Exception(f"Can't multiply {self!r} by {other!r}")
         return Multiplier(self.min * other.min, self.max * other.max)
 
     def __add__(self, other):

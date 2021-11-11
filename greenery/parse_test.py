@@ -69,10 +69,7 @@ def test_negated_negatives_inside_charclasses():
 
 
 def test_mult_matching():
-    assert match_mult("abcde[^fg]*", 5) == (
-        Mult(~Charclass("fg"), STAR),
-        11
-    )
+    assert match_mult("abcde[^fg]*", 5) == (Mult(~Charclass("fg"), STAR), 11)
     assert match_mult("abcde[^fg]*h{5}[a-z]+", 11) == (
         Mult(Charclass("h"), Multiplier(Bound(5), Bound(5))),
         15
@@ -111,29 +108,12 @@ def test_w_d_s():
 
 
 def test_mult_parsing():
-    assert parse("[a-g]+") == Pattern(
-        Conc(
-            Mult(
-                Charclass("abcdefg"),
-                PLUS
-            )
-        )
-    )
+    assert parse("[a-g]+") == Pattern(Conc(Mult(Charclass("abcdefg"), PLUS)))
     assert parse("[a-g0-8$%]+") == Pattern(
-        Conc(
-            Mult(
-                Charclass("abcdefg012345678$%"),
-                PLUS
-            )
-        )
+        Conc(Mult(Charclass("abcdefg012345678$%"), PLUS))
     )
     assert parse("[a-g0-8$%\\^]+") == Pattern(
-        Conc(
-            Mult(
-                Charclass("abcdefg012345678$%^"),
-                PLUS
-            )
-        )
+        Conc(Mult(Charclass("abcdefg012345678$%^"), PLUS))
     )
 
 

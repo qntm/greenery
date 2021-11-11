@@ -59,8 +59,7 @@ def test_multiplier_subtraction():
     # a{2,}, a{1,5} -> a{1,5} (with a{1,}, a{0,0} left over)
     assert Multiplier(Bound(2), INF).common(Multiplier(Bound(1), Bound(5))) \
         == Multiplier(Bound(1), Bound(5))
-    assert Multiplier(Bound(2), INF) - Multiplier(Bound(1), Bound(5)) \
-        == PLUS
+    assert Multiplier(Bound(2), INF) - Multiplier(Bound(1), Bound(5)) == PLUS
     assert Multiplier(Bound(1), Bound(5)) - Multiplier(Bound(1), Bound(5)) \
         == ZERO
 
