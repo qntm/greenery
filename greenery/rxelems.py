@@ -126,9 +126,9 @@ class Conc():
                             rm_pattern,
                             Multiplier(r.multiplier.min, r.multiplier.min)
                         )
-                        new = self.mults[:i] + \
-                            (trimmed, s) + \
-                            self.mults[i + 2:]
+                        new = self.mults[:i] \
+                            + (trimmed, s) \
+                            + self.mults[i + 2:]
                         return Conc(*new).reduce()
 
                 # Conversely, if R is superset of S, then R{c,}S{a,b} reduces
@@ -144,9 +144,9 @@ class Conc():
                             sm_pattern,
                             Multiplier(s.multiplier.min, s.multiplier.min)
                         )
-                        new = self.mults[:i] + \
-                            (r, trimmed) + \
-                            self.mults[i + 2:]
+                        new = self.mults[:i] \
+                            + (r, trimmed) \
+                            + self.mults[i + 2:]
                         return Conc(*new).reduce()
 
         # Conc contains (among other things) a *singleton* `Mult` containing
@@ -537,10 +537,10 @@ class Pattern:
                     continue
                 multiplier = multiplier1 | multiplier2
                 newconcs = \
-                    oldconcs[:i] + \
-                    oldconcs[i + 1:j] + \
-                    oldconcs[j + 1:] + \
-                    [Conc(Mult(multiplicand, multiplier))]
+                    oldconcs[:i] \
+                    + oldconcs[i + 1:j] \
+                    + oldconcs[j + 1:] \
+                    + [Conc(Mult(multiplicand, multiplier))]
                 return Pattern(*newconcs).reduce()
 
         # If this `Pattern` contains several `Conc`s each containing just 1

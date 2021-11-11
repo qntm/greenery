@@ -110,13 +110,13 @@ class Fsm:
         # once.
         if self.initial not in self.states:
             raise Exception(
-                f"Initial state {repr(self.initial)} "
-                f"must be one of {repr(self.states)}"
+                f"Initial state {repr(self.initial)}"
+                f" must be one of {repr(self.states)}"
             )
         if not self.finals.issubset(self.states):
             raise Exception(
-                f"Final states {repr(self.finals)} "
-                f"must be a subset of {repr(self.states)}"
+                f"Final states {repr(self.finals)}"
+                f" must be a subset of {repr(self.states)}"
             )
         for state, _state_trans in self.map.items():
             if state not in self.states:
@@ -124,16 +124,16 @@ class Fsm:
             for symbol in self.map[state]:
                 if symbol not in self.alphabet:
                     raise Exception(
-                        f"Invalid symbol {repr(symbol)} "
-                        f"in transition from {repr(state)} "
-                        f"to {repr(self.map[state][symbol])}"
+                        f"Invalid symbol {repr(symbol)}"
+                        f" in transition from {repr(state)}"
+                        f" to {repr(self.map[state][symbol])}"
                     )
                 if not self.map[state][symbol] in self.states:
                     raise Exception(
-                        f"Transition for state {repr(state)} "
-                        f"and symbol {repr(symbol)} "
-                        f"leads to {repr(self.map[state][symbol])}, "
-                        "which is not a state"
+                        f"Transition for state {repr(state)}"
+                        f" and symbol {repr(symbol)}"
+                        f" leads to {repr(self.map[state][symbol])},"
+                        " which is not a state"
                     )
 
         # Initialise the hard way due to immutability.

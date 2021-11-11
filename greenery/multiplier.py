@@ -41,8 +41,8 @@ class Multiplier:
             )
         if self.min > self.max:
             raise Exception(
-                "Invalid multiplier bounds: "
-                f"{repr(self.min)} and {repr(self.max)}"
+                "Invalid multiplier bounds:"
+                f" {repr(self.min)} and {repr(self.max)}"
             )
 
         # More useful than "min" and "max" in many situations
@@ -86,8 +86,8 @@ class Multiplier:
             at least one gap appears in the range. The first inaccessible
             number is (p+q)r+1. And no, multiplication is not commutative
         '''
-        return other.optional == Bound(0) or \
-            self.optional * other.mandatory + Bound(1) >= self.mandatory
+        return other.optional == Bound(0) \
+            or self.optional * other.mandatory + Bound(1) >= self.mandatory
 
     def __mul__(self, other):
         '''Multiply this multiplier by another'''

@@ -567,15 +567,15 @@ def test_dead_default():
     )
     assert blockquote.accepts(["/", "*", "whatever", "*", "/"])
     assert not blockquote.accepts(["*", "*", "whatever", "*", "/"])
-    assert str(blockquote) == \
-        '  name final? * / ANYTHING_ELSE \n' + \
-        '--------------------------------\n' + \
-        '* 0    False    1               \n' + \
-        '  1    False  2                 \n' + \
-        '  2    False  3 2 2             \n' + \
-        '  3    False  3 4 2             \n' + \
-        '  4    True                     \n' + \
-        '  5    False                    \n'
+    assert str(blockquote) \
+        == '  name final? * / ANYTHING_ELSE \n' \
+        + '--------------------------------\n' \
+        + '* 0    False    1               \n' \
+        + '  1    False  2                 \n' \
+        + '  2    False  3 2 2             \n' \
+        + '  3    False  3 4 2             \n' \
+        + '  4    True                     \n' \
+        + '  5    False                    \n'
     blockquote | blockquote
     blockquote & blockquote
     blockquote ^ blockquote
