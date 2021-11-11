@@ -51,10 +51,7 @@ def test_multiplier_subtraction():
     assert Multiplier(Bound(3), Bound(4)).common(
         Multiplier(Bound(2), Bound(5))
     ) == Multiplier(Bound(2), Bound(3))
-    assert (
-        Multiplier(Bound(3), Bound(4)) - Multiplier(Bound(2), Bound(3))
-        == ONE
-    )
+    assert Multiplier(Bound(3), Bound(4)) - Multiplier(Bound(2), Bound(3)) == ONE
     assert Multiplier(Bound(2), Bound(5)) - Multiplier(
         Bound(2), Bound(3)
     ) == Multiplier(Bound(0), Bound(2))
@@ -64,23 +61,18 @@ def test_multiplier_subtraction():
         Multiplier(Bound(1), Bound(5))
     ) == Multiplier(Bound(1), Bound(5))
     assert Multiplier(Bound(2), INF) - Multiplier(Bound(1), Bound(5)) == PLUS
-    assert (
-        Multiplier(Bound(1), Bound(5)) - Multiplier(Bound(1), Bound(5))
-        == ZERO
-    )
+    assert Multiplier(Bound(1), Bound(5)) - Multiplier(Bound(1), Bound(5)) == ZERO
 
     # a{3,}, a{2,} -> a{2,} (with a, epsilon left over)
-    assert (
-        Multiplier(Bound(3), INF).common(Multiplier(Bound(2), INF))
-        == Multiplier(Bound(2), INF)
+    assert Multiplier(Bound(3), INF).common(Multiplier(Bound(2), INF)) == Multiplier(
+        Bound(2), INF
     )
     assert Multiplier(Bound(3), INF) - Multiplier(Bound(2), INF) == ONE
     assert Multiplier(Bound(2), INF) - Multiplier(Bound(2), INF) == ZERO
 
     # a{3,}, a{3,} -> a{3,} (with ZERO, ZERO left over)
-    assert (
-        Multiplier(Bound(3), INF).common(Multiplier(Bound(3), INF))
-        == Multiplier(Bound(3), INF)
+    assert Multiplier(Bound(3), INF).common(Multiplier(Bound(3), INF)) == Multiplier(
+        Bound(3), INF
     )
     assert Multiplier(Bound(3), INF) - Multiplier(Bound(3), INF) == ZERO
 
@@ -113,15 +105,7 @@ def test_multiplier_union():
     assert PLUS | PLUS == PLUS
     assert not ZERO.canunion(Multiplier(Bound(2), INF))
     assert not ONE.canunion(Multiplier(Bound(3), Bound(4)))
-    assert not Multiplier(
-        Bound(8),
-        INF
-    ).canunion(
-        Multiplier(
-            Bound(3),
-            Bound(4)
-        )
-    )
+    assert not Multiplier(Bound(8), INF).canunion(Multiplier(Bound(3), Bound(4)))
 
     with pytest.raises(Exception, match="Can't compute the union"):
         ZERO | Multiplier(Bound(7), Bound(8))

@@ -136,14 +136,9 @@ class Fsm:
         # Validation. Thanks to immutability, this only needs to be carried out
         # once.
         if initial not in states:
-            raise Exception(
-                f"Initial state {initial!r} must be one of {states!r}"
-            )
+            raise Exception(f"Initial state {initial!r} must be one of {states!r}")
         if not finals.issubset(states):
-            raise Exception(
-                f"Final states {finals!r}"
-                f" must be a subset of {states!r}"
-            )
+            raise Exception(f"Final states {finals!r} must be a subset of {states!r}")
         for state, _state_trans in map.items():
             if state not in states:
                 raise Exception(f"Transition from unknown state {state!r}")
@@ -247,9 +242,7 @@ class Fsm:
         # column widths
         colwidths = []
         for x in range(len(rows[0])):
-            colwidths.append(max(
-                len(str(rows[y][x])) for y in range(len(rows))
-            ) + 1)
+            colwidths.append(max(len(str(rows[y][x])) for y in range(len(rows))) + 1)
 
         # apply padding
         for y in range(len(rows)):
@@ -320,10 +313,7 @@ class Fsm:
                         ANYTHING_ELSE in fsm.map[substate]
                         and symbol not in fsm.alphabet
                     ):
-                        next.update(connect_all(
-                            i,
-                            fsm.map[substate][ANYTHING_ELSE]
-                        ))
+                        next.update(connect_all(i, fsm.map[substate][ANYTHING_ELSE]))
             if len(next) == 0:
                 raise OblivionError
             return frozenset(next)
@@ -668,10 +658,7 @@ class Fsm:
         Difference. Returns an FSM which recognises only the strings
         recognised by the first FSM in the list, but none of the others.
         """
-        return parallel(
-            fsms,
-            lambda accepts: accepts[0] and not any(accepts[1:])
-        )
+        return parallel(fsms, lambda accepts: accepts[0] and not any(accepts[1:]))
 
     def __sub__(self, other: Fsm, /) -> Fsm:
         return self.difference(other)
@@ -885,10 +872,7 @@ def parallel(
         next = {}
         for i in range(len(fsms)):
             actual_symbol: alpha_type
-            if (
-                symbol not in fsms[i].alphabet
-                and ANYTHING_ELSE in fsms[i].alphabet
-            ):
+            if symbol not in fsms[i].alphabet and ANYTHING_ELSE in fsms[i].alphabet:
                 actual_symbol = ANYTHING_ELSE
             else:
                 actual_symbol = symbol
@@ -905,10 +889,7 @@ def parallel(
     # Determine the "is final?" condition of each substate, then pass it to the
     # test to determine finality of the overall FSM.
     def final(state: Mapping[int, state_type]) -> bool:
-        accepts = [
-            i in state and state[i] in fsm.finals
-            for i, fsm in enumerate(fsms)
-        ]
+        accepts = [i in state and state[i] in fsm.finals for i, fsm in enumerate(fsms)]
         return test(accepts)
 
     return crawl(alphabet, initial, final, follow).reduce()

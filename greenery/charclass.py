@@ -141,11 +141,7 @@ class Charclass:
                 # "ab" or "abc" or "abcd"
                 "".join(escapeChar(char) for char in currentRange),
                 # "a-b" or "a-c" or "a-d"
-                (
-                    escapeChar(currentRange[0])
-                    + "-"
-                    + escapeChar(currentRange[-1])
-                ),
+                (escapeChar(currentRange[0]) + "-" + escapeChar(currentRange[-1])),
             ]
             return sorted(strs, key=lambda str: len(str))[0]
 
@@ -213,9 +209,7 @@ class Charclass:
         if self.negated is True:
             string += "~"
         string += "Charclass("
-        string += repr("".join(
-            str(char) for char in sorted(self.chars, key=str)
-        ))
+        string += repr("".join(str(char) for char in sorted(self.chars, key=str)))
         string += ")"
         return string
 
@@ -261,9 +255,7 @@ class Charclass:
 
 
 # Standard character classes
-WORDCHAR = Charclass(
-    "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz"
-)
+WORDCHAR = Charclass("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz")
 DIGIT = Charclass("0123456789")
 SPACECHAR = Charclass("\t\n\v\f\r ")
 

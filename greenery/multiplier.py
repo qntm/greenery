@@ -41,10 +41,7 @@ class Multiplier:
         if self.min == INF:
             raise Exception(f"Minimum bound of a multiplier can't be {INF!r}")
         if self.min > self.max:
-            raise Exception(
-                "Invalid multiplier bounds:"
-                f" {self.min!r} and {self.max!r}"
-            )
+            raise Exception(f"Invalid multiplier bounds: {self.min!r} and {self.max!r}")
 
         # More useful than "min" and "max" in many situations
         # are "mandatory" and "optional".
@@ -62,9 +59,7 @@ class Multiplier:
 
     def __str__(self):
         if self.max == Bound(0):
-            raise Exception(
-                f"Can't serialise a multiplier with bound {self.max!r}"
-            )
+            raise Exception(f"Can't serialise a multiplier with bound {self.max!r}")
         if self in symbolic.keys():
             return symbolic[self]
         if self.min == self.max:
@@ -129,9 +124,7 @@ class Multiplier:
         This is not defined for all multipliers since they may not overlap.
         """
         if not self.canintersect(other):
-            raise Exception(
-                f"Can't compute intersection of {self!r} and {other!r}"
-            )
+            raise Exception(f"Can't compute intersection of {self!r} and {other!r}")
         a = max(self.min, other.min)
         b = min(self.max, other.max)
         return Multiplier(a, b)
@@ -141,10 +134,7 @@ class Multiplier:
         Union is not defined for all pairs of multipliers.
         E.g. {0,1} | {3,4} -> nope
         """
-        return not (
-            self.max + Bound(1) < other.min
-            or other.max + Bound(1) < self.min
-        )
+        return not (self.max + Bound(1) < other.min or other.max + Bound(1) < self.min)
 
     def __or__(self, other):
         """
@@ -153,9 +143,7 @@ class Multiplier:
         not defined for all multipliers since they may not intersect.
         """
         if not self.canunion(other):
-            raise Exception(
-                f"Can't compute the union of {self!r} and {other!r}"
-            )
+            raise Exception(f"Can't compute the union of {self!r} and {other!r}")
         a = min(self.min, other.min)
         b = max(self.max, other.max)
         return Multiplier(a, b)

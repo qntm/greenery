@@ -15,9 +15,7 @@ from .rxelems import from_fsm
 # mypy: no-check-untyped-defs
 
 if __name__ == "__main__":
-    raise Exception(
-        "Test files can't be run directly. Use `python -m pytest greenery`"
-    )
+    raise Exception("Test files can't be run directly. Use `python -m pytest greenery`")
 
 
 ###############################################################################
@@ -705,24 +703,16 @@ def test_parse_regex_intersection():
     assert str(parse("[ab]{0,4}") & parse("[^a]{0,4}")) == "b{0,4}"
     assert str(parse("[abc]{0,8}") & parse("[^a]{0,8}")) == "[bc]{0,8}"
     assert (
-        str(parse("[a-g0-8$%\\^]{0,8}") & parse("[^d]{0,8}"))
-        == "[$%0-8\\^abcefg]{0,8}"
+        str(parse("[a-g0-8$%\\^]{0,8}") & parse("[^d]{0,8}")) == "[$%0-8\\^abcefg]{0,8}"
     )
-    assert (
-        str(parse("[a-g0-8$%\\^]+") & parse("[^d]{0,8}"))
-        == "[$%0-8\\^abcefg]{1,8}"
-    )
-    assert (
-        str(parse("[a-g0-8$%\\^]+") & parse("[^d]{2,8}"))
-        == "[$%0-8\\^abcefg]{2,8}"
-    )
+    assert str(parse("[a-g0-8$%\\^]+") & parse("[^d]{0,8}")) == "[$%0-8\\^abcefg]{1,8}"
+    assert str(parse("[a-g0-8$%\\^]+") & parse("[^d]{2,8}")) == "[$%0-8\\^abcefg]{2,8}"
     assert (
         str(parse("\\W*") & parse("[a-g0-8$%\\^]+") & parse("[^d]{2,8}"))
         == "[$%\\^]{2,8}"
     )
     assert (
-        str(parse("\\d{4}-\\d{2}-\\d{2}") & parse("19.*"))
-        == "19\\d{2}-\\d{2}-\\d{2}"
+        str(parse("\\d{4}-\\d{2}-\\d{2}") & parse("19.*")) == "19\\d{2}-\\d{2}-\\d{2}"
     )
 
 
@@ -828,15 +818,15 @@ def test_obvious_reduction():
 
 def test_mult_squoosh():
     # sequence squooshing of mults within a `Conc`
-    assert (
-        str(parse("[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]").reduce())
-        == "[0-9A-Fa-f]{3}"
-    )
+    assert str(parse("[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]").reduce()) == "[0-9A-Fa-f]{3}"
     assert str(parse("[$%\\^]?[$%\\^]").reduce()) == "[$%\\^]{1,2}"
     assert (
-        str(parse(
-            "(|(|(|(|(|[$%\\^])[$%\\^])[$%\\^])[$%\\^])[$%\\^])[$%\\^][$%\\^]"
-        ).reduce()) == "[$%\\^]{2,7}"
+        str(
+            parse(
+                "(|(|(|(|(|[$%\\^])[$%\\^])[$%\\^])[$%\\^])[$%\\^])[$%\\^][$%\\^]"
+            ).reduce()
+        )
+        == "[$%\\^]{2,7}"
     )
 
 
@@ -861,10 +851,7 @@ def test_epsilon_reduction():
 
 
 def test_charclass_intersection_2():
-    assert (
-        (parse("[A-z]") & parse("[^g]")).reduce()
-        == parse("[A-fh-z]").reduce()
-    )
+    assert (parse("[A-z]") & parse("[^g]")).reduce() == parse("[A-fh-z]").reduce()
 
 
 def test_reduce_boom():
@@ -986,9 +973,7 @@ def test_bug_48_simpler():
 
 
 def test_bug_48():
-    (
-        S5, S26, S45, S63, S80, S97, S113, S127, S140, S152, S163, S175, S182
-    ) = range(13)
+    S5, S26, S45, S63, S80, S97, S113, S127, S140, S152, S163, S175, S182 = range(13)
     char0, char1, char2, char3, char4, char5, char6, char7, char8 = (
         "_",
         "a",
@@ -1002,14 +987,8 @@ def test_bug_48():
     )
 
     machine = Fsm(
-        alphabet={
-            char0, char1, char2, char3, char4,
-            char5, char6, char7, char8
-        },
-        states={
-            S5, S26, S45, S63, S80, S97, S113,
-            S127, S140, S152, S163, S175, S182
-        },
+        alphabet={char0, char1, char2, char3, char4, char5, char6, char7, char8},
+        states={S5, S26, S45, S63, S80, S97, S113, S127, S140, S152, S163, S175, S182},
         initial=S5,
         finals={S182},
         map={

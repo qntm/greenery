@@ -431,27 +431,11 @@ def test_invalid_fsms() -> None:
 
     # invalid transition for state 1, symbol "a"
     with pytest.raises(Exception, match="Transition.+leads to.+not a state"):
-        Fsm(
-            alphabet={"a"},
-            states={1},
-            initial=1,
-            finals=(),
-            map={
-                1: {"a": 2}
-            }
-        )
+        Fsm(alphabet={"a"}, states={1}, initial=1, finals=(), map={1: {"a": 2}})
 
     # invalid transition from unknown state
     with pytest.raises(Exception, match="Transition.+unknown state"):
-        Fsm(
-            alphabet={"a"},
-            states={1, 2},
-            initial=1,
-            finals=(),
-            map={
-                3: {"a": 2}
-            }
-        )
+        Fsm(alphabet={"a"}, states={1, 2}, initial=1, finals=(), map={3: {"a": 2}})
 
     # invalid transition table includes symbol outside of alphabet
     with pytest.raises(Exception, match="Invalid symbol"):
@@ -611,9 +595,7 @@ def test_dead_default() -> None:
     # strings.
     # reversed(blockquote)
     blockquote.reversed()
-    assert not (
-        blockquote.everythingbut().accepts(["/", "*", "whatever", "*", "/"])
-    )
+    assert not blockquote.everythingbut().accepts(["/", "*", "whatever", "*", "/"])
 
     # deliberately seek oblivion
     assert blockquote.everythingbut().accepts(["*"])
@@ -694,12 +676,7 @@ def test_new_set_methods(a: FixtureA, b: FixtureB) -> None:
     assert len(int_none) == 1
     assert [] in int_none
 
-    assert (
-        (a | b).difference(a)
-        == Fsm.difference((a | b), a)
-        == (a | b) - a
-        == b
-    )
+    assert (a | b).difference(a) == Fsm.difference((a | b), a) == (a | b) - a == b
     assert (
         (a | b).difference(a, b)
         == Fsm.difference((a | b), a, b)
