@@ -104,7 +104,7 @@ class Charclass:
             # If char is an ASCII control character, don't print it directly,
             # return a hex escape sequence e.g. "\\x00". Note that this
             # includes tab and other characters already handled above
-            if 0 <= ord(char) <= 0x1F or ord(char) == 0x7f:
+            if 0 <= ord(char) <= 0x1F or ord(char) == 0x7F:
                 return "\\x" + "{0:02x}".format(ord(char))
 
             return char
@@ -122,7 +122,7 @@ class Charclass:
             # If char is an ASCII control character, don't print it directly,
             # return a hex escape sequence e.g. "\\x00". Note that this
             # includes tab and other characters already handled above
-            if 0 <= ord(char) <= 0x1F or ord(char) == 0x7f:
+            if 0 <= ord(char) <= 0x1F or ord(char) == 0x7F:
                 return "\\x" + "{0:02x}".format(ord(char))
 
             return char
