@@ -10,7 +10,7 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class Bound:
-    '''An integer but sometimes also possibly infinite (None)'''
+    """An integer but sometimes also possibly infinite (None)"""
 
     v: int | None
 
@@ -44,7 +44,7 @@ class Bound:
         return not self < other
 
     def __mul__(self, other):
-        '''Multiply this bound by another'''
+        """Multiply this bound by another"""
         if self == Bound(0) or other == Bound(0):
             return Bound(0)
         if self == INF or other == INF:
@@ -52,16 +52,16 @@ class Bound:
         return Bound(self.v * other.v)
 
     def __add__(self, other):
-        '''Add this bound to another'''
+        """Add this bound to another"""
         if self == INF or other == INF:
             return INF
         return Bound(self.v + other.v)
 
     def __sub__(self, other):
-        '''
+        """
         Subtract another bound from this one.
         Caution: this operation is not meaningful for all bounds.
-        '''
+        """
         if other == INF:
             if self != INF:
                 raise Exception(

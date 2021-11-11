@@ -12,10 +12,10 @@ from .rxelems import Conc, Mult, Pattern
 
 
 class NoMatch(Exception):
-    '''
+    """
     Thrown when parsing fails.
     Almost always caught and almost never fatal
-    '''
+    """
 
     pass
 
@@ -47,7 +47,7 @@ def select_static(string, i, *statics):
 
 
 def unescape_hex(string, i):
-    '''Turn e.g. "\\x40" into "@". Exactly two hex digits'''
+    """Turn e.g. "\\x40" into "@". Exactly two hex digits"""
     hex_digits = "0123456789AaBbCcDdEeFf"
 
     j = static(string, i, "\\x")
@@ -344,10 +344,10 @@ def match_pattern(string: str, i):
 
 
 def parse(string: str):
-    '''
+    """
     Parse a full string and return a `Pattern` object. Fail if
     the whole string wasn't parsed
-    '''
+    """
     obj, i = match_pattern(string, 0)
     if i != len(string):
         raise Exception(

@@ -21,14 +21,14 @@ from .fsm import ANYTHING_ELSE, Fsm
 
 @dataclass(frozen=True)
 class Charclass:
-    '''
+    """
     A `Charclass` is basically a `frozenset` of symbols.
     A `Charclass` with the `negated` flag set is assumed
     to contain every symbol that is in the alphabet of all symbols but not
     explicitly listed inside the frozenset. e.g. [^a]. This is very handy
     if the full alphabet is extremely large, but also requires dedicated
     combination functions.
-    '''
+    """
 
     chars: frozenset[str] | str
     negated: bool = False
@@ -219,10 +219,10 @@ class Charclass:
 
     # set operations
     def negate(self):
-        '''
+        """
         Negate the current `Charclass`. e.g. [ab] becomes [^ab]. Call
         using "charclass2 = ~charclass1"
-        '''
+        """
         return Charclass(self.chars, negated=not self.negated)
 
     def __invert__(self):

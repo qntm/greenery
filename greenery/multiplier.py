@@ -17,7 +17,7 @@ from .bound import INF, Bound
 
 @dataclass(frozen=True)
 class Multiplier:
-    '''
+    """
     A min and a max. The vast majority of characters in regular expressions
     occur without a specific multiplier, which is implicitly equivalent to
     a min of 1 and a max of 1, but many more have explicit multipliers like
@@ -27,7 +27,7 @@ class Multiplier:
     also permit a max of 0 (iff min is 0 too). This allows the multiplier
     `ZERO` to exist, which actually are quite useful in their own special
     way.
-    '''
+    """
 
     min: Bound
     max: Bound
@@ -71,7 +71,7 @@ class Multiplier:
         return "{" + str(self.min) + "," + str(self.max) + "}"
 
     def canmultiplyby(self, other):
-        '''
+        """
         Multiplication is not well-defined for all pairs of multipliers
         because the resulting possibilities do not necessarily form a
         continuous range.
@@ -85,12 +85,12 @@ class Multiplier:
         is equal to {pr, (p+q)(r+s)} only if s=0 or qr+1 >= p. If not, then
         at least one gap appears in the range. The first inaccessible
         number is (p+q)r+1. And no, multiplication is not commutative
-        '''
+        """
         return other.optional == Bound(0) \
             or self.optional * other.mandatory + Bound(1) >= self.mandatory
 
     def __mul__(self, other):
-        '''Multiply this multiplier by another'''
+        """Multiply this multiplier by another"""
         if not self.canmultiplyby(other):
             raise Exception(
                 f"Can't multiply {repr(self)} by {repr(other)}"
@@ -98,35 +98,35 @@ class Multiplier:
         return Multiplier(self.min * other.min, self.max * other.max)
 
     def __add__(self, other):
-        '''Add two multipliers together'''
+        """Add two multipliers together"""
         return Multiplier(self.min + other.min, self.max + other.max)
 
     def __sub__(self, other):
-        '''
+        """
         Subtract another multiplier from this one.
         Caution: multipliers are not totally ordered.
         This operation is not meaningful for all pairs of multipliers.
-        '''
+        """
         mandatory = self.mandatory - other.mandatory
         optional = self.optional - other.optional
         return Multiplier(mandatory, mandatory + optional)
 
     def canintersect(self, other):
-        '''
+        """
         Intersection is not well-defined for all pairs of multipliers.
         For example:
             {2,3} & {3,4} = {3}
             {2,} & {1,7} = {2,7}
             {2} & {5} = ERROR
-        '''
+        """
         return not (self.max < other.min or other.max < self.min)
 
     def __and__(self, other):
-        '''
+        """
         Find the intersection of two multipliers: that is, a third
         multiplier expressing the range covered by both of the originals.
         This is not defined for all multipliers since they may not overlap.
-        '''
+        """
         if not self.canintersect(other):
             raise Exception(
                 f"Can't compute intersection of {repr(self)} and {repr(other)}"
@@ -136,21 +136,21 @@ class Multiplier:
         return Multiplier(a, b)
 
     def canunion(self, other):
-        '''
+        """
         Union is not defined for all pairs of multipliers.
         E.g. {0,1} | {3,4} -> nope
-        '''
+        """
         return not (
             self.max + Bound(1) < other.min
             or other.max + Bound(1) < self.min
         )
 
     def __or__(self, other):
-        '''
+        """
         Find the union of two multipliers: that is, a third multiplier
         expressing the range covered by either of the originals. This is
         not defined for all multipliers since they may not intersect.
-        '''
+        """
         if not self.canunion(other):
             raise Exception(
                 f"Can't compute the union of {repr(self)} and {repr(other)}"
@@ -160,11 +160,11 @@ class Multiplier:
         return Multiplier(a, b)
 
     def common(self, other):
-        '''
+        """
         Find the shared part of two multipliers. This is the largest
         multiplier which can be safely subtracted from both the originals.
         This may return the `ZERO` multiplier.
-        '''
+        """
         mandatory = min(self.mandatory, other.mandatory)
         optional = min(self.optional, other.optional)
         return Multiplier(mandatory, mandatory + optional)
