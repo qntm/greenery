@@ -362,9 +362,11 @@ class Fsm:
 
                 # If one of our substates is final, then we can also consider
                 # transitions from the initial state of the original FSM.
-                if substate in self.finals \
-                   and self.initial in self.map \
-                   and symbol in self.map[self.initial]:
+                if (
+                    substate in self.finals
+                    and self.initial in self.map
+                    and symbol in self.map[self.initial]
+                ):
                     next.add(self.map[self.initial][symbol])
 
             if len(next) == 0:
@@ -395,10 +397,9 @@ class Fsm:
             that
             """
             for substate, iteration in state:
-                if substate == self.initial \
-                   and (
-                       self.initial in self.finals or iteration == multiplier
-                   ):
+                if substate == self.initial and (
+                    self.initial in self.finals or iteration == multiplier
+                ):
                     return True
             return False
 
@@ -408,9 +409,11 @@ class Fsm:
         ) -> Collection[tuple[state_type, int]]:
             next = []
             for substate, iteration in current:
-                if iteration < multiplier \
-                   and substate in self.map \
-                   and symbol in self.map[substate]:
+                if (
+                    iteration < multiplier
+                    and substate in self.map
+                    and symbol in self.map[substate]
+                ):
                     next.append((self.map[substate][symbol], iteration))
                     # final of self? merge with initial on next iteration
                     if self.map[substate][symbol] in self.finals:
@@ -495,9 +498,11 @@ class Fsm:
             symbol: alpha_type,
         ) -> Mapping[int, state_type]:
             next = {}
-            if 0 in current \
-               and current[0] in self.map \
-               and symbol in self.map[current[0]]:
+            if (
+                0 in current
+                and current[0] in self.map
+                and symbol in self.map[current[0]]
+            ):
                 next[0] = self.map[current[0]][symbol]
             return next
 
@@ -880,14 +885,18 @@ def parallel(
         next = {}
         for i in range(len(fsms)):
             actual_symbol: alpha_type
-            if symbol not in fsms[i].alphabet \
-               and ANYTHING_ELSE in fsms[i].alphabet:
+            if (
+                symbol not in fsms[i].alphabet
+                and ANYTHING_ELSE in fsms[i].alphabet
+            ):
                 actual_symbol = ANYTHING_ELSE
             else:
                 actual_symbol = symbol
-            if i in current \
-               and current[i] in fsms[i].map \
-               and actual_symbol in fsms[i].map[current[i]]:
+            if (
+                i in current
+                and current[i] in fsms[i].map
+                and actual_symbol in fsms[i].map[current[i]]
+            ):
                 next[i] = fsms[i].map[current[i]][actual_symbol]
         if len(next.keys()) == 0:
             raise OblivionError

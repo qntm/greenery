@@ -47,9 +47,11 @@ class Charclass:
         object.__setattr__(self, "negated", negated)
 
     def __eq__(self, other: object, /) -> bool:
-        return isinstance(other, Charclass) \
-            and self.chars == other.chars \
+        return (
+            isinstance(other, Charclass)
+            and self.chars == other.chars
             and self.negated == other.negated
+        )
 
     def __hash__(self, /) -> int:
         return hash((self.chars, self.negated))

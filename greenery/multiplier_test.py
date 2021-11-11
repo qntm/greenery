@@ -48,30 +48,40 @@ def test_multiplier_common():
 
 def test_multiplier_subtraction():
     # a{3,4}, a{2,5} -> a{2,3} (with a{1,1}, a{0,2} left over)
-    assert Multiplier(Bound(3), Bound(4)) \
-        .common(Multiplier(Bound(2), Bound(5))) \
-        == Multiplier(Bound(2), Bound(3))
-    assert Multiplier(Bound(3), Bound(4)) - Multiplier(Bound(2), Bound(3)) \
+    assert Multiplier(Bound(3), Bound(4)).common(
+        Multiplier(Bound(2), Bound(5))
+    ) == Multiplier(Bound(2), Bound(3))
+    assert (
+        Multiplier(Bound(3), Bound(4)) - Multiplier(Bound(2), Bound(3))
         == ONE
-    assert Multiplier(Bound(2), Bound(5)) - Multiplier(Bound(2), Bound(3)) \
-        == Multiplier(Bound(0), Bound(2))
+    )
+    assert Multiplier(Bound(2), Bound(5)) - Multiplier(
+        Bound(2), Bound(3)
+    ) == Multiplier(Bound(0), Bound(2))
 
     # a{2,}, a{1,5} -> a{1,5} (with a{1,}, a{0,0} left over)
-    assert Multiplier(Bound(2), INF).common(Multiplier(Bound(1), Bound(5))) \
-        == Multiplier(Bound(1), Bound(5))
+    assert Multiplier(Bound(2), INF).common(
+        Multiplier(Bound(1), Bound(5))
+    ) == Multiplier(Bound(1), Bound(5))
     assert Multiplier(Bound(2), INF) - Multiplier(Bound(1), Bound(5)) == PLUS
-    assert Multiplier(Bound(1), Bound(5)) - Multiplier(Bound(1), Bound(5)) \
+    assert (
+        Multiplier(Bound(1), Bound(5)) - Multiplier(Bound(1), Bound(5))
         == ZERO
+    )
 
     # a{3,}, a{2,} -> a{2,} (with a, epsilon left over)
-    assert Multiplier(Bound(3), INF).common(Multiplier(Bound(2), INF)) \
+    assert (
+        Multiplier(Bound(3), INF).common(Multiplier(Bound(2), INF))
         == Multiplier(Bound(2), INF)
+    )
     assert Multiplier(Bound(3), INF) - Multiplier(Bound(2), INF) == ONE
     assert Multiplier(Bound(2), INF) - Multiplier(Bound(2), INF) == ZERO
 
     # a{3,}, a{3,} -> a{3,} (with ZERO, ZERO left over)
-    assert Multiplier(Bound(3), INF).common(Multiplier(Bound(3), INF)) \
+    assert (
+        Multiplier(Bound(3), INF).common(Multiplier(Bound(3), INF))
         == Multiplier(Bound(3), INF)
+    )
     assert Multiplier(Bound(3), INF) - Multiplier(Bound(3), INF) == ZERO
 
 

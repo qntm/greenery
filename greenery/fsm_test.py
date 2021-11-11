@@ -590,15 +590,17 @@ def test_dead_default() -> None:
     )
     assert blockquote.accepts(["/", "*", "whatever", "*", "/"])
     assert not blockquote.accepts(["*", "*", "whatever", "*", "/"])
-    assert str(blockquote) \
-        == "  name final? * / ANYTHING_ELSE \n" \
-        + "--------------------------------\n" \
-        + "* 0    False    1               \n" \
-        + "  1    False  2                 \n" \
-        + "  2    False  3 2 2             \n" \
-        + "  3    False  3 4 2             \n" \
-        + "  4    True                     \n" \
+    assert (
+        str(blockquote)
+        == "  name final? * / ANYTHING_ELSE \n"
+        + "--------------------------------\n"
+        + "* 0    False    1               \n"
+        + "  1    False  2                 \n"
+        + "  2    False  3 2 2             \n"
+        + "  3    False  3 4 2             \n"
+        + "  4    True                     \n"
         + "  5    False                    \n"
+    )
     blockquote | blockquote
     blockquote & blockquote
     blockquote ^ blockquote
@@ -609,8 +611,9 @@ def test_dead_default() -> None:
     # strings.
     # reversed(blockquote)
     blockquote.reversed()
-    assert not blockquote.everythingbut() \
-        .accepts(["/", "*", "whatever", "*", "/"])
+    assert not (
+        blockquote.everythingbut().accepts(["/", "*", "whatever", "*", "/"])
+    )
 
     # deliberately seek oblivion
     assert blockquote.everythingbut().accepts(["*"])
@@ -691,12 +694,18 @@ def test_new_set_methods(a: FixtureA, b: FixtureB) -> None:
     assert len(int_none) == 1
     assert [] in int_none
 
-    assert (a | b).difference(a) \
-        == Fsm.difference((a | b), a) \
-        == (a | b) - a == b
-    assert (a | b).difference(a, b) \
-        == Fsm.difference((a | b), a, b) \
-        == (a | b) - a - b == null("ab")
+    assert (
+        (a | b).difference(a)
+        == Fsm.difference((a | b), a)
+        == (a | b) - a
+        == b
+    )
+    assert (
+        (a | b).difference(a, b)
+        == Fsm.difference((a | b), a, b)
+        == (a | b) - a - b
+        == null("ab")
+    )
     assert a.symmetric_difference(b) == Fsm.symmetric_difference(a, b) == a ^ b
     assert a.isdisjoint(b)
     assert a <= (a | b)

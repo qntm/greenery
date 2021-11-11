@@ -87,8 +87,10 @@ class Multiplier:
         at least one gap appears in the range. The first inaccessible
         number is (p+q)r+1. And no, multiplication is not commutative
         """
-        return other.optional == Bound(0) \
+        return (
+            other.optional == Bound(0)
             or self.optional * other.mandatory + Bound(1) >= self.mandatory
+        )
 
     def __mul__(self, other):
         """Multiply this multiplier by another"""

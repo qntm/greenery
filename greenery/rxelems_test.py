@@ -704,16 +704,26 @@ def test_parse_regex_intersection():
     assert str(parse("[ab]{0,2}") & parse("[^a]{0,2}")) == "b{0,2}"
     assert str(parse("[ab]{0,4}") & parse("[^a]{0,4}")) == "b{0,4}"
     assert str(parse("[abc]{0,8}") & parse("[^a]{0,8}")) == "[bc]{0,8}"
-    assert str(parse("[a-g0-8$%\\^]{0,8}") & parse("[^d]{0,8}")) \
+    assert (
+        str(parse("[a-g0-8$%\\^]{0,8}") & parse("[^d]{0,8}"))
         == "[$%0-8\\^abcefg]{0,8}"
-    assert str(parse("[a-g0-8$%\\^]+") & parse("[^d]{0,8}")) \
+    )
+    assert (
+        str(parse("[a-g0-8$%\\^]+") & parse("[^d]{0,8}"))
         == "[$%0-8\\^abcefg]{1,8}"
-    assert str(parse("[a-g0-8$%\\^]+") & parse("[^d]{2,8}")) \
+    )
+    assert (
+        str(parse("[a-g0-8$%\\^]+") & parse("[^d]{2,8}"))
         == "[$%0-8\\^abcefg]{2,8}"
-    assert str(parse("\\W*") & parse("[a-g0-8$%\\^]+") & parse("[^d]{2,8}")) \
+    )
+    assert (
+        str(parse("\\W*") & parse("[a-g0-8$%\\^]+") & parse("[^d]{2,8}"))
         == "[$%\\^]{2,8}"
-    assert str(parse("\\d{4}-\\d{2}-\\d{2}") & parse("19.*")) \
+    )
+    assert (
+        str(parse("\\d{4}-\\d{2}-\\d{2}") & parse("19.*"))
         == "19\\d{2}-\\d{2}-\\d{2}"
+    )
 
 
 def test_complexify():
@@ -738,11 +748,12 @@ def test_complexify():
 def test_silly_reduction():
     # This one is horrendous and we have to jump through some hoops to get to
     # a sensible result. Probably not a good unit test actually.
-    long = \
-        "(aa|bb*aa)a*|((ab|bb*ab)|(aa|bb*aa)a*b)" \
-        + "((ab|bb*ab)|(aa|bb*aa)a*b)*" \
-        + "(aa|bb*aa)a*|((ab|bb*ab)|(aa|bb*aa)a*b)" \
+    long = (
+        "(aa|bb*aa)a*|((ab|bb*ab)|(aa|bb*aa)a*b)"
         + "((ab|bb*ab)|(aa|bb*aa)a*b)*"
+        + "(aa|bb*aa)a*|((ab|bb*ab)|(aa|bb*aa)a*b)"
+        + "((ab|bb*ab)|(aa|bb*aa)a*b)*"
+    )
     long = parse(long)
     long = long.to_fsm().reversed()
     long = from_fsm(long).reversed()
@@ -817,13 +828,16 @@ def test_obvious_reduction():
 
 def test_mult_squoosh():
     # sequence squooshing of mults within a `Conc`
-    assert str(parse("[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]").reduce()) \
+    assert (
+        str(parse("[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]").reduce())
         == "[0-9A-Fa-f]{3}"
+    )
     assert str(parse("[$%\\^]?[$%\\^]").reduce()) == "[$%\\^]{1,2}"
-    assert str(parse(
-        "(|(|(|(|(|[$%\\^])[$%\\^])[$%\\^])[$%\\^])[$%\\^])[$%\\^][$%\\^]"
-    ).reduce()) \
-        == "[$%\\^]{2,7}"
+    assert (
+        str(parse(
+            "(|(|(|(|(|[$%\\^])[$%\\^])[$%\\^])[$%\\^])[$%\\^])[$%\\^][$%\\^]"
+        ).reduce()) == "[$%\\^]{2,7}"
+    )
 
 
 def test_bad_reduction_bug():
@@ -847,8 +861,10 @@ def test_epsilon_reduction():
 
 
 def test_charclass_intersection_2():
-    assert (parse("[A-z]") & parse("[^g]")).reduce() \
+    assert (
+        (parse("[A-z]") & parse("[^g]")).reduce()
         == parse("[A-fh-z]").reduce()
+    )
 
 
 def test_reduce_boom():
@@ -970,10 +986,20 @@ def test_bug_48_simpler():
 
 
 def test_bug_48():
-    S5, S26, S45, S63, S80, S97, S113, S127, S140, S152, S163, S175, S182 = \
-        range(13)
-    char0, char1, char2, char3, char4, char5, char6, char7, char8 = \
-        "_", "a", "d", "e", "g", "m", "n", "o", "p"
+    (
+        S5, S26, S45, S63, S80, S97, S113, S127, S140, S152, S163, S175, S182
+    ) = range(13)
+    char0, char1, char2, char3, char4, char5, char6, char7, char8 = (
+        "_",
+        "a",
+        "d",
+        "e",
+        "g",
+        "m",
+        "n",
+        "o",
+        "p",
+    )
 
     machine = Fsm(
         alphabet={
