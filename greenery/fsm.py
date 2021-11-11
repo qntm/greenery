@@ -121,7 +121,7 @@ class Fsm:
             machine equivalent to the original can be obtained by reversing the
             original twice.
         '''
-        return reversed(reversed(self))
+        return self.reversed().reversed()
 
     def __repr__(self):
         args = ", ".join([

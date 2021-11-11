@@ -573,12 +573,12 @@ def test_equivalence():
 # Test reversed()
 
 def test_regex_reversal():
-    assert reversed(parse("b")) == parse("b")
-    assert reversed(parse("e*")) == parse("e*")
-    assert reversed(parse("bear")) == parse("raeb")
-    assert reversed(parse("beer")) == parse("reeb")
-    assert reversed(parse("abc|def|ghi")) == parse("cba|fed|ihg")
-    assert reversed(parse("(abc)*d")) == parse("d(cba)*")
+    assert parse("b").reversed() == parse("b")
+    assert parse("e*").reversed() == parse("e*")
+    assert parse("bear").reversed() == parse("raeb")
+    assert parse("beer").reversed() == parse("reeb")
+    assert parse("abc|def|ghi").reversed() == parse("cba|fed|ihg")
+    assert parse("(abc)*d").reversed() == parse("d(cba)*")
 
 
 ###############################################################################
@@ -755,8 +755,8 @@ def test_silly_reduction():
         "(aa|bb*aa)a*|((ab|bb*ab)|(aa|bb*aa)a*b)" + \
         "((ab|bb*ab)|(aa|bb*aa)a*b)*"
     long = parse(long)
-    long = reversed(long.to_fsm())
-    long = reversed(from_fsm(long))
+    long = long.to_fsm().reversed()
+    long = from_fsm(long).reversed()
     assert str(long) == "[ab]*a[ab]"
     short = "[ab]*a?b*|[ab]*b?a*"
     assert str(parse(".*") & parse(short)) == "[ab]*"
