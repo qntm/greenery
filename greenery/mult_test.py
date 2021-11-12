@@ -9,6 +9,7 @@ from .rxelems import Mult
 
 def test_mult_equality() -> None:
     a = Mult(Charclass("a"), ONE)
+    # pylint: disable=comparison-with-itself
     assert a == a
     assert a != Mult(Charclass("b"), ONE)
     assert a != Mult(Charclass("a"), QM)
