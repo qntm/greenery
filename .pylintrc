@@ -159,7 +159,6 @@ disable=
         unnecessary-dict-index-lookup,
         unnecessary-lambda,
         unused-argument,
-        unused-variable,
         use-implicit-booleaness-not-comparison,
         use-list-literal,
         useless-suppression,

@@ -222,7 +222,7 @@ def match_multiplicand(string: str, i: int) -> MatchResult[Pattern | Charclass]:
         j = static(string, i, "(?")
         st, j = select_static(string, j, ":", "P<")
         if st == "P<":
-            group_name, j = read_until(string, j, ">")
+            _group_name, j = read_until(string, j, ">")
         pattern, j = match_pattern(string, j)
         j = static(string, j, ")")
         return pattern, j
