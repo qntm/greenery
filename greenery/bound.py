@@ -47,7 +47,7 @@ class Bound:
 
     def __mul__(self, other: Bound, /) -> Bound:
         """Multiply this bound by another"""
-        if self == Bound(0) or other == Bound(0):
+        if Bound(0) in (self, other):
             return Bound(0)
         if self.v is None or other.v is None:
             return INF

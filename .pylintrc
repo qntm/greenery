@@ -130,7 +130,6 @@ disable=
         consider-using-dict-items,
         consider-using-enumerate,
         consider-using-f-string,
-        consider-using-in,
         docstring-first-line-empty,
         duplicate-code,
         else-if-used,
