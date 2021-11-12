@@ -304,20 +304,22 @@ class Fsm:
             TODO: improve all follow() implementations to allow for dead
             metastates?
             """
-            next: set[tuple[int, state_type]] = set()
+            next_metastate: set[tuple[int, state_type]] = set()
             for i, substate in current:
                 fsm = fsms[i]
                 if substate in fsm.map:
                     if symbol in fsm.map[substate]:
-                        next.update(connect_all(i, fsm.map[substate][symbol]))
+                        next_metastate.update(connect_all(i, fsm.map[substate][symbol]))
                     elif (
                         ANYTHING_ELSE in fsm.map[substate]
                         and symbol not in fsm.alphabet
                     ):
-                        next.update(connect_all(i, fsm.map[substate][ANYTHING_ELSE]))
-            if not next:
+                        next_metastate.update(
+                            connect_all(i, fsm.map[substate][ANYTHING_ELSE])
+                        )
+            if not next_metastate:
                 raise OblivionError
-            return frozenset(next)
+            return frozenset(next_metastate)
 
         return crawl(alphabet, initial, final, follow).reduce()
 
@@ -345,11 +347,11 @@ class Fsm:
             state: Collection[state_type],
             symbol: alpha_type,
         ) -> Collection[state_type]:
-            next = set()
+            next_states = set()
 
             for substate in state:
                 if substate in self.map and symbol in self.map[substate]:
-                    next.add(self.map[substate][symbol])
+                    next_states.add(self.map[substate][symbol])
 
                 # If one of our substates is final, then we can also consider
                 # transitions from the initial state of the original FSM.
@@ -358,12 +360,12 @@ class Fsm:
                     and self.initial in self.map
                     and symbol in self.map[self.initial]
                 ):
-                    next.add(self.map[self.initial][symbol])
+                    next_states.add(self.map[self.initial][symbol])
 
-            if not next:
+            if not next_states:
                 raise OblivionError
 
-            return frozenset(next)
+            return frozenset(next_states)
 
         def final(state: Collection[state_type]) -> bool:
             return any(substate in self.finals for substate in state)
@@ -398,20 +400,20 @@ class Fsm:
             current: Collection[tuple[state_type, int]],
             symbol: alpha_type,
         ) -> Collection[tuple[state_type, int]]:
-            next = []
+            next_metastate = []
             for substate, iteration in current:
                 if (
                     iteration < multiplier
                     and substate in self.map
                     and symbol in self.map[substate]
                 ):
-                    next.append((self.map[substate][symbol], iteration))
+                    next_metastate.append((self.map[substate][symbol], iteration))
                     # final of self? merge with initial on next iteration
                     if self.map[substate][symbol] in self.finals:
-                        next.append((self.initial, iteration + 1))
-            if not next:
+                        next_metastate.append((self.initial, iteration + 1))
+            if not next_metastate:
                 raise OblivionError
-            return frozenset(next)
+            return frozenset(next_metastate)
 
         return crawl(alphabet, initial, final, follow).reduce()
 
@@ -488,14 +490,14 @@ class Fsm:
             current: Mapping[int, state_type],
             symbol: alpha_type,
         ) -> Mapping[int, state_type]:
-            next = {}
+            next_fsm = {}
             if (
                 0 in current
                 and current[0] in self.map
                 and symbol in self.map[current[0]]
             ):
-                next[0] = self.map[current[0]][symbol]
-            return next
+                next_fsm[0] = self.map[current[0]][symbol]
+            return next_fsm
 
         # state is final unless the original was
         def final(state: Mapping[int, state_type]) -> bool:
@@ -521,7 +523,7 @@ class Fsm:
             current: frozenset[state_type],
             symbol: alpha_type,
         ) -> frozenset[state_type]:
-            next = frozenset(
+            next_states = frozenset(
                 [
                     prev
                     for prev in self.map
@@ -529,9 +531,9 @@ class Fsm:
                     if symbol in self.map[prev] and self.map[prev][symbol] == state
                 ]
             )
-            if not next:
+            if not next_states:
                 raise OblivionError
-            return next
+            return next_states
 
         # A state-set is final if the initial state is in it.
         def final(state: frozenset[state_type]) -> bool:
@@ -558,9 +560,9 @@ class Fsm:
                 return True
             if current in self.map:
                 for symbol in self.map[current]:
-                    next = self.map[current][symbol]
-                    if next not in reachable:
-                        reachable.append(next)
+                    next_state = self.map[current][symbol]
+                    if next_state not in reachable:
+                        reachable.append(next_state)
             i += 1
         return False
 
@@ -873,7 +875,7 @@ def parallel(
         current: Mapping[int, state_type],
         symbol: alpha_type,
     ) -> Mapping[int, state_type]:
-        next = {}
+        next_states = {}
         for i in range(len(fsms)):
             actual_symbol: alpha_type
             if symbol not in fsms[i].alphabet and ANYTHING_ELSE in fsms[i].alphabet:
@@ -885,10 +887,10 @@ def parallel(
                 and current[i] in fsms[i].map
                 and actual_symbol in fsms[i].map[current[i]]
             ):
-                next[i] = fsms[i].map[current[i]][actual_symbol]
-        if not next:
+                next_states[i] = fsms[i].map[current[i]][actual_symbol]
+        if not next_states:
             raise OblivionError
-        return next
+        return next_states
 
     # Determine the "is final?" condition of each substate, then pass it to the
     # test to determine finality of the overall FSM.
@@ -929,13 +931,13 @@ def crawl(
         transitions[i] = {}
         for symbol in sorted(alphabet):
             try:
-                next = follow(state, symbol)
+                next_state = follow(state, symbol)
 
                 try:
-                    j = states.index(next)
+                    j = states.index(next_state)
                 except ValueError:
                     j = len(states)
-                    states.append(next)
+                    states.append(next_state)
 
             except OblivionError:
                 # Reached an oblivion state. Don't list it.

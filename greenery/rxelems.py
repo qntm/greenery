@@ -307,9 +307,9 @@ def from_fsm(f: Fsm) -> Pattern:
         current = states[i]
         if current in f.map:
             for symbol in sorted(f.map[current]):
-                next = f.map[current][symbol]
-                if next not in states:
-                    states.append(next)
+                next_state = f.map[current][symbol]
+                if next_state not in states:
+                    states.append(next_state)
         i += 1
 
     # Our system of equations is represented like so:
