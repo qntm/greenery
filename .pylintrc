@@ -58,6 +58,29 @@ limit-inference-results=100
 # List of plugins (as comma separated values of python module names) to load,
 # usually to register additional checkers.
 load-plugins=
+        pylint.extensions.bad_builtin,
+        pylint.extensions.broad_try_clause,
+        pylint.extensions.check_elif,
+        pylint.extensions.code_style,
+        pylint.extensions.comparetozero,
+        pylint.extensions.comparison_placement,
+        pylint.extensions.confusing_elif,
+        pylint.extensions.consider_ternary_expression,
+        pylint.extensions.docparams,
+        pylint.extensions.docstyle,
+        pylint.extensions.empty_comment,
+        pylint.extensions.emptystring,
+        pylint.extensions.eq_without_hash,
+        pylint.extensions.for_any_all,
+        pylint.extensions.mccabe,
+        pylint.extensions.no_self_use,
+        pylint.extensions.overlapping_exceptions,
+        pylint.extensions.private_import,
+        pylint.extensions.redefined_loop_name,
+        pylint.extensions.redefined_variable_type,
+        pylint.extensions.set_membership,
+        pylint.extensions.typing,
+        pylint.extensions.while_used,
 
 # Pickle collected data for later comparisons.
 persistent=yes
@@ -91,14 +114,25 @@ confidence=
 # no Warning level messages displayed, use "--disable=all --enable=classes
 # --disable=W".
 disable=
+        bad-builtin,
         broad-exception-raised,
+        compare-to-empty-string,
+        compare-to-zero,
         comparison-with-itself,
         consider-iterating-dictionary,
+        consider-ternary-expression,
+        consider-using-any-or-all,
+        consider-using-assignment-expr,
+        consider-using-augmented-assign,
         consider-using-dict-comprehension,
         consider-using-dict-items,
         consider-using-enumerate,
         consider-using-f-string,
         consider-using-in,
+        docstring-first-line-empty,
+        duplicate-code,
+        else-if-used,
+        eq-without-hash,
         expression-not-assigned,
         file-ignored,
         fixme,
@@ -111,9 +145,12 @@ disable=
         pointless-statement,
         protected-access,
         redefined-builtin,
+        redefined-loop-name,
         redefined-outer-name,
+        redefined-variable-type,
         similarities,
         suppressed-message,
+        too-complex,
         too-few-public-methods,
         too-many-branches,
         too-many-lines,
@@ -121,6 +158,7 @@ disable=
         too-many-public-methods,
         too-many-return-statements,
         too-many-statements,
+        too-many-try-statements,
         unnecessary-comprehension,
         unnecessary-dict-index-lookup,
         unnecessary-lambda,
@@ -130,6 +168,7 @@ disable=
         use-implicit-booleaness-not-comparison,
         use-list-literal,
         useless-suppression,
+        while-used,
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option
@@ -490,11 +529,11 @@ variable-naming-style=snake_case
 
 # This flag controls whether inconsistent-quotes generates a warning when the
 # character used as a quote delimiter is used inconsistently within a module.
-check-quote-consistency=no
+check-quote-consistency=yes
 
 # This flag controls whether the implicit-str-concat should generate a warning
 # on implicit string concatenation in sequences defined over several lines.
-check-str-concat-over-line-jumps=no
+check-str-concat-over-line-jumps=yes
 
 
 [IMPORTS]
