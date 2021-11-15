@@ -443,16 +443,26 @@ function-naming-style=snake_case
 #function-rgx=
 
 # Good variable names which should always be accepted, separated by a comma.
-good-names=i,
-           j,
-           k,
+good-names=
+           # Exception
            ex,
+           # "Element"
+           el,
+           # "Function"
+           fn,
+           # "it" as a trivial lambda argument; or an iterator.
+           it,
+           # "Operation"
+           op,
            Run,
-           _
+           _,
 
 # Good variable names regexes, separated by a comma. If names match any regex,
 # they will always be accepted
 good-names-rgxs=
+        # Any lowercase single letter except "l" and "o".
+        # May be pluralized.
+        ^[abcdefghijkmnpqrstuvwxyz]s?$,
 
 # Include a hint for the correct naming format with invalid-name.
 include-naming-hint=no
