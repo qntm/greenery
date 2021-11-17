@@ -262,16 +262,7 @@ class Charclass:
         # ¬A AND B = B - A
         # A AND ¬B = A - B
         # A AND B
-        if self.negated:
-            if other.negated:
-                return ~Charclass(self.chars | other.chars)
-            else:
-                return Charclass(other.chars - self.chars)
-        else:
-            if other.negated:
-                return Charclass(self.chars - other.chars)
-            else:
-                return Charclass(self.chars & other.chars)
+        return ~((~self) | (~other))
 
 
 # Standard character classes
