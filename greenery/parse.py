@@ -281,20 +281,20 @@ def match_multiplier(string: str, i: int) -> MatchResult[Multiplier]:
     # {2,3} or {2,}
     try:
         j = static(string, i, "{")
-        min, j = match_bound(string, j)
+        min_, j = match_bound(string, j)
         j = static(string, j, ",")
-        max, j = match_bound(string, j)
+        max_, j = match_bound(string, j)
         j = static(string, j, "}")
-        return Multiplier(min, max), j
+        return Multiplier(min_, max_), j
     except NoMatch:
         pass
 
     # {2}
     try:
         j = static(string, i, "{")
-        min, j = match_bound(string, j)
+        min_, j = match_bound(string, j)
         j = static(string, j, "}")
-        return Multiplier(min, min), j
+        return Multiplier(min_, min_), j
     except NoMatch:
         pass
 
