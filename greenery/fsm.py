@@ -914,7 +914,7 @@ def crawl(
 
     states: list[M] = [initial]
     finals: set[state_type] = set()
-    map: dict[state_type, dict[alpha_type, state_type]] = {}
+    transitions: dict[state_type, dict[alpha_type, state_type]] = {}
 
     # iterate over a growing list
     i = 0
@@ -926,7 +926,7 @@ def crawl(
             finals.add(i)
 
         # compute map for this state
-        map[i] = {}
+        transitions[i] = {}
         for symbol in sorted(alphabet):
             try:
                 next = follow(state, symbol)
@@ -941,7 +941,7 @@ def crawl(
                 # Reached an oblivion state. Don't list it.
                 continue
 
-            map[i][symbol] = j
+            transitions[i][symbol] = j
 
         i += 1
 
@@ -950,5 +950,5 @@ def crawl(
         states=set(range(len(states))),
         initial=0,
         finals=finals,
-        map=map,
+        map=transitions,
     )

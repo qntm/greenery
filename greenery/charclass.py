@@ -180,19 +180,19 @@ class Charclass:
     ) -> Fsm:
         alphabet = self.alphabet() if alphabet is None else frozenset(alphabet)
 
-        map: dict[int | str | None, dict[str | AnythingElse, int | str | None]]
+        transitions: dict[int | str | None, dict[str | AnythingElse, int | str | None]]
 
         # 0 is initial, 1 is final
 
         # If negated, make a singular FSM accepting any other characters
         if self.negated:
-            map = {
+            transitions = {
                 0: dict([(symbol, 1) for symbol in alphabet - self.chars]),
             }
 
         # If normal, make a singular FSM accepting only these characters
         else:
-            map = {
+            transitions = {
                 0: dict([(symbol, 1) for symbol in self.chars]),
             }
 
@@ -201,7 +201,7 @@ class Charclass:
             states={0, 1},
             initial=0,
             finals={1},
-            map=map,
+            map=transitions,
         )
 
     def __repr__(self, /) -> str:
