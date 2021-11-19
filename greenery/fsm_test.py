@@ -7,6 +7,8 @@ import pytest
 
 from .fsm import ANYTHING_ELSE, AnythingElse, Fsm, epsilon, null
 
+# pylint: disable=invalid-name
+
 FixtureA = Fsm
 
 FixtureB = Fsm

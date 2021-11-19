@@ -35,6 +35,8 @@ def test_mult_str() -> None:
 
 
 def test_odd_bug() -> None:
+    # pylint: disable=invalid-name
+
     # Odd bug with ([bc]*c)?[ab]*
     int5A = Mult(
         Charclass("bc"),

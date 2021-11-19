@@ -122,7 +122,7 @@ class Charclass:
         return "[" + self.escape() + "]"
 
     def escape(self, /) -> str:
-        def escapeChar(char: str, /) -> str:
+        def escape_char(char: str, /) -> str:
             if char in Charclass.classSpecial:
                 return "\\" + char
             if char in escapes:
@@ -136,14 +136,14 @@ class Charclass:
 
             return char
 
-        def recordRange() -> str:
+        def record_range() -> str:
             # there's no point in putting a range when the whole thing is
             # 3 characters or fewer. "abc" -> "abc" but "abcd" -> "a-d"
             strs = [
                 # "ab" or "abc" or "abcd"
-                "".join(escapeChar(c) for c in currentRange),
+                "".join(escape_char(c) for c in current_range),
                 # "a-b" or "a-c" or "a-d"
-                (escapeChar(currentRange[0]) + "-" + escapeChar(currentRange[-1])),
+                (escape_char(current_range[0]) + "-" + escape_char(current_range[-1])),
             ]
             return sorted(strs, key=len)[0]
 
@@ -155,21 +155,21 @@ class Charclass:
         # a problem will arise because there is no clear ordering to use...
 
         # look for ranges
-        currentRange = ""
+        current_range = ""
         for char in sorted(self.chars, key=ord):
             # range is not empty: new char must fit after previous one
-            if currentRange:
+            if current_range:
                 i = ord(char)
 
                 # char doesn't fit old range: restart
-                if i != ord(currentRange[-1]) + 1:
-                    output += recordRange()
-                    currentRange = ""
+                if i != ord(current_range[-1]) + 1:
+                    output += record_range()
+                    current_range = ""
 
-            currentRange += char
+            current_range += char
 
-        if currentRange:
-            output += recordRange()
+        if current_range:
+            output += record_range()
 
         return output
 

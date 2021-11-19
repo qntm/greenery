@@ -19,7 +19,7 @@ from typing import Iterable, Iterator
 
 from .bound import INF, Bound
 from .charclass import NULLCHARCLASS, Charclass
-from .fsm import ANYTHING_ELSE, AnythingElse, Fsm, epsilon, null, state_type
+from .fsm import ANYTHING_ELSE, AnythingElse, Fsm, StateType, epsilon, null
 from .multiplier import ONE, QM, STAR, ZERO, Multiplier
 
 
@@ -313,7 +313,7 @@ def from_fsm(f: Fsm) -> Pattern:
         i += 1
 
     # Our system of equations is represented like so:
-    brz: dict[state_type, dict[state_type | _Outside, Pattern]] = {}
+    brz: dict[StateType, dict[StateType | _Outside, Pattern]] = {}
 
     for a in f.states:
         brz[a] = {}

@@ -129,7 +129,6 @@ disable=
         duplicate-code,
         eq-without-hash,
         file-ignored,
-        invalid-name,
         locally-disabled,
         missing-function-docstring,
         missing-module-docstring,

@@ -6,11 +6,12 @@ from __future__ import annotations
 
 __all__ = (
     "ANYTHING_ELSE",
+    "AlphaType",
+    "AnythingElse",
     "Fsm",
-    "alpha_type",
+    "StateType",
     "epsilon",
     "null",
-    "state_type",
 )
 
 from dataclasses import dataclass
@@ -75,10 +76,9 @@ class OblivionError(Exception):
     """
 
 
-alpha_type = Union[str, AnythingElse]
+AlphaType = Union[str, AnythingElse]
 
-
-state_type = Union[int, str, None]
+StateType = Union[int, str, None]
 
 M = TypeVar("M")
 """Meta-state type for crawl(). Can be anything."""
@@ -101,11 +101,11 @@ class Fsm:
     The majority of these methods are available using operator overloads.
     """
 
-    alphabet: frozenset[alpha_type]
-    states: frozenset[state_type]
-    initial: state_type
-    finals: frozenset[state_type]
-    map: Mapping[state_type, Mapping[alpha_type, state_type]]
+    alphabet: frozenset[AlphaType]
+    states: frozenset[StateType]
+    initial: StateType
+    finals: frozenset[StateType]
+    map: Mapping[StateType, Mapping[AlphaType, StateType]]
 
     # noinspection PyShadowingBuiltins
     # pylint: disable-next=too-many-arguments
@@ -113,12 +113,12 @@ class Fsm:
         self,
         /,
         *,
-        alphabet: Iterable[alpha_type],
-        states: Iterable[state_type],
-        initial: state_type,
-        finals: Iterable[state_type],
+        alphabet: Iterable[AlphaType],
+        states: Iterable[StateType],
+        initial: StateType,
+        finals: Iterable[StateType],
         # pylint: disable=redefined-builtin
-        map: Mapping[state_type, Mapping[alpha_type, state_type]],
+        map: Mapping[StateType, Mapping[AlphaType, StateType]],
     ) -> None:
         """
         `alphabet` is an iterable of symbols the FSM can be fed.
@@ -163,7 +163,7 @@ class Fsm:
         object.__setattr__(self, "finals", finals)
         object.__setattr__(self, "map", map)
 
-    def accepts(self, symbols: Iterable[alpha_type], /) -> bool:
+    def accepts(self, symbols: Iterable[AlphaType], /) -> bool:
         """
         Test whether the present FSM accepts the supplied string (iterable
         of symbols). Equivalently, consider `self` as a possibly-infinite
@@ -184,7 +184,7 @@ class Fsm:
             state = self.map[state][symbol]
         return state in self.finals
 
-    def __contains__(self, string: Iterable[alpha_type], /) -> bool:
+    def __contains__(self, string: Iterable[AlphaType], /) -> bool:
         """
         This lets you use the syntax `"a" in fsm1` to see whether the
         string "a" is in the set of strings accepted by `fsm1`.
@@ -263,8 +263,8 @@ class Fsm:
 
         def connect_all(
             i: int,
-            substate: state_type,
-        ) -> Iterable[tuple[int, state_type]]:
+            substate: StateType,
+        ) -> Iterable[tuple[int, StateType]]:
             """
             Take a state in the numbered FSM and return a set containing
             it, plus (if it's final) the first state from the next FSM,
@@ -284,7 +284,7 @@ class Fsm:
         # on.
         initial = frozenset(connect_all(0, fsms[0].initial) if fsms else ())
 
-        def final(state: frozenset[tuple[int, state_type]]) -> bool:
+        def final(state: frozenset[tuple[int, StateType]]) -> bool:
             """If you're in a final state of the final FSM, it's final"""
             for i, substate in state:
                 if i == len(fsms) - 1 and substate in fsms[i].finals:
@@ -292,16 +292,16 @@ class Fsm:
             return False
 
         def follow(
-            current: frozenset[tuple[int, state_type]],
-            symbol: alpha_type,
-        ) -> frozenset[tuple[int, state_type]]:
+            current: frozenset[tuple[int, StateType]],
+            symbol: AlphaType,
+        ) -> frozenset[tuple[int, StateType]]:
             """
             Follow the collection of states through all FSMs at once,
             jumping to the next FSM if we reach the end of the current one
             TODO: improve all follow() implementations to allow for dead
             metastates?
             """
-            next_metastate: set[tuple[int, state_type]] = set()
+            next_metastate: set[tuple[int, StateType]] = set()
             for i, substate in current:
                 fsm = fsms[i]
                 if substate in fsm.map:
@@ -338,12 +338,12 @@ class Fsm:
         """
         alphabet = self.alphabet
 
-        initial: Collection[state_type] = {self.initial}
+        initial: Collection[StateType] = {self.initial}
 
         def follow(
-            state: Collection[state_type],
-            symbol: alpha_type,
-        ) -> Collection[state_type]:
+            state: Collection[StateType],
+            symbol: AlphaType,
+        ) -> Collection[StateType]:
             next_states = set()
 
             for substate in state:
@@ -364,7 +364,7 @@ class Fsm:
 
             return frozenset(next_states)
 
-        def final(state: Collection[state_type]) -> bool:
+        def final(state: Collection[StateType]) -> bool:
             return any(substate in self.finals for substate in state)
 
         return crawl(alphabet, initial, final, follow) | epsilon(alphabet)
@@ -379,9 +379,9 @@ class Fsm:
         alphabet = self.alphabet
 
         # metastate is a set of iterations+states
-        initial: Collection[tuple[state_type, int]] = {(self.initial, 0)}
+        initial: Collection[tuple[StateType, int]] = {(self.initial, 0)}
 
-        def final(state: Collection[tuple[state_type, int]]) -> bool:
+        def final(state: Collection[tuple[StateType, int]]) -> bool:
             """
             If the initial state is final then multiplying doesn't alter
             that
@@ -394,9 +394,9 @@ class Fsm:
             return False
 
         def follow(
-            current: Collection[tuple[state_type, int]],
-            symbol: alpha_type,
-        ) -> Collection[tuple[state_type, int]]:
+            current: Collection[tuple[StateType, int]],
+            symbol: AlphaType,
+        ) -> Collection[tuple[StateType, int]]:
             next_metastate = []
             for substate, iteration in current:
                 if (
@@ -481,12 +481,12 @@ class Fsm:
         """
         alphabet = self.alphabet
 
-        initial: Mapping[int, state_type] = {0: self.initial}
+        initial: Mapping[int, StateType] = {0: self.initial}
 
         def follow(
-            current: Mapping[int, state_type],
-            symbol: alpha_type,
-        ) -> Mapping[int, state_type]:
+            current: Mapping[int, StateType],
+            symbol: AlphaType,
+        ) -> Mapping[int, StateType]:
             next_fsm = {}
             if (
                 0 in current
@@ -497,7 +497,7 @@ class Fsm:
             return next_fsm
 
         # state is final unless the original was
-        def final(state: Mapping[int, state_type]) -> bool:
+        def final(state: Mapping[int, StateType]) -> bool:
             return not (0 in state and state[0] in self.finals)
 
         return crawl(alphabet, initial, final, follow).reduce()
@@ -517,9 +517,9 @@ class Fsm:
         # Find every possible way to reach the current state-set
         # using this symbol.
         def follow(
-            current: frozenset[state_type],
-            symbol: alpha_type,
-        ) -> frozenset[state_type]:
+            current: frozenset[StateType],
+            symbol: AlphaType,
+        ) -> frozenset[StateType]:
             next_states = frozenset(
                 [
                     prev
@@ -533,7 +533,7 @@ class Fsm:
             return next_states
 
         # A state-set is final if the initial state is in it.
-        def final(state: frozenset[state_type]) -> bool:
+        def final(state: frozenset[StateType]) -> bool:
             return self.initial in state
 
         # Man, crawl() is the best!
@@ -547,7 +547,7 @@ class Fsm:
         """
         return self.reversed()
 
-    def islive(self, /, state: state_type) -> bool:
+    def islive(self, /, state: StateType) -> bool:
         """A state is "live" if a final state can be reached from it."""
         reachable = [state]
         i = 0
@@ -574,7 +574,7 @@ class Fsm:
         """
         return not self.islive(self.initial)
 
-    def strings(self, /) -> Iterator[list[alpha_type]]:
+    def strings(self, /) -> Iterator[list[AlphaType]]:
         """
         Generate strings (lists of symbols) that this FSM accepts. Since
         there may be infinitely many of these we use a generator instead of
@@ -594,11 +594,11 @@ class Fsm:
         # the state that this input string leads to. This means we don't have
         # to run the state machine from the very beginning every time we want
         # to check a new string.
-        strings: list[tuple[list[alpha_type], state_type]] = []
+        strings: list[tuple[list[AlphaType], StateType]] = []
 
         # Initial entry (or possibly not, in which case this is a short one)
-        cstate: state_type = self.initial
-        cstring: list[alpha_type] = []
+        cstate: StateType = self.initial
+        cstring: list[AlphaType] = []
         if cstate in livestates:
             if cstate in self.finals:
                 yield cstring
@@ -618,7 +618,7 @@ class Fsm:
                         strings.append((nstring, nstate))
             i += 1
 
-    def __iter__(self, /) -> Iterator[list[alpha_type]]:
+    def __iter__(self, /) -> Iterator[list[AlphaType]]:
         """
         This allows you to do `for string in fsm1` as a list comprehension!
         """
@@ -670,9 +670,9 @@ class Fsm:
         Consider the FSM as a set of strings and return the cardinality of
         that set, or raise an OverflowError if there are infinitely many
         """
-        num_strings: dict[state_type, int | None] = {}
+        num_strings: dict[StateType, int | None] = {}
 
-        def get_num_strings(state: state_type) -> int:
+        def get_num_strings(state: StateType) -> int:
             # Many FSMs have at least one oblivion state
             if self.islive(state):
                 if state in num_strings:
@@ -780,7 +780,7 @@ class Fsm:
 
     __copy__ = copy
 
-    def derive(self, symbols: Iterable[alpha_type], /) -> Fsm:
+    def derive(self, symbols: Iterable[AlphaType], /) -> Fsm:
         """
         Compute the Brzozowski derivative of this FSM with respect to the
         input string of symbols.
@@ -819,7 +819,7 @@ class Fsm:
             return null(self.alphabet)
 
 
-def null(alphabet: Iterable[alpha_type]) -> Fsm:
+def null(alphabet: Iterable[AlphaType]) -> Fsm:
     """
     An FSM accepting nothing (not even the empty string). This is
     demonstrates that this is possible, and is also extremely useful
@@ -834,7 +834,7 @@ def null(alphabet: Iterable[alpha_type]) -> Fsm:
     )
 
 
-def epsilon(alphabet: Iterable[alpha_type]) -> Fsm:
+def epsilon(alphabet: Iterable[AlphaType]) -> Fsm:
     """
     Return an FSM matching an empty string, "", only.
     This is very useful in many situations
@@ -860,17 +860,17 @@ def parallel(
     """
     alphabet = set().union(*[fsm.alphabet for fsm in fsms])
 
-    initial: Mapping[int, state_type] = {i: fsm.initial for i, fsm in enumerate(fsms)}
+    initial: Mapping[int, StateType] = {i: fsm.initial for i, fsm in enumerate(fsms)}
 
     # dedicated function accepts a "superset" and returns the next "superset"
     # obtained by following this transition in the new FSM
     def follow(
-        current: Mapping[int, state_type],
-        symbol: alpha_type,
-    ) -> Mapping[int, state_type]:
+        current: Mapping[int, StateType],
+        symbol: AlphaType,
+    ) -> Mapping[int, StateType]:
         next_states = {}
         for i, fsm in enumerate(fsms):
-            actual_symbol: alpha_type
+            actual_symbol: AlphaType
             if symbol not in fsm.alphabet and ANYTHING_ELSE in fsm.alphabet:
                 actual_symbol = ANYTHING_ELSE
             else:
@@ -887,7 +887,7 @@ def parallel(
 
     # Determine the "is final?" condition of each substate, then pass it to the
     # test to determine finality of the overall FSM.
-    def final(state: Mapping[int, state_type]) -> bool:
+    def final(state: Mapping[int, StateType]) -> bool:
         accepts = [i in state and state[i] in fsm.finals for i, fsm in enumerate(fsms)]
         return test(accepts)
 
@@ -895,10 +895,10 @@ def parallel(
 
 
 def crawl(
-    alphabet: Iterable[alpha_type],
+    alphabet: Iterable[AlphaType],
     initial: M,
     final: Callable[[M], bool],
-    follow: Callable[[M, alpha_type], M],
+    follow: Callable[[M, AlphaType], M],
 ) -> Fsm:
     """
     Given the above conditions and instructions, crawl a new unknown FSM,
@@ -908,8 +908,8 @@ def crawl(
     """
 
     states: list[M] = [initial]
-    finals: set[state_type] = set()
-    transitions: dict[state_type, dict[alpha_type, state_type]] = {}
+    finals: set[StateType] = set()
+    transitions: dict[StateType, dict[AlphaType, StateType]] = {}
 
     # iterate over a growing list
     i = 0

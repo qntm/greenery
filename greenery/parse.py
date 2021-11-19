@@ -126,14 +126,14 @@ def match_class_interior_1(
         k = static(string, j, "-")
         last, k = match_internal_char(string, k)  # `last` is "h"
 
-        firstIndex = ord(first)  # 100
-        lastIndex = ord(last)  # 104
+        first_index = ord(first)  # 100
+        last_index = ord(last)  # 104
 
         # Be strict here, "d-d" is not allowed
-        if firstIndex >= lastIndex:
+        if first_index >= last_index:
             raise NoMatch(f"Range {first!r} to {last!r} not allowed")
 
-        chars = frozenset(chr(i) for i in range(firstIndex, lastIndex + 1))
+        chars = frozenset(chr(i) for i in range(first_index, last_index + 1))
         return (chars, False), k
     except NoMatch:
         pass
@@ -220,8 +220,8 @@ def match_multiplicand(string: str, i: int) -> MatchResult[Pattern | Charclass]:
     # explicitly non-capturing "(?:...)" syntax. No special significance
     try:
         j = static(string, i, "(?")
-        st, j = select_static(string, j, ":", "P<")
-        if st == "P<":
+        opts, j = select_static(string, j, ":", "P<")
+        if opts == "P<":
             _group_name, j = read_until(string, j, ">")
         pattern, j = match_pattern(string, j)
         j = static(string, j, ")")
