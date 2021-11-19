@@ -103,6 +103,19 @@ def test_charclass_union() -> None:
     # [^ab] ∪ [^bc] = [^b]
     assert ~Charclass("ab") | ~Charclass("bc") == ~Charclass("b")
 
+    assert Charclass.union() == NULLCHARCLASS
+
+    assert Charclass.union(
+        Charclass("ab"),
+        Charclass("a"),
+        Charclass("cd"),
+    ) == Charclass("abcd")
+
+    assert Charclass.union(
+        Charclass("ab"),
+        ~Charclass("abc"),
+    ) == ~Charclass("c")
+
 
 def test_charclass_intersection() -> None:
     # [ab] ∩ [bc] = [b]

@@ -241,21 +241,21 @@ class Charclass:
     def reversed(self, /) -> Charclass:
         return self
 
-    def __or__(self, other: Charclass, /) -> Charclass:
-        # ¬A OR ¬B = ¬(A AND B)
-        # ¬A OR B = ¬(A - B)
-        # A OR ¬B = ¬(B - A)
-        # A OR B
-        if self.negated:
-            if other.negated:
-                return ~Charclass(self.chars & other.chars)
-            else:
-                return ~Charclass(self.chars - other.chars)
-        else:
-            if other.negated:
-                return ~Charclass(other.chars - self.chars)
-            else:
-                return Charclass(self.chars | other.chars)
+    def union(*predicates: Charclass) -> Charclass:
+        closed_sets = [cc.chars for cc in predicates if not cc.negated]
+        include = frozenset.union(*closed_sets) if closed_sets else frozenset()
+
+        open_sets = [cc.chars for cc in predicates if cc.negated]
+        exclude = (
+            frozenset.intersection(*open_sets) if open_sets else frozenset()
+        )
+
+        is_open = bool(open_sets)
+        chars = (exclude - include) if is_open else (include - exclude)
+
+        return Charclass(chars, negated=is_open)
+
+    __or__ = union
 
     def __and__(self, other: Charclass, /) -> Charclass:
         # ¬A AND ¬B = ¬(A OR B)
