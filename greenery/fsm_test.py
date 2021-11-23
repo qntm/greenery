@@ -710,7 +710,7 @@ def test_copy(a: FixtureA) -> None:
         assert copy(x) is x
 
 
-def test_oblivion_crawl(a: FixtureA) -> None:
+def test_oblivion_crawl() -> None:
     # When crawling a new FSM, we should avoid generating an oblivion state.
     # `abc` has no oblivion state... all the results should not as well!
     abc = Fsm(
@@ -740,7 +740,7 @@ def test_concatenate_bug(a: FixtureA) -> None:
     assert Fsm.concatenate(a, epsilon({"a"}), epsilon({"a"}), a).accepts("aa")
 
 
-def test_derive(a: FixtureA, b: FixtureB) -> None:
+def test_derive(a: FixtureA) -> None:
     # Just some basic tests because this is mainly a regex thing.
     assert a.derive("a") == epsilon({"a", "b"})
     assert a.derive("b") == null({"a", "b"})
