@@ -50,9 +50,9 @@ def test_builtins() -> None:
     assert not epsilon("a").accepts("a")
 
 
-@pytest.fixture
-def a() -> FixtureA:
-    a = Fsm(
+@pytest.fixture(name="a")
+def fixture_a() -> FixtureA:
+    return Fsm(
         alphabet={"a", "b"},
         states={0, 1, "ob"},
         initial=0,
@@ -63,7 +63,6 @@ def a() -> FixtureA:
             "ob": {"a": "ob", "b": "ob"},
         },
     )
-    return a
 
 
 def test_a(a: FixtureA) -> None:
@@ -72,9 +71,9 @@ def test_a(a: FixtureA) -> None:
     assert not a.accepts("b")
 
 
-@pytest.fixture
-def b() -> FixtureB:
-    b = Fsm(
+@pytest.fixture(name="b")
+def fixture_b() -> FixtureB:
+    return Fsm(
         alphabet={"a", "b"},
         states={0, 1, "ob"},
         initial=0,
@@ -85,7 +84,6 @@ def b() -> FixtureB:
             "ob": {"a": "ob", "b": "ob"},
         },
     )
-    return b
 
 
 def test_b(b: FixtureB) -> None:

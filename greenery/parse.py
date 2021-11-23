@@ -36,18 +36,18 @@ def read_until(string: str, i: int, stop_char: str) -> MatchResult[str]:
     return string[start:i], i + 1
 
 
-def static(string: str, i: int, static: str) -> int:
-    j = i + len(static)
-    if string[i:j] == static:
+def static(haystack: str, i: int, needle: str) -> int:
+    j = i + len(needle)
+    if haystack[i:j] == needle:
         return j
     raise NoMatch
 
 
-def select_static(string: str, i: int, *statics: str) -> MatchResult[str]:
-    for st in statics:
-        j = i + len(st)
-        if string[i:j] == st:
-            return st, j
+def select_static(haystack: str, i: int, *needles: str) -> MatchResult[str]:
+    for needle in needles:
+        j = i + len(needle)
+        if haystack[i:j] == needle:
+            return needle, j
     raise NoMatch
 
 

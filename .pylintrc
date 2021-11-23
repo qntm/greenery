@@ -142,7 +142,6 @@ disable=
         no-self-argument,
         redefined-builtin,
         redefined-loop-name,
-        redefined-outer-name,
         redefined-variable-type,
         similarities,
         suppressed-message,

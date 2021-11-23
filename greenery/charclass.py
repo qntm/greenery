@@ -141,7 +141,7 @@ class Charclass:
             # 3 characters or fewer. "abc" -> "abc" but "abcd" -> "a-d"
             strs = [
                 # "ab" or "abc" or "abcd"
-                "".join(escapeChar(char) for char in currentRange),
+                "".join(escapeChar(c) for c in currentRange),
                 # "a-b" or "a-c" or "a-d"
                 (escapeChar(currentRange[0]) + "-" + escapeChar(currentRange[-1])),
             ]
