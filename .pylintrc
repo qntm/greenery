@@ -150,7 +150,6 @@ disable=
         too-few-public-methods,
         too-many-try-statements,
         unnecessary-dict-index-lookup,
-        unnecessary-lambda,
         unused-argument,
         useless-suppression,
         while-used,

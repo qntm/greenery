@@ -145,7 +145,7 @@ class Charclass:
                 # "a-b" or "a-c" or "a-d"
                 (escapeChar(currentRange[0]) + "-" + escapeChar(currentRange[-1])),
             ]
-            return sorted(strs, key=lambda str: len(str))[0]
+            return sorted(strs, key=len)[0]
 
         output = ""
 
