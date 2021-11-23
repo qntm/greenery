@@ -1,10 +1,5 @@
 from __future__ import annotations
 
-if __name__ == "__main__":
-    raise Exception(
-        "Test files can't be run directly. Use `python -m pytest greenery`"
-    )
-
 import pickle
 import pytest
 
@@ -12,6 +7,11 @@ from .fsm import Fsm, ANYTHING_ELSE
 from .rxelems import from_fsm
 from .charclass import DIGIT, WORDCHAR
 from .parse import parse
+
+if __name__ == "__main__":
+    raise Exception(
+        "Test files can't be run directly. Use `python -m pytest greenery`"
+    )
 
 
 ###############################################################################

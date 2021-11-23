@@ -1,10 +1,5 @@
 from __future__ import annotations
 
-if __name__ == "__main__":
-    raise Exception(
-        "Test files can't be run directly. Use `python -m pytest greenery`"
-    )
-
 import pytest
 
 from .bound import Bound, INF
@@ -12,6 +7,11 @@ from .charclass import Charclass, DOT, NULLCHARCLASS, DIGIT
 from .multiplier import Multiplier, ONE, STAR, PLUS
 from .rxelems import Mult, Conc, Pattern
 from .parse import NoMatch, match_charclass, parse, match_mult
+
+if __name__ == "__main__":
+    raise Exception(
+        "Test files can't be run directly. Use `python -m pytest greenery`"
+    )
 
 
 def test_charclass_matching():
