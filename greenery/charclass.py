@@ -205,7 +205,7 @@ class Charclass:
         if self.negated:
             string += "~"
         string += "Charclass("
-        string += repr("".join(str(char) for char in sorted(self.chars, key=str)))
+        string += repr("".join(sorted(self.chars)))
         string += ")"
         return string
 
