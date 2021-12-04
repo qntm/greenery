@@ -96,7 +96,7 @@ class Charclass:
 
         # e.g. [^a]
         if self.negated:
-            return "[^" + self.escape() + "]"
+            return f"[^{self.escape()}]"
 
         # single character, not contained inside square brackets.
         if len(self.chars) == 1:
@@ -108,23 +108,23 @@ class Charclass:
                 return escapes[char]
 
             if char in Charclass.allSpecial:
-                return "\\" + char
+                return f"\\{char}"
 
             # If char is an ASCII control character, don't print it directly,
             # return a hex escape sequence e.g. "\\x00". Note that this
             # includes tab and other characters already handled above
             if 0 <= ord(char) <= 0x1F or ord(char) == 0x7F:
-                return "\\x" + "{0:02x}".format(ord(char))
+                return f"\\x{ord(char):02x}"
 
             return char
 
         # multiple characters (or possibly 0 characters)
-        return "[" + self.escape() + "]"
+        return f"[{self.escape()}]"
 
     def escape(self, /) -> str:
         def escape_char(char: str, /) -> str:
             if char in Charclass.classSpecial:
-                return "\\" + char
+                return f"\\{char}"
             if char in escapes:
                 return escapes[char]
 
@@ -132,7 +132,7 @@ class Charclass:
             # return a hex escape sequence e.g. "\\x00". Note that this
             # includes tab and other characters already handled above
             if 0 <= ord(char) <= 0x1F or ord(char) == 0x7F:
-                return "\\x" + "{0:02x}".format(ord(char))
+                return f"\\x{ord(char):02x}"
 
             return char
 
@@ -201,13 +201,9 @@ class Charclass:
         )
 
     def __repr__(self, /) -> str:
-        string = ""
-        if self.negated:
-            string += "~"
-        string += "Charclass("
-        string += repr("".join(sorted(self.chars)))
-        string += ")"
-        return string
+        sign = "~" if self.negated else ""
+        chars = "".join(sorted(self.chars))
+        return f"{sign}Charclass({chars!r})"
 
     def reduce(self, /) -> Charclass:
         # `Charclass`es cannot be reduced.
