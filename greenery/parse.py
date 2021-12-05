@@ -46,7 +46,7 @@ def select_static(string, i, *statics):
     for st in statics:
         j = i + len(st)
         if string[i:j] == st:
-            return j, st
+            return st, j
     raise NoMatch
 
 
@@ -214,7 +214,7 @@ def match_multiplicand(string, i):
     # explicitly non-capturing "(?:...)" syntax. No special significance
     try:
         j = static(string, i, "(?")
-        j, st = select_static(string, j, ":", "P<")
+        st, j = select_static(string, j, ":", "P<")
         if st == "P<":
             j, group_name = read_until(string, j, ">")
         pattern, j = match_pattern(string, j)
