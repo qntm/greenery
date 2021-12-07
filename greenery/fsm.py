@@ -7,7 +7,25 @@
 from typing import Optional, Union, Set, Dict
 from dataclasses import dataclass
 
-ANYTHING_ELSE = '9bd74361-04f9-4742-9d3a-1d14a6f0044c'
+
+class AnythingElse:
+    '''
+        This is a surrogate symbol which you can use in your finite state
+        machines to represent "any symbol not in the official alphabet". For
+        example, if your state machine's alphabet is `{"a", "b", "c", "d",
+        fsm.ANYTHING_ELSE}`, then if "e" is passed as a symbol, it will be
+        converted to `fsm.ANYTHING_ELSE` before following the appropriate
+        transition.
+    '''
+
+    def __str__(self, /) -> str:
+        return 'ANYTHING_ELSE'
+
+    def __repr__(self, /) -> str:
+        return 'ANYTHING_ELSE'
+
+
+ANYTHING_ELSE = AnythingElse()
 
 
 def alphabet_key(symbol):
@@ -26,7 +44,7 @@ class OblivionError(Exception):
     pass
 
 
-alpha_type = str
+alpha_type = Union[str, AnythingElse]
 
 
 state_type = Optional[Union[int, str]]
@@ -151,10 +169,7 @@ class Fsm:
 
         # top row
         row = ["", "name", "final?"]
-        row.extend(
-          'ANYTHING_ELSE' if symbol is ANYTHING_ELSE else str(symbol)
-          for symbol in sorted_alphabet
-        )
+        row.extend(str(symbol) for symbol in sorted_alphabet)
         rows.append(row)
 
         # other rows
