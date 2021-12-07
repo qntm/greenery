@@ -8,7 +8,7 @@
 from dataclasses import dataclass
 from typing import Union
 
-from .fsm import Fsm, ANYTHING_ELSE, null, epsilon, alphabet_key
+from .fsm import Fsm, ANYTHING_ELSE, null, epsilon
 from .multiplier import Multiplier, ZERO, QM, ONE, STAR
 from .charclass import Charclass, NULLCHARCLASS
 from .bound import Bound, INF
@@ -299,7 +299,7 @@ def from_fsm(f: Fsm):
     while i < len(states):
         current = states[i]
         if current in f.map:
-            for symbol in sorted(f.map[current], key=alphabet_key):
+            for symbol in sorted(f.map[current]):
                 next = f.map[current][symbol]
                 if next not in states:
                     states.append(next)

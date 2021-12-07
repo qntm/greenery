@@ -5,10 +5,12 @@
 '''
 
 from enum import Enum, auto
+from functools import total_ordering
 from typing import Any, Optional, Union, Set, Dict
 from dataclasses import dataclass
 
 
+@total_ordering
 class AnythingElse(Enum):
     '''
         This is a surrogate symbol which you can use in your finite state
@@ -25,6 +27,10 @@ class AnythingElse(Enum):
 
     TOKEN = auto()
 
+    def __lt__(self, _: Any, /) -> bool:
+        '''Ensure `fsm.ANYTHING_ELSE` always sorts last'''
+        return False
+
     def __eq__(self, other: Any, /) -> bool:
         return self is other
 
@@ -39,11 +45,6 @@ class AnythingElse(Enum):
 
 
 ANYTHING_ELSE = AnythingElse.TOKEN
-
-
-def alphabet_key(symbol):
-    '''Ensure `ANYTHING_ELSE` always sorts last'''
-    return (symbol is ANYTHING_ELSE, symbol)
 
 
 class OblivionError(Exception):
@@ -178,7 +179,7 @@ class Fsm:
     def __str__(self):
         rows = []
 
-        sorted_alphabet = sorted(self.alphabet, key=alphabet_key)
+        sorted_alphabet = sorted(self.alphabet)
 
         # top row
         row = ["", "name", "final?"]
@@ -554,7 +555,7 @@ class Fsm:
         while i < len(strings):
             (cstring, cstate) = strings[i]
             if cstate in self.map:
-                for symbol in sorted(self.map[cstate], key=alphabet_key):
+                for symbol in sorted(self.map[cstate]):
                     nstate = self.map[cstate][symbol]
                     nstring = cstring + [symbol]
                     if nstate in livestates:
@@ -863,7 +864,7 @@ def crawl(alphabet, initial, final, follow):
 
         # compute map for this state
         map[i] = {}
-        for symbol in sorted(alphabet, key=alphabet_key):
+        for symbol in sorted(alphabet):
             try:
                 next = follow(state, symbol)
 

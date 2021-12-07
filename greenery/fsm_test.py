@@ -4,7 +4,7 @@ import pickle
 
 import pytest
 
-from .fsm import Fsm, null, epsilon, ANYTHING_ELSE, AnythingElse, alphabet_key
+from .fsm import Fsm, null, epsilon, ANYTHING_ELSE, AnythingElse
 
 
 def test_addbug():
@@ -789,6 +789,50 @@ def test_anything_else_singleton():
     assert AnythingElse.TOKEN is ANYTHING_ELSE
 
 
+def test_anything_else_self():
+    """ANYTHING_ELSE is consistently equal to itself."""
+
+    # pylint: disable=comparison-with-itself
+    # pylint: disable=unneeded-not
+    assert not ANYTHING_ELSE < ANYTHING_ELSE
+    assert ANYTHING_ELSE <= ANYTHING_ELSE
+    assert not ANYTHING_ELSE != ANYTHING_ELSE
+    assert ANYTHING_ELSE == ANYTHING_ELSE
+    assert ANYTHING_ELSE >= ANYTHING_ELSE
+    assert not ANYTHING_ELSE > ANYTHING_ELSE
+
+
+@pytest.mark.parametrize(
+    argnames="val",
+    argvalues=(
+        float("-inf"),
+        float("nan"),
+        float("inf"),
+        0,
+        "abc",
+        object(),
+        str(ANYTHING_ELSE),
+    ),
+)
+def test_anything_else_sorts_after(val):
+    """ANYTHING_ELSE sorts strictly after anything."""
+
+    # pylint: disable=unneeded-not
+    assert not ANYTHING_ELSE < val
+    assert not ANYTHING_ELSE <= val
+    assert not ANYTHING_ELSE == val
+    assert ANYTHING_ELSE != val
+    assert ANYTHING_ELSE > val
+    assert ANYTHING_ELSE >= val
+
+    assert val < ANYTHING_ELSE
+    assert val <= ANYTHING_ELSE
+    assert val != ANYTHING_ELSE
+    assert not val == ANYTHING_ELSE
+    assert not val > ANYTHING_ELSE
+    assert not val >= ANYTHING_ELSE
+
+
 def test_anything_else_pickle():
     # [^z]
     fsm1 = Fsm(
@@ -808,7 +852,7 @@ def test_anything_else_pickle():
     assert fsm1 == fsm1_unpickled
 
     # The first letter is "z" (since "anything else" always sorts last).
-    letter_z, anything_else = sorted(fsm1_unpickled.alphabet, key=alphabet_key)
+    letter_z, anything_else = sorted(fsm1_unpickled.alphabet)
     assert letter_z == "z"
 
     # Stronger singleton assertion:
