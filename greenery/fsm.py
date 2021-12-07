@@ -4,11 +4,12 @@
     Finite state machine library, intended to be used by `greenery` only
 '''
 
-from typing import Optional, Union, Set, Dict
+from enum import Enum, auto
+from typing import Any, Optional, Union, Set, Dict
 from dataclasses import dataclass
 
 
-class AnythingElse:
+class AnythingElse(Enum):
     '''
         This is a surrogate symbol which you can use in your finite state
         machines to represent "any symbol not in the official alphabet". For
@@ -16,7 +17,19 @@ class AnythingElse:
         fsm.ANYTHING_ELSE}`, then if "e" is passed as a symbol, it will be
         converted to `fsm.ANYTHING_ELSE` before following the appropriate
         transition.
+
+        This is an `Enum` to enforce a singleton value, detectable by type
+        checkers, as described in:
+        https://www.python.org/dev/peps/pep-0484/#support-for-singleton-types-in-unions
     '''
+
+    TOKEN = auto()
+
+    def __eq__(self, other: Any, /) -> bool:
+        return self is other
+
+    def __hash__(self, /) -> int:
+        return hash(type(self))
 
     def __str__(self, /) -> str:
         return 'ANYTHING_ELSE'
@@ -25,7 +38,7 @@ class AnythingElse:
         return 'ANYTHING_ELSE'
 
 
-ANYTHING_ELSE = AnythingElse()
+ANYTHING_ELSE = AnythingElse.TOKEN
 
 
 def alphabet_key(symbol):

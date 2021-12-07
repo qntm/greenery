@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 
+import pickle
+
 import pytest
 
-from .fsm import Fsm, null, epsilon, ANYTHING_ELSE
+from .fsm import Fsm, null, epsilon, ANYTHING_ELSE, AnythingElse, alphabet_key
 
 
 def test_addbug():
@@ -781,3 +783,33 @@ def test_add_anything_else():
         map={0: {ANYTHING_ELSE: 1}}
     )
     assert (fsm1 + fsm2).accepts("ba")
+
+
+def test_anything_else_singleton():
+    assert AnythingElse.TOKEN is ANYTHING_ELSE
+
+
+def test_anything_else_pickle():
+    # [^z]
+    fsm1 = Fsm(
+        alphabet={"z", ANYTHING_ELSE},
+        states={0, 1},
+        initial=0,
+        finals={1},
+        map={0: {ANYTHING_ELSE: 1}}
+    )
+
+    fsm1_unpickled = pickle.loads(pickle.dumps(fsm1))
+
+    # Newly-created instance.
+    assert fsm1_unpickled is not fsm1
+
+    # but equivalent.
+    assert fsm1 == fsm1_unpickled
+
+    # The first letter is "z" (since "anything else" always sorts last).
+    letter_z, anything_else = sorted(fsm1_unpickled.alphabet, key=alphabet_key)
+    assert letter_z == "z"
+
+    # Stronger singleton assertion:
+    assert anything_else is ANYTHING_ELSE
