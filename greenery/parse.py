@@ -24,7 +24,7 @@ class NoMatch(Exception):
     pass
 
 
-def read_until(string: str, i: int, stop_char: str) -> tuple[int, str]:
+def read_until(string: str, i: int, stop_char: str) -> tuple[str, int]:
     start = i
     while True:
         if i >= len(string):
@@ -32,7 +32,7 @@ def read_until(string: str, i: int, stop_char: str) -> tuple[int, str]:
         if string[i] == stop_char:
             break
         i += 1
-    return i + 1, string[start:i]
+    return string[start:i], i + 1
 
 
 def static(string, i, static):
@@ -216,7 +216,7 @@ def match_multiplicand(string, i):
         j = static(string, i, "(?")
         st, j = select_static(string, j, ":", "P<")
         if st == "P<":
-            j, group_name = read_until(string, j, ">")
+            group_name, j = read_until(string, j, ">")
         pattern, j = match_pattern(string, j)
         j = static(string, j, ")")
         return pattern, j
