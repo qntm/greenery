@@ -76,6 +76,12 @@ class Fsm:
             if state not in self.states:
                 raise Exception(f"Transition from unknown state {repr(state)}")
             for symbol in self.map[state]:
+                if symbol not in self.alphabet:
+                    raise Exception(
+                        f"Invalid symbol {repr(symbol)} "
+                        f"in transition from {repr(state)} "
+                        f"to {repr(self.map[state][symbol])}"
+                    )
                 if not self.map[state][symbol] in self.states:
                     raise Exception(
                         f"Transition for state {repr(state)} "

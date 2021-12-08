@@ -460,6 +460,16 @@ def test_invalid_fsms():
             }
         )
 
+    # invalid transition table includes symbol outside of alphabet
+    with pytest.raises(Exception, match="Invalid symbol"):
+        Fsm(
+            alphabet={"a"},
+            states={1, 2},
+            initial=1,
+            finals=set(),
+            map={1: {"a": 2, "b": 2}},
+        )
+
 
 def test_bad_multiplier(a):
     with pytest.raises(Exception, match="Can't multiply"):
