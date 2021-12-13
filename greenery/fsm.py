@@ -756,6 +756,8 @@ class Fsm:
         """
         return self
 
+    __copy__ = copy
+
     def derive(self, input):
         """
         Compute the Brzozowski derivative of this FSM with respect to the

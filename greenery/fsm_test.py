@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pickle
+from copy import copy
 
 import pytest
 
@@ -697,6 +698,10 @@ def test_copy(a):
     copyables = (a, frozenset("abc"))
     for x in copyables:
         assert x.copy() is x
+
+    # Same, via the `__copy__` method.
+    for x in copyables:
+        assert copy(x) is x
 
 
 def test_oblivion_crawl(a):
