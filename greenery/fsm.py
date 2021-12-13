@@ -751,16 +751,10 @@ class Fsm:
 
     def copy(self):
         """
-        For completeness only, since `set.copy()` also exists. FSM objects
-        are immutable, so I can see only very odd reasons to need this.
+        For completeness only, since `set.copy()` and `frozenset.copy()` exist.
+        FSM objects are immutable; like `frozenset`, this just returns `self`.
         """
-        return Fsm(
-            alphabet=self.alphabet,
-            states=self.states,
-            initial=self.initial,
-            finals=self.finals,
-            map=self.map,
-        )
+        return self
 
     def derive(self, input):
         """

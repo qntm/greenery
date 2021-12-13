@@ -689,7 +689,14 @@ def test_new_set_methods(a, b):
     assert list(a.concatenate().strings()) == [["a"]]
     assert list(Fsm.concatenate(b, a, b).strings()) == [["b", "a", "b"]]
     assert list(Fsm.concatenate().strings()) == []
-    assert not a.copy() is a
+
+
+def test_copy(a):
+    # fsm.copy() and frozenset().copy() both preserve identity, because they
+    # are immutable. This is just showing that we give the same behaviour.
+    copyables = (a, frozenset("abc"))
+    for x in copyables:
+        assert x.copy() is x
 
 
 def test_oblivion_crawl(a):
