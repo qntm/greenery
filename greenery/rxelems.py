@@ -688,13 +688,12 @@ class Pattern:
     def derive(self, string):
         return from_fsm(self.to_fsm().derive(string))
 
-    @call_fsm
     def isdisjoint(self, other):
         '''
             Treat `self` and `other` as sets of strings and see if they are
             disjoint
         '''
-        pass
+        return self.to_fsm().isdisjoint(other.to_fsm())
 
     def matches(self, string):
         return self.to_fsm().accepts(string)
