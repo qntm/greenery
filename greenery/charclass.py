@@ -44,6 +44,8 @@ class Charclass:
         for c in self.chars:
             if not isinstance(c, str):
                 raise TypeError(f"Can't put {c!r} in a `Charclass`", c)
+            if len(c) != 1:
+                raise ValueError("`Charclass` can only contain single chars", c)
 
     def __eq__(self, other):
         return isinstance(other, Charclass) \

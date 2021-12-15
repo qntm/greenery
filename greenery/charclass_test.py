@@ -30,6 +30,9 @@ def test_charclass_ctor():
     with pytest.raises(TypeError):
         Charclass(frozenset({"a", ANYTHING_ELSE}))  # type: ignore
 
+    with pytest.raises(ValueError):
+        Charclass(frozenset({"a", "aa"}))
+
     assert Charclass("ab") == Charclass(frozenset({"a", "b"}))
 
     assert not Charclass("ab").negated
