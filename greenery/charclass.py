@@ -42,7 +42,7 @@ class Charclass:
         object.__setattr__(self, "chars", frozenset(self.chars))
         # chars should consist only of chars
         if ANYTHING_ELSE in self.chars:
-            raise Exception(
+            raise TypeError(
                 f"Can't put {ANYTHING_ELSE!r} in a `Charclass`"
             )
 

@@ -27,7 +27,7 @@ def test_charclass_equality():
 
 
 def test_charclass_ctor():
-    with pytest.raises(Exception):
+    with pytest.raises(TypeError):
         Charclass(frozenset({"a", ANYTHING_ELSE}))  # type: ignore
 
     assert Charclass("ab") == Charclass(frozenset({"a", "b"}))
