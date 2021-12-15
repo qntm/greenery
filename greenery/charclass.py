@@ -41,10 +41,9 @@ class Charclass:
     def __post_init__(self):
         object.__setattr__(self, "chars", frozenset(self.chars))
         # chars should consist only of chars
-        if ANYTHING_ELSE in self.chars:
-            raise TypeError(
-                f"Can't put {ANYTHING_ELSE!r} in a `Charclass`"
-            )
+        for c in self.chars:
+            if not isinstance(c, str):
+                raise TypeError(f"Can't put {c!r} in a `Charclass`", c)
 
     def __eq__(self, other):
         return isinstance(other, Charclass) \
