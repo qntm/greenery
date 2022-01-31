@@ -60,14 +60,14 @@ def call_fsm(method):
         return from_fsm(fsm_method(*[lego.to_fsm(alphabet) for lego in legos]))
     return new_method
 
-def parse(string):
+def parse(string: str):
     '''
         Parse a full string and return a lego piece. Fail if the whole string
         wasn't parsed
     '''
     return pattern.parse(string)
 
-def from_fsm(f):
+def from_fsm(f: fsm.fsm):
     '''
         Turn the supplied finite state machine into a `lego` object. This is
         accomplished using the Brzozowski algebraic method.
@@ -170,7 +170,7 @@ def select_static(string, i, *statics):
             return j, st
     raise nomatch
 
-def read_until(string, i, stop_char):
+def read_until(string: str, i: int, stop_char: str) -> tuple[int, str]:
     start = i
     while True:
         if i >= len(string):
@@ -194,7 +194,7 @@ class lego:
         '''
         raise Exception("This object is immutable.")
 
-    def to_fsm(self, alphabet):
+    def to_fsm(self, alphabet=None):
         '''
             Return the present lego piece in the form of a finite state machine,
             as imported from the fsm module.
@@ -222,7 +222,7 @@ class lego:
         raise NotImplementedError()
 
     @classmethod
-    def match(cls, string, i = 0):
+    def match(cls, string: str, i = 0):
         '''
             Start at index i in the supplied string and try to match one of the
             present class. Elementary recursive descent parsing with very little
@@ -232,7 +232,7 @@ class lego:
         raise NotImplementedError()
 
     @classmethod
-    def parse(cls, string):
+    def parse(cls, string: str):
         '''
             Parse the entire supplied string as an instance of the present class.
             Mainly for internal use in unit tests because it drops through to match()
@@ -874,7 +874,7 @@ class bound:
         return str(self.v)
 
     @classmethod
-    def match(cls, string, i = 0):
+    def match(cls, string: str, i = 0):
         def matchAnyOf(string, i, collection):
             for char in collection:
                 try:
@@ -1811,7 +1811,7 @@ class pattern(lego):
         return self
 
     @classmethod
-    def match(cls, string, i = 0):
+    def match(cls, string: str, i = 0):
         concs = list()
 
         # first one
