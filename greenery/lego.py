@@ -204,14 +204,14 @@ class lego:
             one which uses different characters, we may need to supply an alphabet
             which is a superset of both sets.
         '''
-        raise Exception("Not implemented")
+        raise NotImplementedError()
 
     def __repr__(self):
         '''
             Return a string approximating the instantiation line
             for the present lego piece.
         '''
-        raise Exception("Not implemented")
+        raise NotImplementedError()
 
     def __str__(self):
         '''
@@ -219,7 +219,7 @@ class lego:
             Some lego pieces may be created which cannot be rendered in this way.
             In particular: a pattern containing no concs; a multiplier of zero.
         '''
-        raise Exception("Not implemented")
+        raise NotImplementedError()
 
     @classmethod
     def match(cls, string, i = 0):
@@ -229,7 +229,7 @@ class lego:
             need for flair. The opposite of __str__(), above. (In most cases.)
             Throws a nomatch in the event of failure.
         '''
-        raise Exception("Not implemented")
+        raise NotImplementedError()
 
     @classmethod
     def parse(cls, string):
@@ -256,7 +256,7 @@ class lego:
             STRICTLY SIMPLER than the current object. Otherwise, infinite loops become
             possible in reduce() calls.
         '''
-        raise Exception("Not implemented")
+        raise NotImplementedError()
 
     @call_fsm
     def concatenate(*legos):
@@ -276,7 +276,7 @@ class lego:
             and a maximum; maximum may be infinite (for Kleene star closure).
             Call using "a = b * qm"
         '''
-        raise Exception("Not implemented")
+        raise NotImplementedError()
 
     def __mul__(self, multiplier):
         return self.times(multiplier)
@@ -349,7 +349,7 @@ class lego:
             calculate it every time a lego piece is instantiated.
             By convention, fsm.anything_else is always included in this result.
         '''
-        raise Exception("Not implemented")
+        raise NotImplementedError()
 
     @call_fsm
     def everythingbut(self):
@@ -368,7 +368,7 @@ class lego:
             self would match. E.g. if self matches "beer" then reversed(self) will
             match "reeb".
         '''
-        raise Exception("Not implemented")
+        raise NotImplementedError()
 
     def __reversed__(self):
         return self.reversed()
@@ -379,7 +379,7 @@ class lego:
             can match. Return True if no such string exists. Examples of empty
             lego pieces are charclass() and pattern()
         '''
-        raise Exception("Not implemented")
+        raise NotImplementedError()
 
     def matches(self, string):
         return self.to_fsm().accepts(string)
@@ -448,11 +448,11 @@ class lego:
             For completeness only, since `set.copy()` also exists. Regular expression
             objects are immutable, so I can see only very odd reasons to need this.
         '''
-        raise Exception("Not implemented")
+        raise NotImplementedError()
 
     def __hash__(self):
         '''For dictionaries'''
-        raise Exception("Not implemented")
+        raise NotImplementedError()
 
     def derive(self, string):
         return from_fsm(self.to_fsm().derive(string))
