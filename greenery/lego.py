@@ -32,7 +32,9 @@
     pattern, these procedures can drastically simplify a regex structure for
     readability. They're also pretty extensible.
 '''
+from typing import Optional, Union
 from greenery import fsm
+from dataclasses import dataclass, field
 
 class nomatch(Exception):
     '''Thrown when parsing fails. Almost always caught and almost never fatal'''
@@ -457,6 +459,7 @@ class lego:
     def derive(self, string):
         return from_fsm(self.to_fsm().derive(string))
 
+@dataclass(frozen=True)
 class charclass(lego):
     '''
         A charclass is basically a frozenset of symbols. The reason for the
@@ -467,14 +470,14 @@ class charclass(lego):
         if the full alphabet is extremely large, but also requires dedicated
         combination functions.
     '''
+    chars: Union[frozenset[str], str]
+    negated: bool = False
 
-    def __init__(self, chars=set(), negateMe=False):
-        chars = frozenset(chars)
+    def __post_init__(self):
+        object.__setattr__(self, "chars", frozenset(self.chars))
         # chars should consist only of chars
-        if fsm.anything_else in chars:
+        if fsm.anything_else in self.chars:
             raise Exception("Can't put " + repr(fsm.anything_else) + " in a charclass")
-        self.__dict__["chars"]   = chars
-        self.__dict__["negated"] = negateMe
 
     def __eq__(self, other):
         try:
@@ -806,7 +809,7 @@ class charclass(lego):
             Negate the current charclass. e.g. [ab] becomes [^ab]. Call
             using "charclass2 = ~charclass1"
         '''
-        return charclass(self.chars, negateMe=not self.negated)
+        return charclass(self.chars, negated=not self.negated)
 
     def __invert__(self):
         return self.negate()
@@ -855,14 +858,16 @@ class charclass(lego):
         return self
 
     def copy(self):
-        return charclass(self.chars.copy(), negateMe=self.negated)
+        return charclass(self.chars.copy(), negated=self.negated)
 
+@dataclass(frozen=True)
 class bound:
     '''An integer but sometimes also possibly infinite (None)'''
-    def __init__(self, v):
-        if not v is None and v < 0:
-            raise Exception("Invalid bound: " + repr(v))
-        self.__dict__['v'] = v
+    v: Optional[int]
+
+    def __post_init__(self):
+        if not self.v is None and self.v < 0:
+            raise Exception("Invalid bound: " + repr(self.v))
 
     def __repr__(self):
         return "bound(" + repr(self.v) + ")"
@@ -959,6 +964,7 @@ class bound:
     def copy(self):
         return bound(self.v)
 
+@dataclass(frozen=True)
 class multiplier:
     '''
         A min and a max. The vast majority of characters in regular
@@ -969,22 +975,21 @@ class multiplier:
         also permit a max of 0 (iff min is 0 too). This allows the multiplier
         "zero" to exist, which actually are quite useful in their own special way.
     '''
+    min: bound
+    max: bound
+    mandatory: bound = field(init=False)
+    optional: bound = field(init=False)
 
-    def __init__(self, min, max):
-        if min == inf:
+    def __post_init__(self):
+        if self.min == inf:
             raise Exception("Minimum bound of a multiplier can't be " + repr(inf))
-        if min > max:
-            raise Exception("Invalid multiplier bounds: " + repr(min) + " and " + repr(max))
+        if self.min > self.max:
+            raise Exception("Invalid multiplier bounds: " + repr(self.min) + " and " + repr(self.max))
 
         # More useful than "min" and "max" in many situations
         # are "mandatory" and "optional".
-        mandatory = min
-        optional = max - min
-
-        self.__dict__['min'] = min
-        self.__dict__['max'] = max
-        self.__dict__['mandatory'] = mandatory
-        self.__dict__['optional'] = optional
+        object.__setattr__(self, "mandatory", self.min)
+        object.__setattr__(self, "optional", self.max - self.min)
 
     def __eq__(self, other):
         try:
@@ -1887,11 +1892,11 @@ s = charclass("\t\n\v\f\r ")
 W = ~w
 D = ~d
 S = ~s
-dot = ~charclass()
+dot = ~charclass("")
 
 # This charclasses expresses "no possibilities at all"
 # and can never match anything.
-nothing = charclass()
+nothing = charclass("")
 
 # Textual representations of standard character classes
 shorthand = {
