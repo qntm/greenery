@@ -765,7 +765,6 @@ def test_charclass_intersection():
 # Emptiness detection
 
 def test_empty():
-    raise 'nope!'
     assert nothing.empty()
     assert charclass().empty()
     assert not dot.empty()
