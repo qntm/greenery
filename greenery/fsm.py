@@ -4,6 +4,10 @@
     Finite state machine library.
 '''
 
+from typing import Optional, Union
+from dataclasses import dataclass
+
+
 class anything_else_cls:
     '''
         This is a surrogate symbol which you can use in your finite state machines
@@ -34,6 +38,9 @@ class OblivionError(Exception):
     '''
     pass
 
+state_type = Optional[Union[int, str]]
+
+@dataclass(frozen=True)
 class fsm:
     '''
         A Finite State Machine or FSM has an alphabet and a set of states. At any
@@ -48,11 +55,13 @@ class fsm:
         closure), intersected, and simplified.
         The majority of these methods are available using operator overloads.
     '''
-    def __setattr__(self, name, value):
-        '''Immutability prevents some potential problems.'''
-        raise Exception("This object is immutable.")
+    initial: state_type
+    finals: set[state_type]
+    alphabet: set[Union[str, anything_else_cls]]
+    states: set[state_type]
+    map: dict[state_type, dict[Union[str, anything_else_cls], state_type]]
 
-    def __init__(self, alphabet, states, initial, finals, map):
+    def __post_init__(self):
         '''
             `alphabet` is an iterable of symbols the FSM can be fed.
             `states` is the set of states for the FSM
@@ -63,21 +72,19 @@ class fsm:
         '''
 
         # Validation. Thanks to immutability, this only needs to be carried out once.
-        if not initial in states:
-            raise Exception("Initial state " + repr(initial) + " must be one of " + repr(states))
-        if not finals.issubset(states):
-            raise Exception("Final states " + repr(finals) + " must be a subset of " + repr(states))
-        for state in map.keys():
-            for symbol in map[state]:
-                if not map[state][symbol] in states:
-                    raise Exception("Transition for state " + repr(state) + " and symbol " + repr(symbol) + " leads to " + repr(map[state][symbol]) + ", which is not a state")
+        if not self.initial in self.states:
+            raise Exception("Initial state " + repr(self.initial) + " must be one of " + repr(self.states))
+        if not self.finals.issubset(self.states):
+            raise Exception("Final states " + repr(self.finals) + " must be a subset of " + repr(self.states))
+        for state, symbol in self.map.items():
+            for symbol in self.map[state]:
+                if not self.map[state][symbol] in self.states:
+                    raise Exception("Transition for state " + repr(state) + " and symbol " + repr(symbol) + " leads to " + repr(self.map[state][symbol]) + ", which is not a state")
 
         # Initialise the hard way due to immutability.
-        self.__dict__["alphabet"] = set(alphabet)
-        self.__dict__["states"  ] = set(states)
-        self.__dict__["initial" ] = initial
-        self.__dict__["finals"  ] = set(finals)
-        self.__dict__["map"     ] = map
+        object.__setattr__(self, "alphabet", set(self.alphabet))
+        object.__setattr__(self, "states", set(self.states))
+        object.__setattr__(self, "finals", set(self.finals))
 
     def accepts(self, input):
         '''
@@ -167,7 +174,7 @@ class fsm:
 
         return "".join("".join(row) + "\n" for row in rows)
 
-    def concatenate(*fsms):
+    def concatenate(*fsms: 'fsm'):
         '''
             Concatenate arbitrarily many finite state machines together.
         '''
@@ -793,7 +800,7 @@ def crawl(alphabet, initial, final, follow):
 
     return fsm(
         alphabet = alphabet,
-        states   = range(len(states)),
+        states   = set(range(len(states))),
         initial  = 0,
         finals   = finals,
         map      = map,

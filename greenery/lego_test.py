@@ -766,7 +766,7 @@ def test_charclass_intersection():
 
 def test_empty():
     assert nothing.empty()
-    assert charclass().empty()
+    assert charclass("").empty()
     assert not dot.empty()
     assert not mult.parse("a{0}").empty()
     assert mult.parse("[]").empty()
@@ -1076,7 +1076,7 @@ def test_two_two_bug():
 # Test intersection (&)
 
 def test_mult_intersection():
-    assert mult.parse("a") & mult.parse("b?") == charclass()
+    assert mult.parse("a") & mult.parse("b?") == charclass("")
     assert mult.parse("a") & mult.parse("b?") == nothing
     assert mult.parse("a") & mult.parse("a?") == charclass.parse("a")
     assert mult.parse("a{2}") & mult.parse("a{2,}") == mult.parse("a{2}")
@@ -1177,7 +1177,7 @@ def test_pattern_reduce_basic():
     assert pattern.parse("a").reduce() == charclass.parse("a")
 
 def test_empty_pattern_reduction():
-    assert pattern().reduce() == charclass()
+    assert pattern().reduce() == charclass("")
 
 def test_empty_mult_suppression():
     assert conc.parse("[]0\\d").reduce() == charclass.parse("[]")

@@ -32,7 +32,9 @@
     pattern, these procedures can drastically simplify a regex structure for
     readability. They're also pretty extensible.
 '''
+from typing import Optional, Union
 from greenery import fsm
+from dataclasses import dataclass, field
 
 class nomatch(Exception):
     '''Thrown when parsing fails. Almost always caught and almost never fatal'''
@@ -60,14 +62,14 @@ def call_fsm(method):
         return from_fsm(fsm_method(*[lego.to_fsm(alphabet) for lego in legos]))
     return new_method
 
-def parse(string):
+def parse(string: str):
     '''
         Parse a full string and return a lego piece. Fail if the whole string
         wasn't parsed
     '''
     return pattern.parse(string)
 
-def from_fsm(f):
+def from_fsm(f: fsm.fsm):
     '''
         Turn the supplied finite state machine into a `lego` object. This is
         accomplished using the Brzozowski algebraic method.
@@ -170,7 +172,7 @@ def select_static(string, i, *statics):
             return j, st
     raise nomatch
 
-def read_until(string, i, stop_char):
+def read_until(string: str, i: int, stop_char: str) -> tuple[int, str]:
     start = i
     while True:
         if i >= len(string):
@@ -194,7 +196,7 @@ class lego:
         '''
         raise Exception("This object is immutable.")
 
-    def to_fsm(self, alphabet):
+    def to_fsm(self, alphabet=None):
         '''
             Return the present lego piece in the form of a finite state machine,
             as imported from the fsm module.
@@ -222,7 +224,7 @@ class lego:
         raise NotImplementedError()
 
     @classmethod
-    def match(cls, string, i = 0):
+    def match(cls, string: str, i = 0):
         '''
             Start at index i in the supplied string and try to match one of the
             present class. Elementary recursive descent parsing with very little
@@ -232,7 +234,7 @@ class lego:
         raise NotImplementedError()
 
     @classmethod
-    def parse(cls, string):
+    def parse(cls, string: str):
         '''
             Parse the entire supplied string as an instance of the present class.
             Mainly for internal use in unit tests because it drops through to match()
@@ -457,6 +459,7 @@ class lego:
     def derive(self, string):
         return from_fsm(self.to_fsm().derive(string))
 
+@dataclass(frozen=True)
 class charclass(lego):
     '''
         A charclass is basically a frozenset of symbols. The reason for the
@@ -467,14 +470,14 @@ class charclass(lego):
         if the full alphabet is extremely large, but also requires dedicated
         combination functions.
     '''
+    chars: Union[frozenset[str], str]
+    negated: bool = False
 
-    def __init__(self, chars=set(), negateMe=False):
-        chars = frozenset(chars)
+    def __post_init__(self):
+        object.__setattr__(self, "chars", frozenset(self.chars))
         # chars should consist only of chars
-        if fsm.anything_else in chars:
+        if fsm.anything_else in self.chars:
             raise Exception("Can't put " + repr(fsm.anything_else) + " in a charclass")
-        self.__dict__["chars"]   = chars
-        self.__dict__["negated"] = negateMe
 
     def __eq__(self, other):
         try:
@@ -806,7 +809,7 @@ class charclass(lego):
             Negate the current charclass. e.g. [ab] becomes [^ab]. Call
             using "charclass2 = ~charclass1"
         '''
-        return charclass(self.chars, negateMe=not self.negated)
+        return charclass(self.chars, negated=not self.negated)
 
     def __invert__(self):
         return self.negate()
@@ -855,14 +858,16 @@ class charclass(lego):
         return self
 
     def copy(self):
-        return charclass(self.chars.copy(), negateMe=self.negated)
+        return charclass(self.chars.copy(), negated=self.negated)
 
+@dataclass(frozen=True)
 class bound:
     '''An integer but sometimes also possibly infinite (None)'''
-    def __init__(self, v):
-        if not v is None and v < 0:
-            raise Exception("Invalid bound: " + repr(v))
-        self.__dict__['v'] = v
+    v: Optional[int]
+
+    def __post_init__(self):
+        if not self.v is None and self.v < 0:
+            raise Exception("Invalid bound: " + repr(self.v))
 
     def __repr__(self):
         return "bound(" + repr(self.v) + ")"
@@ -874,7 +879,7 @@ class bound:
         return str(self.v)
 
     @classmethod
-    def match(cls, string, i = 0):
+    def match(cls, string: str, i = 0):
         def matchAnyOf(string, i, collection):
             for char in collection:
                 try:
@@ -959,6 +964,7 @@ class bound:
     def copy(self):
         return bound(self.v)
 
+@dataclass(frozen=True)
 class multiplier:
     '''
         A min and a max. The vast majority of characters in regular
@@ -969,22 +975,21 @@ class multiplier:
         also permit a max of 0 (iff min is 0 too). This allows the multiplier
         "zero" to exist, which actually are quite useful in their own special way.
     '''
+    min: bound
+    max: bound
+    mandatory: bound = field(init=False)
+    optional: bound = field(init=False)
 
-    def __init__(self, min, max):
-        if min == inf:
+    def __post_init__(self):
+        if self.min == inf:
             raise Exception("Minimum bound of a multiplier can't be " + repr(inf))
-        if min > max:
-            raise Exception("Invalid multiplier bounds: " + repr(min) + " and " + repr(max))
+        if self.min > self.max:
+            raise Exception("Invalid multiplier bounds: " + repr(self.min) + " and " + repr(self.max))
 
         # More useful than "min" and "max" in many situations
         # are "mandatory" and "optional".
-        mandatory = min
-        optional = max - min
-
-        self.__dict__['min'] = min
-        self.__dict__['max'] = max
-        self.__dict__['mandatory'] = mandatory
-        self.__dict__['optional'] = optional
+        object.__setattr__(self, "mandatory", self.min)
+        object.__setattr__(self, "optional", self.max - self.min)
 
     def __eq__(self, other):
         try:
@@ -1811,7 +1816,7 @@ class pattern(lego):
         return self
 
     @classmethod
-    def match(cls, string, i = 0):
+    def match(cls, string: str, i = 0):
         concs = list()
 
         # first one
@@ -1887,11 +1892,11 @@ s = charclass("\t\n\v\f\r ")
 W = ~w
 D = ~d
 S = ~s
-dot = ~charclass()
+dot = ~charclass("")
 
 # This charclasses expresses "no possibilities at all"
 # and can never match anything.
-nothing = charclass()
+nothing = charclass("")
 
 # Textual representations of standard character classes
 shorthand = {
