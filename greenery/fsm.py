@@ -4,9 +4,8 @@
     Finite state machine library.
 '''
 
-from typing import Optional, Union
+from typing import Optional, Union, Set, Dict
 from dataclasses import dataclass
-
 
 class anything_else_cls:
     '''
@@ -56,10 +55,10 @@ class fsm:
         The majority of these methods are available using operator overloads.
     '''
     initial: state_type
-    finals: set[state_type]
-    alphabet: set[Union[str, anything_else_cls]]
-    states: set[state_type]
-    map: dict[state_type, dict[Union[str, anything_else_cls], state_type]]
+    finals: Set[state_type]
+    alphabet: Set[Union[str, anything_else_cls]]
+    states: Set[state_type]
+    map: Dict[state_type, Dict[Union[str, anything_else_cls], state_type]]
 
     def __post_init__(self):
         '''

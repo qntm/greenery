@@ -32,7 +32,7 @@
     pattern, these procedures can drastically simplify a regex structure for
     readability. They're also pretty extensible.
 '''
-from typing import Optional, Union
+from typing import Optional, Union, Tuple, FrozenSet
 from greenery import fsm
 from dataclasses import dataclass, field
 
@@ -172,7 +172,7 @@ def select_static(string, i, *statics):
             return j, st
     raise nomatch
 
-def read_until(string: str, i: int, stop_char: str) -> tuple[int, str]:
+def read_until(string: str, i: int, stop_char: str) -> Tuple[int, str]:
     start = i
     while True:
         if i >= len(string):
@@ -470,7 +470,7 @@ class charclass(lego):
         if the full alphabet is extremely large, but also requires dedicated
         combination functions.
     '''
-    chars: Union[frozenset[str], str]
+    chars: Union[FrozenSet[str], str]
     negated: bool = False
 
     def __post_init__(self):
