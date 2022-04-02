@@ -1465,6 +1465,26 @@ class conc(lego):
                 new = self.mults[:i] + self.mults[i+1:]
                 return conc(*new)
 
+        # If R's language is a subset of S's, then R{a,b}S{c,} reduces to R{a}S{c,}.
+        # Conversely, S{c,}R{a,b} reduces to S{c,}R{a}.
+        if len(self.mults) > 1:
+            for i in range(len(self.mults) - 1):
+                for (R_first,R,S) in (
+                  (True, self.mults[i], self.mults[i+1]), 
+                  (False, self.mults[i+1],self.mults[i])
+                  ):
+                    if R.multiplicand.intersection(S.multiplicand).equivalent(R.multiplicand) \
+                      and (R.multiplier.min != R.multiplier.max) \
+                      and (S.multiplier.max == bound(None)):
+                        trimmed_R = mult(
+                            R.multiplicand,
+                            multiplier(R.multiplier.min, R.multiplier.min)
+                            )
+                        new = self.mults[:i] + \
+                          ((S, trimmed_R,), (trimmed_R, S,))[R_first] + self.mults[i + 2:]
+                        return conc(*new)
+                
+
         # multiple mults with identical multiplicands in a row?
         # squish those together
         # e.g. ab?b?c -> ab{0,2}c

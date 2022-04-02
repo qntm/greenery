@@ -1038,6 +1038,10 @@ def test_reduce_concatenations():
     assert parse("za{2,3}(a{2}b|a+c)").reduce() == conc.parse("za{3,4}(ab|a*c)")
     assert parse("(ba{2}|ca+)a{2,3}z").reduce() == conc.parse("(ba|ca*)a{3,4}z")
     assert parse("(a|bc)(a|bc)").reduce() == mult.parse("(a|bc){2}")
+    assert parse("a+[ab]+").reduce() == conc.parse("a[ab]+")
+    assert parse("a{3,8}[ab]+").reduce() == conc.parse("a{3}[ab]+")
+    assert parse("[ab]+b+").reduce() == conc.parse("[ab]+b")
+    assert parse("[ab]+a{3,8}").reduce() == conc.parse("[ab]+a{3}")
 
 ################################################################################
 # Multiplication tests
