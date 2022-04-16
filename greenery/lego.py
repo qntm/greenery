@@ -1462,40 +1462,50 @@ class conc(lego):
         # empty string)? That can be removed e.g. "a()b" -> "ab"
         for i in range(len(self.mults)):
             if self.mults[i].multiplicand == pattern(emptystring):
-                new = self.mults[:i] + self.mults[i+1:]
+                new = self.mults[:i] + self.mults[i + 1:]
                 return conc(*new)
 
-        # If R's language is a subset of S's, then R{a,b}S{c,} reduces to R{a}S{c,}.
-        # Conversely, S{c,}R{a,b} reduces to S{c,}R{a}.
+        # We might be able to combine some mults together or at least simplify the multiplier on
+        # one of them.
         if len(self.mults) > 1:
             for i in range(len(self.mults) - 1):
-                for (R_first,R,S) in (
-                  (True, self.mults[i], self.mults[i+1]), 
-                  (False, self.mults[i+1],self.mults[i])
-                  ):
-                    if R.multiplicand.intersection(S.multiplicand).equivalent(R.multiplicand) \
-                      and (R.multiplier.min != R.multiplier.max) \
-                      and (S.multiplier.max == bound(None)):
-                        trimmed_R = mult(
-                            R.multiplicand,
-                            multiplier(R.multiplier.min, R.multiplier.min)
-                            )
-                        new = self.mults[:i] + \
-                          ((S, trimmed_R,), (trimmed_R, S,))[R_first] + self.mults[i + 2:]
-                        return conc(*new)
-                
+                r = self.mults[i]
+                s = self.mults[i + 1]
 
-        # multiple mults with identical multiplicands in a row?
-        # squish those together
-        # e.g. ab?b?c -> ab{0,2}c
-        if len(self.mults) > 1:
-            for i in range(len(self.mults) - 1):
-                if self.mults[i].multiplicand == self.mults[i + 1].multiplicand:
+                # If R = S, then we can squish the multipliers together
+                # e.g. ab?b?c -> ab{0,2}c
+                if r.multiplicand == s.multiplicand:
                     squished = mult(
-                        self.mults[i].multiplicand,
-                        self.mults[i].multiplier + self.mults[i + 1].multiplier
+                        r.multiplicand,
+                        r.multiplier + s.multiplier
                     )
                     new = self.mults[:i] + (squished,) + self.mults[i + 2:]
+                    return conc(*new)
+
+                # If R's language is a subset of S's, then R{a,b}S{c,} reduces to R{a}S{c,}...
+                # e.g. \d+\w+ -> \d\w+
+                # Do the cheapest checks first
+                if r.multiplier.min < r.multiplier.max \
+                and s.multiplier.max == inf \
+                and (r.multiplicand & s.multiplicand).equivalent(r.multiplicand):
+                    trimmed = mult(
+                        r.multiplicand,
+                        multiplier(r.multiplier.min, r.multiplier.min)
+                    )
+                    new = self.mults[:i] + (trimmed, s) + self.mults[i + 2:]
+                    return conc(*new)
+
+                # Conversely, if R is superset of S, then R{c,}S{a,b} reduces to R{c,}S{a}.
+                # e.g. [ab]+a? -> [ab]+
+                # Do the cheapest checks first
+                if r.multiplier.max == inf \
+                and s.multiplier.min < s.multiplier.max \
+                and (r.multiplicand & s.multiplicand).equivalent(s.multiplicand):
+                    trimmed = mult(
+                        s.multiplicand,
+                        multiplier(s.multiplier.min, s.multiplier.min)
+                    )
+                    new = self.mults[:i] + (r, trimmed) + self.mults[i + 2:]
                     return conc(*new)
 
         # Conc contains (among other things) a *singleton* mult containing a pattern

@@ -1042,6 +1042,8 @@ def test_reduce_concatenations():
     assert parse("a{3,8}[ab]+").reduce() == conc.parse("a{3}[ab]+")
     assert parse("[ab]+b+").reduce() == conc.parse("[ab]+b")
     assert parse("[ab]+a{3,8}").reduce() == conc.parse("[ab]+a{3}")
+    assert parse("\\d+\\w+").reduce() == conc.parse("\\d\\w+")
+    assert parse("[ab]+a?").reduce() == mult.parse("[ab]+")
 
 ################################################################################
 # Multiplication tests
