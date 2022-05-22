@@ -11,7 +11,7 @@ from greenery import fsm
 # functionality which has already been unit-tested. If this isn't possible, then
 # additional tests are required!
 
-################################################################################
+###############################################################################
 # Equality tests. No point in comparing different lego pieces in tests unless
 # this part works
 
@@ -50,7 +50,7 @@ def test_pattern_equality():
         conc(mult(charclass("a"), one)),
     )
 
-################################################################################
+###############################################################################
 # Parsing tests. Absolutely no cleverness is applied at parsing time, we just
 # return the exact object which was just parsed. Call reduce() if you wish...
 
@@ -180,13 +180,13 @@ def test_pattern_parsing():
     # Named groups
     assert pattern.parse("(?P<ng1>abc)") == parse("(abc)")
 
-################################################################################
+###############################################################################
 # repr() tests
 
 def test_repr():
     assert repr(~charclass("a")) == "~charclass('a')"
 
-################################################################################
+###############################################################################
 # Stringification tests
 
 def test_charclass_str():
@@ -307,7 +307,7 @@ def test_parse_str_round_trip():
     assert str(parse("\\d{4}")) == "\\d{4}"
     assert str(parse("a.b()()")) == "a.b()()"
 
-################################################################################
+###############################################################################
 # Test to_fsm() and alphabet-related functionality
 
 def test_alphabet():
@@ -391,7 +391,7 @@ def test_bug_28():
     assert not parse("(ab*)").to_fsm().star().accepts("bb")
     assert not parse("(ab*)*").to_fsm().accepts("bb")
 
-################################################################################
+###############################################################################
 # Test matches(). Quite sparse at the moment
 
 def test_wildcards_in_charclasses():
@@ -427,7 +427,7 @@ def test_in():
     assert "abcdsasda" in parse("\\w{4,10}")
     assert "abc" in parse("abc|def(ghi|jkl)")
 
-################################################################################
+###############################################################################
 # Test string generators
 
 def test_charclass_gen():
@@ -538,7 +538,7 @@ def test_wildcard_generator():
 def test_forin():
     assert [s for s in parse("abc|def(ghi|jkl)")] == ["abc", "defghi", "defjkl"]
 
-################################################################################
+###############################################################################
 # Test cardinality() and len()
 
 def test_cardinality():
@@ -554,13 +554,13 @@ def test_cardinality():
     except OverflowError:
         assert True
 
-################################################################################
+###############################################################################
 
 def test_copy():
     x = pattern.parse("abc|def(ghi|jkl)")
     assert x.copy() == x
 
-################################################################################
+###############################################################################
 # Test from_fsm()
 
 def test_dot():
@@ -569,11 +569,11 @@ def test_dot():
 def test_abstar():
     # Buggggs.
     abstar = fsm.fsm(
-        alphabet = {'a', fsm.anything_else, 'b'},
-        states   = {0, 1},
-        initial  = 0,
-        finals   = {0},
-        map      = {
+        alphabet={'a', fsm.anything_else, 'b'},
+        states={0, 1},
+        initial=0,
+        finals={0},
+        map={
             0: {'a': 0, fsm.anything_else: 1, 'b': 0},
             1: {'a': 1, fsm.anything_else: 1, 'b': 1}
         }
@@ -582,11 +582,11 @@ def test_abstar():
 
 def test_adotb():
     adotb = fsm.fsm(
-        alphabet = {'a', fsm.anything_else, 'b'},
-        states   = {0, 1, 2, 3, 4},
-        initial  = 0,
-        finals   = {4},
-        map      = {
+        alphabet={'a', fsm.anything_else, 'b'},
+        states={0, 1, 2, 3, 4},
+        initial=0,
+        finals={4},
+        map={
             0: {'a': 2, fsm.anything_else: 1, 'b': 1},
             1: {'a': 1, fsm.anything_else: 1, 'b': 1},
             2: {'a': 3, fsm.anything_else: 3, 'b': 3},
@@ -599,11 +599,11 @@ def test_adotb():
 def test_lego_recursion_error():
     # Catch a recursion error
     assert str(from_fsm(fsm.fsm(
-        alphabet = {"0", "1"},
-        states   = {0, 1, 2, 3},
-        initial  = 3,
-        finals   = {1},
-        map      = {
+        alphabet={"0", "1"},
+        states={0, 1, 2, 3},
+        initial=3,
+        finals={1},
+        map={
             0: {"0": 1, "1": 1},
             1: {"0": 2, "1": 2},
             2: {"0": 2, "1": 2},
@@ -616,11 +616,11 @@ def test_even_star_bug():
     # row), but when from_fsm() is called, the result is "a+". Turned out to be
     # a fault in the lego.multiplier.__mul__() routine
     elesscomplex = fsm.fsm(
-        alphabet = {"a"},
-        states = {0, 1},
-        initial = 0,
-        finals = {1},
-        map = {
+        alphabet={"a"},
+        states={0, 1},
+        initial=0,
+        finals={1},
+        map={
             0 : {"a" : 1},
             1 : {"a" : 0},
         },
@@ -647,16 +647,16 @@ def test_binary_3():
     # Disallows the empty string
     # Allows "0" on its own, but not leading zeroes.
     div3 = from_fsm(fsm.fsm(
-        alphabet = {"0", "1"},
-        states = {"initial", "zero", 0, 1, 2, None},
-        initial = "initial",
-        finals = {"zero", 0},
-        map = {
-            "initial" : {"0" : "zero", "1" : 1   },
+        alphabet={"0", "1"},
+        states={"initial", "zero", 0, 1, 2, None},
+        initial="initial",
+        finals={"zero", 0},
+        map={
+            "initial" : {"0" : "zero", "1" : 1},
             "zero"    : {"0" : None  , "1" : None},
-            0         : {"0" : 0     , "1" : 1   },
-            1         : {"0" : 2     , "1" : 0   },
-            2         : {"0" : 1     , "1" : 2   },
+            0         : {"0" : 0     , "1" : 1},
+            1         : {"0" : 2     , "1" : 0},
+            2         : {"0" : 1     , "1" : 2},
             None      : {"0" : None  , "1" : None},
         },
     ))
@@ -676,11 +676,11 @@ def test_base_N():
     N = 3
     assert base <= 10
     divN = from_fsm(fsm.fsm(
-        alphabet = set(str(i) for i in range(base)),
-        states = set(range(N)) | {"initial", "zero", None},
-        initial = "initial",
-        finals = {"zero", 0},
-        map = dict(
+        alphabet=set(str(i) for i in range(base)),
+        states=set(range(N)) | {"initial", "zero", None},
+        initial="initial",
+        finals={"zero", 0},
+        map=dict(
             [
                 ("initial", dict([(str(j), j              % N) for j in range(1, base)] + [("0", "zero")])),
                 ("zero"   , dict([(str(j), None              ) for j in range(   base)]                  )),
@@ -705,11 +705,11 @@ def test_bad_alphabet():
     # characters or `fsm.anything_else`.
     for bad_symbol in [None, (), 0, ("a",), "", "aa", "ab", True]:
         f = fsm.fsm(
-            alphabet = {bad_symbol},
-            states = {0},
-            initial = 0,
-            finals = set(),
-            map = {
+            alphabet={bad_symbol},
+            states={0},
+            initial=0,
+            finals=set(),
+            map={
                 0 : {bad_symbol : 0}
             },
         )
@@ -723,11 +723,11 @@ def test_bad_alphabet():
 
 def test_dead_default():
     blockquote = from_fsm(fsm.fsm(
-        alphabet = {"/", "*", fsm.anything_else},
-        states = {0, 1, 2, 3, 4},
-        initial = 0,
-        finals = {4},
-        map = {
+        alphabet={"/", "*", fsm.anything_else},
+        states={0, 1, 2, 3, 4},
+        initial=0,
+        finals={4},
+        map={
                 0    : {"/" : 1},
                 1    : {"*" : 2},
                 2    : {"/" : 2, fsm.anything_else : 2, "*" : 3},
@@ -735,7 +735,7 @@ def test_dead_default():
         }
     ))
 
-################################################################################
+###############################################################################
 # charclass set operations
 
 def test_charclass_negation():
@@ -762,7 +762,7 @@ def test_charclass_intersection():
     # [^ab] n [^bc] = [^abc]
     assert ~charclass("ab") & ~charclass("bc") == ~charclass("abc")
 
-################################################################################
+###############################################################################
 # Emptiness detection
 
 def test_empty():
@@ -778,7 +778,7 @@ def test_empty():
     assert not pattern.parse("a{0}").empty()
     assert not pattern.parse("[]?").empty()
 
-################################################################################
+###############################################################################
 # Test everythingbut()
 
 def test_everythingbut():
@@ -806,13 +806,13 @@ def test_isinstance_bug():
     # classes for some reason, so isinstance(m, mult) was returning false.
     starfree = (parse("").everythingbut() + parse("aa") + parse("").everythingbut()).everythingbut()
 
-################################################################################
+###############################################################################
 
 def test_equivalence():
     assert parse("aa*").equivalent(parse("a*a"))
     assert parse("([ab]*a|[bc]*c)?b*").equivalent(parse("b*(a[ab]*|c[bc]*)?"))
 
-################################################################################
+###############################################################################
 # Test reversed()
 
 def test_regex_reversal():
@@ -823,7 +823,7 @@ def test_regex_reversal():
     assert reversed(parse("abc|def|ghi")) == parse("cba|fed|ihg")
     assert reversed(parse("(abc)*d")) == parse("d(cba)*")
 
-################################################################################
+###############################################################################
 # Bound and multiplier operation tests
 
 def test_bound():
@@ -916,14 +916,14 @@ def test_multiplier_union():
     except Exception:
         pass
 
-################################################################################
+###############################################################################
 # Tests for some more set operations
 
 def test_set_ops():
     assert parse("[abcd]") - parse("a") == charclass.parse("[bcd]")
     assert parse("[abcd]") ^ parse("[cdef]") == charclass.parse("[abef]")
 
-################################################################################
+###############################################################################
 # Concatenation tests (+)
 
 def test_concatenation():
@@ -945,7 +945,7 @@ def test_concatenation():
     assert pattern.parse("b|cd") + conc.parse("za{2,3}") == conc.parse("(b|cd)za{2,3}")
     assert pattern.parse("a|bc") + pattern.parse("c|de") == conc.parse("(a|bc)(c|de)")
 
-################################################################################
+###############################################################################
 # Test methods for finding common parts of regular expressions.
 
 def test_mult_common():
@@ -977,7 +977,7 @@ def test_pattern_commonconc_suffix():
     assert pattern.parse("f{2,3}c|fc")._commonconc(suffix=True) == conc.parse("fc")
     assert pattern.parse("aa")._commonconc(suffix=True) == conc.parse("aa")
 
-################################################################################
+###############################################################################
 # Inverse concatenation tests: behead() and dock()
 
 def test_mult_dock():
@@ -1016,7 +1016,7 @@ def test_pattern_beheading():
     assert pattern.parse("Z+A|ZB|ZZC").behead(conc.parse("Z")) == pattern.parse("Z*A|B|ZC")
     assert pattern.parse("a{2}b|a+c").behead(conc.parse("a")) == pattern.parse("ab|a*c")
 
-################################################################################
+###############################################################################
 # Basic concatenation reduction tests
 
 def test_reduce_concatenations():
@@ -1046,7 +1046,7 @@ def test_reduce_concatenations():
     assert parse("\\d+\\w+").reduce() == conc.parse("\\d\\w+")
     assert parse("[ab]+a?").reduce() == mult.parse("[ab]+")
 
-################################################################################
+###############################################################################
 # Multiplication tests
 
 def test_charclass_multiplication():
@@ -1055,17 +1055,22 @@ def test_charclass_multiplication():
     assert charclass("a") * multiplier.parse("{4,}") == mult.parse("a{4,}")
 
 def test_mult_multiplication():
-    assert mult.parse("a{2,3}") * one == mult.parse("a{2,3}")
-    assert mult.parse("a{2,3}") * multiplier.parse("{4,5}") == mult.parse("a{8,15}")
-    assert mult.parse("a{2,}") * multiplier.parse("{2,}") == mult.parse("a{4,}")
+    assert mult.parse("a{2,3}") * one == \
+        mult.parse("a{2,3}")
+    assert mult.parse("a{2,3}") * multiplier.parse("{4,5}") == \
+        mult.parse("a{8,15}")
+    assert mult.parse("a{2,}") * multiplier.parse("{2,}") == \
+        mult.parse("a{4,}")
 
 def test_conc_multiplication():
     assert conc.parse("ab?") * qm == mult.parse("(ab?)?")
 
 def test_pattern_multiplication():
-    assert pattern.parse("ab?|ba?") * multiplier.parse("{2,3}") == mult.parse("(ab?|ba?){2,3}")
+    assert pattern.parse("ab?|ba?") * multiplier.parse("{2,3}") == \
+        mult.parse("(ab?|ba?){2,3}")
     # TODO
-    #assert pattern.parse("(ab?|ba?)") * multiplier.parse("{2,3}") == mult.parse("(ab?|ba?){2,3}")
+    #assert pattern.parse("(ab?|ba?)") * multiplier.parse("{2,3}") == \
+    #    mult.parse("(ab?|ba?){2,3}")
 
 def test_even_star_bug():
     # Defect: (a{2})* should NOT reduce to a*
@@ -1079,7 +1084,7 @@ def test_two_or_more_qm_bug():
 def test_two_two_bug():
     assert mult.parse("a{2}") * multiplier.parse("{2}") == mult.parse("a{4}")
 
-################################################################################
+###############################################################################
 # Test intersection (&)
 
 def test_mult_intersection():
@@ -1103,7 +1108,10 @@ def test_parse_regex_intersection():
     assert str(parse("\\d{2}") & parse("19.*")) == "19"
     assert str(parse("\\d{3}") & parse("19.*")) == "19\\d"
     assert str(parse("abc...") & parse("...def")) == "abcdef"
-    assert str(parse("[bc]*[ab]*") & parse("[ab]*[bc]*")) in {"([ab]*a|[bc]*c)?b*", "b*(a[ab]*|c[bc]*)?"}
+    assert str(parse("[bc]*[ab]*") & parse("[ab]*[bc]*")) in {
+        "([ab]*a|[bc]*c)?b*",
+        "b*(a[ab]*|c[bc]*)?"
+    }
     assert str(parse("\\W*")) == "\\W*"
     assert str(parse("[a-g0-8$%\\^]+")) == "[$%0-8\\^a-g]+"
     assert str(parse("[^d]{2,8}")) == "[^d]{2,8}"
@@ -1114,14 +1122,26 @@ def test_parse_regex_intersection():
     assert parse("[ab]{0,2}").matches("")
     assert parse("[^a]{0,2}").matches("")
     assert parse("b{0,2}").matches("")
-    assert str(parse("[ab]{0,2}") & parse("[^a]{0,2}")) == "b{0,2}"
-    assert str(parse("[ab]{0,4}") & parse("[^a]{0,4}")) == "b{0,4}"
-    assert str(parse("[abc]{0,8}") & parse("[^a]{0,8}")) == "[bc]{0,8}"
-    assert str(parse("[a-g0-8$%\\^]{0,8}") & parse("[^d]{0,8}")) == "[$%0-8\\^abcefg]{0,8}"
-    assert str(parse("[a-g0-8$%\\^]+") & parse("[^d]{0,8}")) == "[$%0-8\\^abcefg]{1,8}"
-    assert str(parse("[a-g0-8$%\\^]+") & parse("[^d]{2,8}")) == "[$%0-8\\^abcefg]{2,8}"
-    assert str(parse("\\W*") & parse("[a-g0-8$%\\^]+") & parse("[^d]{2,8}")) == "[$%\\^]{2,8}"
-    assert str(parse("\\d{4}-\\d{2}-\\d{2}") & parse("19.*")) == "19\\d{2}-\\d{2}-\\d{2}"
+    assert str(parse("[ab]{0,2}") & parse("[^a]{0,2}")) == \
+        "b{0,2}"
+    assert str(parse("[ab]{0,4}") & parse("[^a]{0,4}")) == \
+        "b{0,4}"
+    assert str(parse("[abc]{0,8}") & parse("[^a]{0,8}")) == \
+        "[bc]{0,8}"
+    assert str(parse("[a-g0-8$%\\^]{0,8}") & parse("[^d]{0,8}")) == \
+        "[$%0-8\\^abcefg]{0,8}"
+    assert str(parse("[a-g0-8$%\\^]+") & parse("[^d]{0,8}")) == \
+        "[$%0-8\\^abcefg]{1,8}"
+    assert str(parse("[a-g0-8$%\\^]+") & parse("[^d]{2,8}")) == \
+        "[$%0-8\\^abcefg]{2,8}"
+    assert str(
+        parse("\\W*") &
+        parse("[a-g0-8$%\\^]+") &
+        parse("[^d]{2,8}")
+    ) == \
+        "[$%\\^]{2,8}"
+    assert str(parse("\\d{4}-\\d{2}-\\d{2}") & parse("19.*")) == \
+        "19\\d{2}-\\d{2}-\\d{2}"
 
 def test_complexify():
     # Complexify!
@@ -1154,7 +1174,7 @@ def test_silly_reduction():
     short = "[ab]*a?b*|[ab]*b?a*"
     assert str(parse(".*") & parse(short)) == "[ab]*"
 
-################################################################################
+###############################################################################
 # reduce() tests
 
 def test_mult_reduction_easy():
@@ -1171,11 +1191,13 @@ def test_mult_reduction_easy():
     assert mult(pattern(), zero).reduce() == emptystring
     assert mult(pattern(), multiplier.parse("{0,5}")).reduce() == emptystring
 
+
 def test_conc_reduction_basic():
     assert conc.parse("a").reduce() == charclass.parse("a")
     assert conc.parse("a{3,4}").reduce() == mult.parse("a{3,4}")
     assert conc.parse("ab").reduce() == conc.parse("ab")
     assert conc.parse("a[]b").reduce() == charclass.parse("[]")
+
 
 def test_pattern_reduce_basic():
     assert pattern.parse("ab|cd").reduce() == pattern.parse("ab|cd")
@@ -1183,30 +1205,35 @@ def test_pattern_reduce_basic():
     assert pattern.parse("a{2}").reduce() == mult.parse("a{2}")
     assert pattern.parse("a").reduce() == charclass.parse("a")
 
+
 def test_empty_pattern_reduction():
     assert pattern().reduce() == charclass("")
+
 
 def test_empty_mult_suppression():
     assert conc.parse("[]0\\d").reduce() == charclass.parse("[]")
     assert conc(
-        mult(pattern(), one), # this mult can never actually match anything
+        mult(pattern(), one), # this can never actually match anything
         mult(charclass("0"), one),
         mult(charclass("0123456789"), one),
     ).reduce() == charclass.parse("[]")
+
 
 def test_empty_conc_suppression():
     assert pattern.parse("[]0\\d").reduce() == charclass.parse("[]")
     assert pattern(
         conc(
-            mult(pattern(), one), # this mult can never actually match anything
+            mult(pattern(), one),  # this can never actually match anything
             mult(charclass("0"), one),
             mult(charclass("0123456789"), one),
         ) # so neither can this conc
     ).reduce() == charclass.parse("[]")
 
+
 def test_nested_pattern_reduction():
     # a(d(ab|a*c)) -> ad(ab|a*c)
     assert conc.parse("a(d(ab|a*c))").reduce() == conc.parse("ad(ab|a*c)")
+
 
 def test_mult_factor_out_qm():
     # mult contains a pattern containing an empty conc? Pull the empty
@@ -1217,46 +1244,68 @@ def test_mult_factor_out_qm():
     assert mult.parse("()").reduce() == conc.parse("")
     assert mult.parse("([$%\\^]|){1}").reduce() == mult.parse("[$%\\^]?")
 
+
 def test_remove_unnecessary_parens():
-    # mult contains a pattern containing a single conc containing a single mult?
-    # that can be reduced greatly
+    # mult contains a pattern containing a single conc containing a single
+    # mult? That can be reduced greatly
     assert conc.parse("(a){2}b").reduce() == conc.parse("a{2}b")
     assert conc.parse("(a?)+b").reduce() == conc.parse("a*b")
     assert mult.parse("([ab])*").reduce() == mult.parse("[ab]*")
     assert mult.parse("(c{1,2}){3,4}").reduce() == mult.parse("c{3,8}")
 
+
 def test_obvious_reduction():
     assert mult.parse("(a|b)*").reduce() == mult.parse("[ab]*")
 
+
 def test_mult_squoosh():
     # sequence squooshing of mults within a conc
-    assert conc.parse("[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]").reduce() == mult.parse("[0-9A-Fa-f]{3}")
-    assert conc.parse("[$%\\^]?[$%\\^]").reduce() == mult.parse("[$%\\^]{1,2}")
-    assert conc.parse("(|(|(|(|(|(|[$%\\^])[$%\\^])[$%\\^])[$%\\^])[$%\\^])[$%\\^])[$%\\^][$%\\^]").reduce() == mult.parse("[$%\\^]{2,8}")
+    assert conc.parse("[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]").reduce() == \
+        mult.parse("[0-9A-Fa-f]{3}")
+    assert conc.parse("[$%\\^]?[$%\\^]").reduce() == \
+        mult.parse("[$%\\^]{1,2}")
+    assert conc.parse(
+        "(|(|(|(|(|[$%\\^])[$%\\^])[$%\\^])[$%\\^])[$%\\^])[$%\\^][$%\\^]"
+    ).reduce() == \
+        mult.parse("[$%\\^]{2,7}")
+
 
 def test_bad_reduction_bug():
     # DEFECT: "0{2}|1{2}" was erroneously reduced() to "[01]{2}"
-    assert parse("0{2}|1{2}").reduce() != parse("[01]{2}")
-    assert parse("0|[1-9]|ab").reduce() == pattern.parse("\\d|ab")
-    assert parse("0|[1-9]|a{5,7}").reduce() == pattern.parse("\\d|a{5,7}")
-    assert parse("0|(0|[1-9]|a{5,7})").reduce() == pattern.parse("0|(\\d|a{5,7})")
+    assert parse("0{2}|1{2}").reduce() != \
+        parse("[01]{2}")
+    assert parse("0|[1-9]|ab").reduce() == \
+        pattern.parse("\\d|ab")
+    assert parse("0|[1-9]|a{5,7}").reduce() == \
+        pattern.parse("\\d|a{5,7}")
+    assert parse("0|(0|[1-9]|a{5,7})").reduce() == \
+        pattern.parse("0|(\\d|a{5,7})")
     # TODO: should do better than this! Merge that 0
+
 
 def test_common_prefix_pattern_reduction():
     assert pattern.parse("a{2}b|a+c").reduce() == conc.parse("a(ab|a*c)")
+
 
 def test_epsilon_reduction():
     assert parse("|(ab)*|def").reduce() == pattern.parse("(ab)*|def")
     assert parse("|(ab)+|def").reduce() == pattern.parse("(ab)*|def")
     assert parse("|.+").reduce() == mult.parse(".*")
-    assert parse("|a+|b+").reduce() in {pattern.parse("a+|b*"), pattern.parse("a*|b+")}
+    assert parse("|a+|b+").reduce() in {
+        pattern.parse("a+|b*"),
+        pattern.parse("a*|b+")
+    }
+
 
 def test_charclass_intersection_2():
-    assert (parse("[A-z]") & parse("[^g]")).reduce() == charclass.parse("[A-fh-z]")
+    assert (parse("[A-z]") & parse("[^g]")).reduce() == \
+        charclass.parse("[A-fh-z]")
+
 
 def test_reduce_boom():
     # make sure recursion problem in reduce() has gone away
     assert conc.parse("([1-9]|0)").reduce() == d
+
 
 def test_new_reduce():
     # The @reduce_after decorator has been removed from many methods since it
@@ -1267,27 +1316,41 @@ def test_new_reduce():
     assert conc.parse("a()()").reduce() == charclass.parse("a")
     assert conc.parse("a.b()()").reduce() == conc.parse("a.b")
 
-def test_main_bug():
-    assert parse("a*").reduce() == mult.parse("a*")
-    assert parse("a|a*").reduce() == mult.parse("a*")
-    assert parse("a{1,2}|a{3,4}|bc").reduce() == pattern.parse("a{1,4}|bc")
-    assert parse("a{1,2}|bc|a{3,4}").reduce() == pattern.parse("a{1,4}|bc")
-    assert parse("a{1,2}|a{3,4}|a{5,6}|bc").reduce() == pattern.parse("a{1,6}|bc")
-    assert parse("a{1,2}|a{3}|a{5,6}").reduce() == conc.parse("a{1,2}(a?|a{4})")
-    assert parse("a{1,2}|a{3}|a{5,6}|bc").reduce() == pattern.parse("a{1,3}|a{5,6}|bc")
-    assert parse("a{1,2}|a{4}|a{5,6}").reduce() == conc.parse("a{1,2}(a{3,4})?")
-    assert parse("a{1,2}|a{4}|a{5,6}|bc").reduce() == pattern.parse("a{1,2}|a{4,6}|bc")
-    assert (parse("a") | parse("a*")).reduce() == mult.parse("a*")
 
-def test_bug_28():
+def test_main_bug():
+    assert parse("a*").reduce() == \
+        mult.parse("a*")
+    assert parse("a|a*").reduce() == \
+        mult.parse("a*")
+    assert parse("a{1,2}|a{3,4}|bc").reduce() == \
+        pattern.parse("a{1,4}|bc")
+    assert parse("a{1,2}|bc|a{3,4}").reduce() == \
+        pattern.parse("a{1,4}|bc")
+    assert parse("a{1,2}|a{3,4}|a{5,6}|bc").reduce() == \
+        pattern.parse("a{1,6}|bc")
+    assert parse("a{1,2}|a{3}|a{5,6}").reduce() == \
+        conc.parse("a{1,2}(a?|a{4})")
+    assert parse("a{1,2}|a{3}|a{5,6}|bc").reduce() == \
+        pattern.parse("a{1,3}|a{5,6}|bc")
+    assert parse("a{1,2}|a{4}|a{5,6}").reduce() == \
+        conc.parse("a{1,2}(a{3,4})?")
+    assert parse("a{1,2}|a{4}|a{5,6}|bc").reduce() == \
+        pattern.parse("a{1,2}|a{4,6}|bc")
+    assert (parse("a") | parse("a*")).reduce() == \
+        mult.parse("a*")
+
+
+def test_bug_28_b():
     # Defect in lego.to_fsm()
     assert not parse("(ab*)*").to_fsm().accepts("bb")
+
 
 def test_derive():
     assert parse("a+").derive("a") == mult.parse("a*")
     assert parse("a+|b+").derive("a") == mult.parse("a*")
     assert parse("abc|ade").derive("a") == pattern.parse("bc|de")
     assert parse("abc|ade").derive("ab") == charclass.parse("c")
+
 
 def test_bug_36_1():
     etc1 = parse(".*").to_fsm()
@@ -1297,6 +1360,7 @@ def test_bug_36_1():
     assert not etc1.isdisjoint(etc2)
     assert not etc2.isdisjoint(etc1)
 
+
 def test_bug_36_2():
     etc1 = parse("/etc/.*").to_fsm()
     etc2 = parse("/etc/something.*").to_fsm()
@@ -1305,64 +1369,78 @@ def test_bug_36_2():
     assert not etc1.isdisjoint(etc2)
     assert not etc2.isdisjoint(etc1)
 
+
 def test_bug_slow():
     # issue #43
     import time
     m = fsm.fsm(
-        alphabet = {'R', 'L', 'U', 'D'},
-        states = {
+        alphabet={'R', 'L', 'U', 'D'},
+        states={
             0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
             11, 12, 13, 14, 15, 16, 17, 18, 19, 20},
-        initial = 0,
-        finals = {20},
-        map = {0: {'D': 1, 'U': 2},
-               1: {'L': 3},
-               2: {'L': 4},
-               3: {'U': 5},
-               4: {'D': 6},
-               5: {'R': 7},
-               6: {'R': 8},
-               7: {'U': 9},
-               8: {'D': 10},
-               9: {'L': 11},
-               10: {'L': 12},
-               11: {'L': 13},
-               12: {'L': 14},
-               13: {'D': 15},
-               14: {'U': 16},
-               15: {'R': 17},
-               16: {'R': 18},
-               17: {'D': 19},
-               18: {'U': 19},
-               19: {'L': 20},
-               20: {}})
+        initial=0,
+        finals={20},
+        map={
+            0: {'D': 1, 'U': 2},
+            1: {'L': 3},
+            2: {'L': 4},
+            3: {'U': 5},
+            4: {'D': 6},
+            5: {'R': 7},
+            6: {'R': 8},
+            7: {'U': 9},
+            8: {'D': 10},
+            9: {'L': 11},
+            10: {'L': 12},
+            11: {'L': 13},
+            12: {'L': 14},
+            13: {'D': 15},
+            14: {'U': 16},
+            15: {'R': 17},
+            16: {'R': 18},
+            17: {'D': 19},
+            18: {'U': 19},
+            19: {'L': 20},
+            20: {}
+        }
+    )
     t1 = time.time()
-    l = from_fsm(m)
+    ll = from_fsm(m)
     t2 = time.time()
-    assert (t2 - t1) < 60 # should finish in way under 1s
-    assert l == parse("(DLURULLDRD|ULDRDLLURU)L").reduce()
+    assert (t2 - t1) < 60  # should finish in way under 1s
+    assert ll == parse("(DLURULLDRD|ULDRDLLURU)L").reduce()
+
 
 def test_bug_48_simpler():
     assert str(from_fsm(fsm.fsm(
-        alphabet = { 'd' },
-        states = { 0, 1 },
-        initial = 0,
-        finals = {1},
-        map = {
+        alphabet={'d'},
+        states={0, 1},
+        initial=0,
+        finals={1},
+        map={
             0: {'d': 1},
         },
     ))) == 'd'
 
+
 def test_bug_48():
-    S5, S26, S45, S63, S80, S97, S113, S127, S140, S152, S163, S175, S182 = range(13)
-    char0, char1, char2, char3, char4, char5, char6, char7, char8 = '_', 'a', 'd', 'e', 'g', 'm', 'n', 'o', 'p'
+    S5, S26, S45, S63, S80, S97, S113, S127, S140, S152, S163, S175, S182 = \
+        range(13)
+    char0, char1, char2, char3, char4, char5, char6, char7, char8 = \
+        '_', 'a', 'd', 'e', 'g', 'm', 'n', 'o', 'p'
 
     machine = fsm.fsm(
-        alphabet = { char0, char1, char2, char3, char4, char5, char6, char7, char8 },
-        states = { S5, S26, S45, S63, S80, S97, S113, S127, S140, S152, S163, S175, S182 },
-        initial = S5,
-        finals = {S182},
-        map = {
+        alphabet={
+            char0, char1, char2, char3, char4,
+            char5, char6, char7, char8
+        },
+        states={
+            S5, S26, S45, S63, S80, S97, S113,
+            S127, S140, S152, S163, S175, S182
+        },
+        initial=S5,
+        finals={S182},
+        map={
             S113: {char0: S127},
             S127: {char7: S140},
             S140: {char6: S152},
@@ -1381,13 +1459,14 @@ def test_bug_48():
     rex = from_fsm(machine)
     assert str(rex) == 'damage_on_mp'
 
+
 def test_pickle():
-  f1 = parse("a{0,4}").to_fsm()
-  f2 = parse("a{0,3}").to_fsm()
+    f1 = parse("a{0,4}").to_fsm()
+    f2 = parse("a{0,3}").to_fsm()
 
-  assert f2 < f1
+    assert f2 < f1
 
-  f1_unpickled = pickle.loads(pickle.dumps(f1))
-  f2_unpickled = pickle.loads(pickle.dumps(f2))
+    f1_unpickled = pickle.loads(pickle.dumps(f1))
+    f2_unpickled = pickle.loads(pickle.dumps(f2))
 
-  assert f2_unpickled < f1_unpickled
+    assert f2_unpickled < f1_unpickled
