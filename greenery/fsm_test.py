@@ -3,6 +3,7 @@
 if __name__ == "__main__":
     raise Exception("Test files can't be run directly. Use `python -m pytest greenery`")
 
+import pickle
 import pytest
 from greenery.fsm import fsm, null, epsilon, anything_else
 
@@ -532,7 +533,15 @@ def test_dead_default():
     )
     assert blockquote.accepts(["/", "*", "whatever", "*", "/"])
     assert not blockquote.accepts(["*", "*", "whatever", "*", "/"])
-    str(blockquote) # test stringification
+    assert str(blockquote) == \
+      '  name final? * / anything_else \n' + \
+      '--------------------------------\n' + \
+      '* 0    False    1               \n' + \
+      '  1    False  2                 \n' + \
+      '  2    False  3 2 2             \n' + \
+      '  3    False  3 4 2             \n' + \
+      '  4    True                     \n' + \
+      '  5    False                    \n'
     blockquote | blockquote
     blockquote & blockquote
     blockquote ^ blockquote
@@ -574,10 +583,6 @@ def test_alphabet_unions():
     assert (a + b).accepts(["a", "b"])
     assert (a ^ b).accepts(["a"])
     assert (a ^ b).accepts(["b"])
-
-def test_repr():
-    assert repr(anything_else) == "anything_else"
-    assert str(anything_else) == "anything_else"
 
 def test_new_set_methods(a, b):
     # A whole bunch of new methods were added to the FSM module to enable FSMs to

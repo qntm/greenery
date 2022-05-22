@@ -3,6 +3,7 @@
 if __name__ == "__main__":
     raise Exception("Test files can't be run directly. Use `python -m pytest greenery`")
 
+import pickle
 from greenery.lego import conc, mult, charclass, one, emptystring, star, plus, nothing, pattern, qm, d, multiplier, bound, w, s, W, D, S, dot, nomatch, inf, zero, parse, from_fsm
 from greenery import fsm
 
@@ -1379,3 +1380,14 @@ def test_bug_48():
 
     rex = from_fsm(machine)
     assert str(rex) == 'damage_on_mp'
+
+def test_pickle():
+  f1 = parse("a{0,4}").to_fsm()
+  f2 = parse("a{0,3}").to_fsm()
+
+  assert f2 < f1
+
+  f1_unpickled = pickle.loads(pickle.dumps(f1))
+  f2_unpickled = pickle.loads(pickle.dumps(f2))
+
+  assert f2_unpickled < f1_unpickled
