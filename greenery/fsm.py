@@ -7,22 +7,7 @@
 from typing import Optional, Union, Set, Dict
 from dataclasses import dataclass
 
-class anything_else_cls:
-    '''
-        This is a surrogate symbol which you can use in your finite state machines
-        to represent "any symbol not in the official alphabet". For example, if your
-        state machine's alphabet is {"a", "b", "c", "d", fsm.anything_else}, then
-        you can pass "e" in as a symbol and it will be converted to
-        fsm.anything_else, then follow the appropriate transition.
-    '''
-    def __str__(self):
-        return "anything_else"
-    def __repr__(self):
-        return "anything_else"
-
-# We use a class instance because that gives us control over how the special
-# value gets serialised. Otherwise this would just be `object()`.
-anything_else = anything_else_cls()
+anything_else = '9bd74361-04f9-4742-9d3a-1d14a6f0044c'
 
 def key(symbol):
     '''Ensure `fsm.anything_else` always sorts last'''
@@ -56,9 +41,9 @@ class fsm:
     '''
     initial: state_type
     finals: Set[state_type]
-    alphabet: Set[Union[str, anything_else_cls]]
+    alphabet: Set[str]
     states: Set[state_type]
-    map: Dict[state_type, Dict[Union[str, anything_else_cls], state_type]]
+    map: Dict[state_type, Dict[str, state_type]]
 
     def __post_init__(self):
         '''
@@ -134,9 +119,14 @@ class fsm:
     def __str__(self):
         rows = []
 
+        sorted_alphabet = sorted(self.alphabet, key=key)
+
         # top row
         row = ["", "name", "final?"]
-        row.extend(str(symbol) for symbol in sorted(self.alphabet, key=key))
+        row.extend(
+          'anything_else' if symbol is anything_else else str(symbol)
+          for symbol in sorted_alphabet
+        )
         rows.append(row)
 
         # other rows
@@ -151,7 +141,7 @@ class fsm:
                 row.append("True")
             else:
                 row.append("False")
-            for symbol in sorted(self.alphabet, key=key):
+            for symbol in sorted_alphabet:
                 if state in self.map and symbol in self.map[state]:
                     row.append(str(self.map[state][symbol]))
                 else:
@@ -219,7 +209,7 @@ class fsm:
                 if substate in fsm.map:
                     if symbol in fsm.map[substate]:
                         next.update(connect_all(i, fsm.map[substate][symbol]))
-                    elif  anything_else in fsm.map[substate] and symbol not in fsm.alphabet:
+                    elif anything_else in fsm.map[substate] and symbol not in fsm.alphabet:
                         next.update(connect_all(i, fsm.map[substate][anything_else]))
             if len(next) == 0:
                 raise OblivionError
