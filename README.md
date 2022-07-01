@@ -4,6 +4,12 @@ Tools for parsing and manipulating regular expressions (`greenery.lego`), for pr
 
 This project was undertaken because I wanted to be able to **compute the intersection between two regular expressions**. The "intersection" is the set of strings which both regexes will accept, represented as a third regular expression.
 
+## Installation
+
+```sh
+pip install greenery
+```
+
 ## Example
 
     >>> from greenery.lego import parse
@@ -265,3 +271,10 @@ Note that in a few cases this did *not* result in a shorter regular expression.
 I spent a long time trying to find an appropriate metaphor for what I was trying to do: "I need an X such that lots of Xs go together to make a Y, but lots of Ys go together to make an X". Unfortunately the real world doesn't seem to be recursive in this way so I plumped for "lego" as a basic catchall term for the various components that go together to make up a data structure.
 
 This was a dumb idea in retrospect and it will be changed to `greenery.re` or `greenery.rx` in the near future. Vote now if you have an opinion.
+
+### Development
+
+* Update the version in `./setup.py`
+* Trash `./dist`
+* `python -m build` - creates a `./dist` directory with some stuff in it
+* `python -m twine pload dist/*`

@@ -1,10 +1,8 @@
 from setuptools import setup
 
-from greenery import __version__
-
 setup(
     name = "greenery",
-    version = __version__,
+    version = "3.3.7",
     tests_require = [ "pytest" ],
     packages = [ "greenery" ],
     package_dir = { "greenery": "greenery" },
