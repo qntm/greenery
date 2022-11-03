@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 '''
-    Finite state machine library.
+    Finite state machine library, intended to be used by `greenery` only
 '''
 
 from typing import Optional, Union, Set, Dict

@@ -274,6 +274,14 @@ This was a dumb idea in retrospect and it will be changed to `greenery.re` or `g
 
 ### Development
 
+#### Running tests
+
+```sh
+pytest
+```
+
+#### Building and publishing new versions
+
 * Update the version in `./setup.py`
 * Trash `./dist`
 * `python -m build` - creates a `./dist` directory with some stuff in it

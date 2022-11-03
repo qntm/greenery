@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 '''
-    LEGO:
+    rxelems:
     Classes and methods for the creation and manipulation of regular expression
     objects and components.
 
@@ -17,15 +17,16 @@
     * A charclass is a set of chars, such as "a", "[a-z]", "\\d", ".", with a
     possible "negated" flag as in "[^a]".
     * Since these can be combined together freely they are, in the absence of a
-    better metaphor, collectively referred to as lego pieces.
+    better metaphor, collectively referred to as rxelems pieces.
 
     We also include methods for parsing a string into a pattern object,
     serialising a pattern object out as a string (or "regular expression", if you
-    will), and for concatenating or alternating between arbitrary "pieces of
-    lego", using overloaded operators.
+    will), and for concatenating or alternating between arbitrary elements,
+    using overloaded operators.
 
-    If the FSM module is available, call lego.to_fsm() on any lego piece to return
-    a finite state machine capable of accepting strings described by that piece.
+    If the FSM module is available, call rxelems.to_fsm() on any element to
+    return a finite state machine capable of accepting strings described by
+    that element.
 
     Most important are the reduce() methods present in charclass, mult, conc and
     pattern. While there is no such thing as a canonical form for a given regex
@@ -35,10 +36,6 @@
 from typing import Optional, Union, Tuple, FrozenSet
 from greenery import fsm
 from dataclasses import dataclass, field
-
-class nomatch(Exception):
-    '''Thrown when parsing fails. Almost always caught and almost never fatal'''
-    pass
 
 def reduce_after(method):
     '''reduce() the result of this method call (unless you already reduced it).'''
@@ -57,21 +54,14 @@ def call_fsm(method):
         We do this for several of the more annoying operations.
     '''
     fsm_method = getattr(fsm.fsm, method.__name__)
-    def new_method(*legos):
-        alphabet = set().union(*[lego.alphabet() for lego in legos])
-        return from_fsm(fsm_method(*[lego.to_fsm(alphabet) for lego in legos]))
+    def new_method(*elems):
+        alphabet = set().union(*[elem.alphabet() for elem in elems])
+        return from_fsm(fsm_method(*[elem.to_fsm(alphabet) for elem in elems]))
     return new_method
-
-def parse(string: str):
-    '''
-        Parse a full string and return a lego piece. Fail if the whole string
-        wasn't parsed
-    '''
-    return pattern.parse(string)
 
 def from_fsm(f: fsm.fsm):
     '''
-        Turn the supplied finite state machine into a `lego` object. This is
+        Turn the supplied finite state machine into a `rxelems` object. This is
         accomplished using the Brzozowski algebraic method.
     '''
     # Make sure the supplied alphabet is kosher. It must contain only single-
@@ -159,34 +149,11 @@ def from_fsm(f: fsm.fsm):
 
     return brz[f.initial][outside].reduce()
 
-def static(string, i, static):
-    j = i + len(static)
-    if string[i:j] == static:
-        return j
-    raise nomatch
-
-def select_static(string, i, *statics):
-    for st in statics:
-        j = i+len(st)
-        if string[i:j] == st:
-            return j, st
-    raise nomatch
-
-def read_until(string: str, i: int, stop_char: str) -> Tuple[int, str]:
-    start = i
-    while True:
-        if i >= len(string):
-            raise nomatch
-        if string[i] == stop_char:
-            break
-        i += 1
-    return i + 1, string[start:i]
-
-class lego:
+class rxelem:
     '''
-        Parent class for all lego pieces.
-        All lego pieces have some things in common. This parent class mainly
-        hosts documentation though.
+        Parent class for all regular expression elements. All elements have
+        some things in common. This parent class mainly hosts documentation
+        though.
     '''
 
     def __setattr__(self, name, value):
@@ -198,10 +165,10 @@ class lego:
 
     def to_fsm(self, alphabet=None):
         '''
-            Return the present lego piece in the form of a finite state machine,
+            Return the present element in the form of a finite state machine,
             as imported from the fsm module.
             If no alphabet is explicitly supplied, which seems quite probable,
-            we use the lego.alphabet() method (later) to list all the characters
+            we use the elem.alphabet() method (later) to list all the characters
             mentioned in self. However, if we intend to connect this FSM to another
             one which uses different characters, we may need to supply an alphabet
             which is a superset of both sets.
@@ -211,47 +178,25 @@ class lego:
     def __repr__(self):
         '''
             Return a string approximating the instantiation line
-            for the present lego piece.
+            for the present element.
         '''
         raise NotImplementedError()
 
     def __str__(self):
         '''
-            Render the present lego piece in the form of a regular expression.
-            Some lego pieces may be created which cannot be rendered in this way.
+            Render the present element in the form of a regular expression.
+            Some elements may be created which cannot be rendered in this way.
             In particular: a pattern containing no concs; a multiplier of zero.
         '''
         raise NotImplementedError()
-
-    @classmethod
-    def match(cls, string: str, i = 0):
-        '''
-            Start at index i in the supplied string and try to match one of the
-            present class. Elementary recursive descent parsing with very little
-            need for flair. The opposite of __str__(), above. (In most cases.)
-            Throws a nomatch in the event of failure.
-        '''
-        raise NotImplementedError()
-
-    @classmethod
-    def parse(cls, string: str):
-        '''
-            Parse the entire supplied string as an instance of the present class.
-            Mainly for internal use in unit tests because it drops through to match()
-            in a convenient way.
-        '''
-        obj, i = cls.match(string, 0)
-        if i != len(string):
-            raise Exception("Could not parse '" + string + "' beyond index " + str(i))
-        return obj
 
     @reduce_after
     def reduce(self):
         '''
             The most important and algorithmically complex method. Takes the current
-            lego piece and simplifies it in every way possible, returning a simpler
-            lego piece which is quite probably not of the same class as the original.
-            Approaches vary by the class of the present lego piece.
+            element and simplifies it in every way possible, returning a simpler
+            element which is quite probably not of the same class as the original.
+            Approaches vary by the class of the present element.
 
             It is critically important to (1) always call reduce() on whatever you're
             returning before you return it and therefore (2) always return something
@@ -261,9 +206,9 @@ class lego:
         raise NotImplementedError()
 
     @call_fsm
-    def concatenate(*legos):
+    def concatenate(*elems):
         '''
-            Concatenate a sequence of lego pieces, regardless of differing classes.
+            Concatenate a sequence of elements, regardless of differing classes.
             Call using "a = b + c"
         '''
         pass
@@ -284,9 +229,9 @@ class lego:
         return self.times(multiplier)
 
     @call_fsm
-    def union(*legos):
+    def union(*elems):
         '''
-            Alternate between any two lego pieces, regardless of differing classes.
+            Alternate between any two elements, regardless of differing classes.
             Call using "a = b | c".
             This method MUST NOT call the to_fsm() method, because this method is used
             in turn when converting an FSM back to a regex.
@@ -299,12 +244,12 @@ class lego:
     @call_fsm
     def intersection(self, other):
         '''
-            Intersection function. Return a lego piece that can match any string
+            Intersection function. Return an element which can match any string
             that both self and other can match. Fairly elementary results relating
             to regular languages and finite state machines show that this is
             possible, but implementation is a BEAST in many cases. Here, we convert
-            both lego pieces to FSMs (see to_fsm(), above) for the intersection, then
-            back to lego afterwards.
+            both elements to FSMs (see to_fsm(), above) for the intersection, then
+            back to elements afterwards.
             Call using "a = b & c"
         '''
         pass
@@ -313,7 +258,7 @@ class lego:
         return self.intersection(other)
 
     @call_fsm
-    def difference(*legos):
+    def difference(*elems):
         '''
             Return a regular expression which matches any string which `self` matches
             but none of the strings which `other` matches.
@@ -324,7 +269,7 @@ class lego:
         return self.difference(other)
 
     @call_fsm
-    def symmetric_difference(*legos):
+    def symmetric_difference(*elems):
         '''
             Return a regular expression matching only the strings recognised by
             `self` or `other` but not both.
@@ -460,7 +405,7 @@ class lego:
         return from_fsm(self.to_fsm().derive(string))
 
 @dataclass(frozen=True)
-class charclass(lego):
+class charclass(rxelem):
     '''
         A charclass is basically a frozenset of symbols. The reason for the
         charclass object instead of using frozenset directly is to allow us to
@@ -654,154 +599,8 @@ class charclass(lego):
         return len(self.chars) == 0 and self.negated == False
 
     @classmethod
-    def match(cls, string, i = 0):
-        if i >= len(string):
-            raise nomatch
-
-        # Turn e.g. "\\x40" into "@". Exactly two hex digits
-        def unescapeHex(string, i):
-            hex_digits = "0123456789AaBbCcDdEeFf"
-
-            j = static(string, i, "\\x")
-
-            hex1 = string[j] # e.g. "4"
-            if not hex1 in hex_digits:
-                raise nomatch
-            j += len(hex1)
-
-            hex2 = string[j] # e.g. "0"
-            if not hex2 in hex_digits:
-                raise nomatch
-            j += len(hex2)
-
-            codepoint = int(hex1 + hex2, 16) # e.g. 64
-            char = chr(codepoint) # "@"
-            return char, j
-
-        def matchInternalChar(string, i):
-
-            # e.g. if we see "\\t", return "\t"
-            for key in escapes.keys():
-                try:
-                    return key, static(string, i, escapes[key])
-                except nomatch:
-                    pass
-
-            # special chars e.g. "\\-" returns "-"
-            for char in charclass.classSpecial:
-                try:
-                    return char, static(string, i, "\\" + char)
-                except nomatch:
-                    pass
-
-            # hex escape e.g. "\\x40" returns "@"
-            try:
-                return unescapeHex(string, i)
-            except nomatch:
-                pass
-
-            # single non-special character, not contained
-            # inside square brackets
-            char, j = string[i], i+1
-            if char in charclass.classSpecial:
-                raise nomatch
-
-            return char, j
-
-        def matchClassInterior1(string, i):
-
-            # Attempt 1: shorthand e.g. "\w"
-            for key in charclass.shorthand:
-                try:
-                    return key, static(string, i, charclass.shorthand[key])
-                except nomatch:
-                    pass
-
-            # Attempt 2: a range e.g. "d-h"
-            try:
-                first, j = matchInternalChar(string, i) # `first` is "d"
-                k = static(string, j, "-")
-                last, k = matchInternalChar(string, k) # `last` is "h"
-
-                firstIndex = ord(first) # 100
-                lastIndex = ord(last) # 104
-
-                # Be strict here, "d-d" is not allowed
-                if firstIndex >= lastIndex:
-                    raise nomatch("Range '" + first + "' to '" + last + "' not allowed")
-
-                chars = "".join([
-                    chr(i) for i in range(firstIndex, lastIndex + 1)
-                ])
-                return chars, k
-            except nomatch:
-                pass
-
-            # Attempt 3: just a character on its own
-            return matchInternalChar(string, i)
-
-        def matchClassInterior(string, i):
-            internals = ""
-            try:
-                while True:
-                    internal, i = matchClassInterior1(string, i)
-                    internals += internal
-            except nomatch:
-                pass
-            return internals, i
-
-        # wildcard ".", "\\w", "\\d", etc.
-        for key in shorthand.keys():
-            try:
-                return key, static(string, i, shorthand[key])
-            except nomatch:
-                pass
-
-        # "[^dsgsdg]"
-        try:
-            j = static(string, i, "[^")
-            chars, j = matchClassInterior(string, j)
-            j = static(string, j, "]")
-            return ~charclass(chars), j
-        except nomatch:
-            pass
-
-        # "[sdfsf]"
-        try:
-            j = static(string, i, "[")
-            chars, j = matchClassInterior(string, j)
-            j = static(string, j, "]")
-            return charclass(chars), j
-        except nomatch:
-            pass
-
-        # e.g. if seeing "\\t", return "\t"
-        for key in escapes.keys():
-            try:
-                return charclass(key), static(string, i, escapes[key])
-            except nomatch:
-                pass
-
-        # e.g. if seeing "\\{", return "{"
-        for char in charclass.allSpecial:
-            try:
-                return charclass(char), static(string, i, "\\" + char)
-            except nomatch:
-                pass
-
-        # e.g. if seeing "\\x40", return "@"
-        try:
-            char, j = unescapeHex(string, i)
-            return charclass(char), j
-        except nomatch:
-            pass
-
-        # single non-special character, not contained inside square brackets
-        char, i = string[i], i+1
-        if char in charclass.allSpecial:
-            raise nomatch
-
-        return charclass(char), i
+    def match(cls, string: str, i = 0):
+        return matchCharclass(string, i)
 
     # set operations
     def negate(self):
@@ -880,36 +679,7 @@ class bound:
 
     @classmethod
     def match(cls, string: str, i = 0):
-        def matchAnyOf(string, i, collection):
-            for char in collection:
-                try:
-                    return char, static(string, i, char)
-                except nomatch:
-                    pass
-            raise nomatch
-
-        # "0"
-        try:
-            return bound(0), static(string, i, "0")
-        except nomatch:
-            pass
-
-        # "1", etc.
-        try:
-            digit, j = matchAnyOf(string, i, "123456789")
-            integer = int(digit)
-            try:
-                while True:
-                    digit, j = matchAnyOf(string, j, "0123456789")
-                    integer *= 10
-                    integer += int(digit)
-            except nomatch:
-                return bound(integer), j
-        except nomatch:
-            pass
-
-        # "" empty string = infinite bound as in "{4,}"
-        return inf, i
+        return matchBound(string, i)
 
     def __eq__(self, other):
         try:
@@ -1014,49 +784,7 @@ class multiplier:
 
     @classmethod
     def match(cls, string, i = 0):
-
-        # {2,3} or {2,}
-        try:
-            j = static(string, i, "{")
-            min, j = bound.match(string, j)
-            j = static(string, j, ",")
-            max, j = bound.match(string, j)
-            j = static(string, j, "}")
-            return multiplier(min, max), j
-        except nomatch:
-            pass
-
-        # {2}
-        try:
-            j = static(string, i, "{")
-            min, j = bound.match(string, j)
-            j = static(string, j, "}")
-            return multiplier(min, min), j
-        except nomatch:
-            pass
-
-        # "?"/"*"/"+"/""
-        # we do these in reverse order of symbol length, because
-        # that forces "" to be done last
-        for key in sorted(symbolic, key=lambda key: -len(symbolic[key])):
-            try:
-                return key, static(string, i, symbolic[key])
-            except nomatch:
-                pass
-
-        raise nomatch
-
-    @classmethod
-    def parse(cls, string):
-        '''
-            Parse the entire supplied string as an instance of the present class.
-            Mainly for internal use in unit tests because it drops through to match()
-            in a convenient way.
-        '''
-        obj, i = cls.match(string, 0)
-        if i != len(string):
-            raise Exception("Could not parse '" + string + "' beyond index " + str(i))
-        return obj
+        return matchMultiplier(string, i)
 
     def canmultiplyby(self, other):
         '''
@@ -1145,7 +873,7 @@ class multiplier:
     def copy(self):
         return multiplier(self.min.copy(), self.max.copy())
 
-class mult(lego):
+class mult(rxelem):
     '''
         A mult is a combination of a multiplicand with
         a multiplier (a min and a max). The vast majority of characters in regular
@@ -1348,36 +1076,8 @@ class mult(lego):
         return mandatory + optional
 
     @classmethod
-    def match(cls, string, i = 0):
-
-        def matchMultiplicand(string, i):
-            # explicitly non-capturing "(?:...)" syntax. No special significance
-            try:
-                j = static(string, i, "(?")
-                j, st = select_static(string, j, ':', 'P<')
-                if st == 'P<':
-                    j, group_name = read_until(string, j, '>')
-                multiplicand, j = pattern.match(string, j)
-                j = static(string, j, ")")
-                return multiplicand, j
-            except nomatch:
-                pass
-
-            # normal "(...)" syntax
-            try:
-                j = static(string, i, "(")
-                multiplicand, j = pattern.match(string, j)
-                j = static(string, j, ")")
-                return multiplicand, j
-            except nomatch:
-                pass
-
-            # Just a charclass on its own
-            return charclass.match(string, i)
-
-        multiplicand, j = matchMultiplicand(string, i)
-        multiplier_, j = multiplier.match(string, j)
-        return mult(multiplicand, multiplier_), j
+    def match(cls, string: str, i = 0):
+        return matchMult(string, i)
 
     def reversed(self):
         return mult(reversed(self.multiplicand), self.multiplier)
@@ -1385,7 +1085,7 @@ class mult(lego):
     def copy(self):
         return mult(self.multiplicand.copy(), self.multiplier.copy())
 
-class conc(lego):
+class conc(rxelem):
     '''
         A conc (short for "concatenation") is a tuple of mults i.e. an unbroken
         string of mults occurring one after the other.
@@ -1549,15 +1249,8 @@ class conc(lego):
         return "".join(str(m) for m in self.mults)
 
     @classmethod
-    def match(cls, string, i = 0):
-        mults = list()
-        try:
-            while True:
-                m, i = mult.match(string, i)
-                mults.append(m)
-        except nomatch:
-            pass
-        return conc(*mults), i
+    def match(cls, string: str, i = 0):
+        return matchConc(string, i)
 
     def common(self, other, suffix=False):
         '''
@@ -1645,7 +1338,7 @@ class conc(lego):
     def copy(self):
         return conc(*[m.copy() for m in self.mults])
 
-class pattern(lego):
+class pattern(rxelem):
     '''
         A pattern (also known as an "alt", short for "alternation") is a
         set of concs. A pattern expresses multiple alternate possibilities.
@@ -1847,20 +1540,7 @@ class pattern(lego):
 
     @classmethod
     def match(cls, string: str, i = 0):
-        concs = list()
-
-        # first one
-        c, i = conc.match(string, i)
-        concs.append(c)
-
-        # the rest
-        while True:
-            try:
-                i = static(string, i, "|")
-                c, i = conc.match(string, i)
-                concs.append(c)
-            except nomatch:
-                return pattern(*concs), i
+        return matchPattern(string, i)
 
     def dock(self, other):
         '''
