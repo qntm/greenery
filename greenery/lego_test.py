@@ -889,17 +889,13 @@ def test_two_two_bug():
 # Test intersection (&)
 
 def test_mult_intersection():
-    assert mult(charclass("a"), one) & mult(charclass("b"), qm) == charclass("")
-    assert mult(charclass("a"), one) & mult(charclass("b"), qm) == nothing
-    assert mult(charclass("a"), one) & mult(charclass("a"), qm) == charclass("a")
-    assert mult(charclass("a"), multiplier(bound(2), bound(2))) & mult(charclass("a"), multiplier(bound(2), inf)) == mult(charclass("a"), multiplier(bound(2), bound(2)))
-    assert mult(charclass("a"), one) & mult(charclass("b"), one) == charclass("")
-    assert mult(charclass("a"), one) & mult(charclass("a"), one) == charclass("a")
-    assert mult(charclass("a"), star) & mult(charclass("a"), one) == charclass("a")
-    assert mult(charclass("a"), star) & mult(charclass("b"), star) == conc()
-    assert mult(charclass("a"), star) & mult(charclass("a"), plus) == mult(charclass("a"), plus)
-    assert mult(charclass("a"), multiplier(bound(2), bound(2))) & mult(charclass("a"), multiplier(bound(4), bound(4))) == charclass("")
-    assert mult(charclass("a"), multiplier(bound(3), inf)) & mult(charclass("a"), multiplier(bound(3), inf)) == mult(charclass("a"), multiplier(bound(3), inf))
+    assert str(parse("a") & parse("a")) == "a"
+    assert str(parse("a*") & parse("a")) == "a"
+    assert str(parse("a") & parse("a?")) == "a"
+    assert str(parse("a{2}") & parse("a{2,}")) == "a{2}"
+    assert str(parse("a*") & parse("a+")) == "a+"
+    assert str(parse("a{2}") & parse("a{4}")) == "[]"
+    assert str(parse("a{3,}") & parse("a{3,}")) == "a{3,}"
 
 def test_parse_regex_intersection():
     assert str(parse("a*") & parse("b*")) == ""
@@ -991,10 +987,6 @@ def test_mult_reduction_easy():
     assert str(parse("[]?").reduce()) == ""
     assert str(parse("[]{0}").reduce()) == ""
     assert str(parse("[]{0,5}").reduce()) == ""
-    assert str(mult(pattern(), one).reduce()) == "[]"
-    assert str(mult(pattern(), qm).reduce()) == ""
-    assert str(mult(pattern(), zero).reduce()) == ""
-    assert str(mult(pattern(), multiplier(bound(0), bound(5))).reduce()) == ""
 
 
 def test_conc_reduction_basic():
@@ -1035,8 +1027,9 @@ def test_nested_pattern_reduction():
 def test_mult_factor_out_qm():
     # mult contains a pattern containing an empty conc? Pull the empty
     # part out where it's external
-    assert str(parse("(a|b*|)").reduce()) == "(a|b*)?"
-    assert str(parse("(a|b*|)c").reduce()) == "(a|b*)?c"
+    assert str(parse("a|b*|").reduce()) == "a|b*"
+    assert str(parse("(a|b*|)").reduce()) == "a|b*"
+    assert str(parse("(a|b*|)c").reduce()) == "(a|b*)c"
     # This happens even if emptystring is the only thing left inside the mult
     assert str(parse("()").reduce()) == ""
     assert str(parse("([$%\\^]|){1}").reduce()) == "[$%\\^]?"

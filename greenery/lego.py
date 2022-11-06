@@ -582,44 +582,30 @@ class charclass(rxelem):
         return self.negate()
 
     def union(self, other):
-        try:
-            # ¬A OR ¬B = ¬(A AND B)
-            # ¬A OR B = ¬(A - B)
-            # A OR ¬B = ¬(B - A)
-            # A OR B
-            if self.negated:
-                if other.negated:
-                    return ~charclass(self.chars & other.chars)
-                return ~charclass(self.chars - other.chars)
+        # ¬A OR ¬B = ¬(A AND B)
+        # ¬A OR B = ¬(A - B)
+        # A OR ¬B = ¬(B - A)
+        # A OR B
+        if self.negated:
             if other.negated:
-                return ~charclass(other.chars - self.chars)
-            return charclass(self.chars | other.chars)
-
-        # "other" lacks attribute "negated" or "chars"
-        # "other" is not a charclass
-        # Never mind!
-        except AttributeError:
-            return mult(self, one) | other
+                return ~charclass(self.chars & other.chars)
+            return ~charclass(self.chars - other.chars)
+        if other.negated:
+            return ~charclass(other.chars - self.chars)
+        return charclass(self.chars | other.chars)
 
     def intersection(self, other):
-        try:
-            # ¬A AND ¬B = ¬(A OR B)
-            # ¬A AND B = B - A
-            # A AND ¬B = A - B
-            # A AND B
-            if self.negated:
-                if other.negated:
-                    return ~charclass(self.chars | other.chars)
-                return charclass(other.chars - self.chars)
+        # ¬A AND ¬B = ¬(A OR B)
+        # ¬A AND B = B - A
+        # A AND ¬B = A - B
+        # A AND B
+        if self.negated:
             if other.negated:
-                return charclass(self.chars - other.chars)
-            return charclass(self.chars & other.chars)
-
-        # "other" lacks attribute "negated" or "chars"
-        # "other" is not a charclass
-        # Never mind!
-        except AttributeError:
-            return mult(self, one) & other
+                return ~charclass(self.chars | other.chars)
+            return charclass(other.chars - self.chars)
+        if other.negated:
+            return charclass(self.chars - other.chars)
+        return charclass(self.chars & other.chars)
 
     def reversed(self):
         return self
@@ -692,19 +678,11 @@ class mult(rxelem):
         return mult(nothing, zero)
 
     def intersection(self, other):
-        if hasattr(other, "chars"):
-            other = mult(other, one)
-
         # If two mults are given which have a common multiplicand, the shortcut
         # is just to take the intersection of the two multiplicands.
-        try:
-            if self.multiplicand == other.multiplicand \
-            and self.canintersect(other):
-                return mult(self.multiplicand, self.multiplier & other.multiplier)
-        except AttributeError:
-            # "other" isn't a mult; lacks either a multiplicand or a multiplier.
-            # Never mind!
-            pass
+        if self.multiplicand == other.multiplicand \
+        and self.canintersect(other):
+            return mult(self.multiplicand, self.multiplier & other.multiplier)
 
         # This situation is substantially more complicated if the multiplicand is,
         # for example, a pattern. It's difficult to reason sensibly about this
@@ -905,31 +883,55 @@ class conc(rxelem):
                     new = self.mults[:i] + (squished,) + self.mults[i + 2:]
                     return conc(*new).reduce()
 
+                def promote(multiplicand):
+                    if hasattr(multiplicand, "concs"):
+                        return multiplicand
+                    return pattern(conc(mult(multiplicand, one)))
+
+                rmPattern = None
+                smPattern = None
+                rmsmIntersection = None
+
                 # If R's language is a subset of S's, then R{a,b}S{c,} reduces to R{a}S{c,}...
                 # e.g. \d+\w+ -> \d\w+
                 # Do the cheapest checks first
                 if r.multiplier.min < r.multiplier.max \
-                and s.multiplier.max == inf \
-                and (r.multiplicand & s.multiplicand).equivalent(r.multiplicand):
-                    trimmed = mult(
-                        r.multiplicand,
-                        multiplier(r.multiplier.min, r.multiplier.min)
-                    )
-                    new = self.mults[:i] + (trimmed, s) + self.mults[i + 2:]
-                    return conc(*new).reduce()
+                and s.multiplier.max == inf:
+                    # promote so we can do intersection
+                    rmPattern = promote(r.multiplicand)
+                    smPattern = promote(s.multiplicand)
+
+                    rmsmIntersection = rmPattern & smPattern
+
+                    if rmsmIntersection.equivalent(rmPattern):
+                        trimmed = mult(
+                            r.multiplicand,
+                            multiplier(r.multiplier.min, r.multiplier.min)
+                        )
+                        new = self.mults[:i] + (trimmed, s) + self.mults[i + 2:]
+                        return conc(*new).reduce()
 
                 # Conversely, if R is superset of S, then R{c,}S{a,b} reduces to R{c,}S{a}.
                 # e.g. [ab]+a? -> [ab]+
                 # Do the cheapest checks first
                 if r.multiplier.max == inf \
-                and s.multiplier.min < s.multiplier.max \
-                and (r.multiplicand & s.multiplicand).equivalent(s.multiplicand):
-                    trimmed = mult(
-                        s.multiplicand,
-                        multiplier(s.multiplier.min, s.multiplier.min)
-                    )
-                    new = self.mults[:i] + (r, trimmed) + self.mults[i + 2:]
-                    return conc(*new).reduce()
+                and s.multiplier.min < s.multiplier.max:
+                    # promote so we can do intersection
+                    if rmPattern is None:
+                        rmPattern = promote(r.multiplicand)
+                    if smPattern is None:
+                        smPattern = promote(s.multiplicand)
+
+                    if rmsmIntersection is None:
+                        rmsmIntersection = rmPattern & smPattern
+
+                    if rmsmIntersection.equivalent(smPattern):
+                        trimmed = mult(
+                            s.multiplicand,
+                            multiplier(s.multiplier.min, s.multiplier.min)
+                        )
+                        new = self.mults[:i] + (r, trimmed) + self.mults[i + 2:]
+                        return conc(*new).reduce()
 
         # Conc contains (among other things) a *singleton* mult containing a pattern
         # with only one internal conc? Flatten out.
@@ -1212,22 +1214,24 @@ class pattern(rxelem):
             return pattern(*rest).reduce()
 
         # If one of the present pattern's concs is the empty string, and
-        # there is another conc with a single mult whose lower bound is 0, we
-        # can omit the empty string.
-        # E.g. "|(ab)*|def" => "(ab)*|def".
-        # If there is another conc with a single mult whose lower bound is 1,
-        # we can merge the empty string into that.
-        # E.g. "|(ab)+|def" => "(ab)*|def".
+        # there is another conc with a single mult...
         if emptystring in self.concs:
             for c in self.concs:
                 if len(c.mults) != 1:
                     continue
-                m = c.mults[0]
-                if m.multiplier.min == bound(0):
+                # ...whose lower bound is 0, then we can omit the empty string.
+                # E.g. "|(ab)*|def" => "(ab)*|def".
+                if c.mults[0].multiplier.min == bound(0):
                     rest = self.concs - {emptystring}
                     return pattern(*rest)
-                if m.multiplier.min == bound(1):
-                    rest = self.concs - {emptystring, c} | {conc(mult(m.multiplicand, m.multiplier * qm))}
+
+            for c in self.concs:
+                if len(c.mults) != 1:
+                    continue
+                # ...whose lower bound is 1, we can merge the empty string into that.
+                # E.g. "|(ab)+|def" => "(ab)*|def".
+                if c.mults[0].multiplier.min == bound(1):
+                    rest = self.concs - {emptystring, c} | {conc(mult(c.mults[0].multiplicand, c.mults[0].multiplier * qm))}
                     return pattern(*rest).reduce()
 
         # If the present pattern's concs all have a common prefix, split
