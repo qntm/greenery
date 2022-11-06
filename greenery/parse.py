@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 
 from greenery.lego import escapes, shorthand, inf, \
-    charclass, bound, multiplier, mult, conc, pattern, symbolic
+    charclass, bound, multiplier, mult, conc, pattern
+from .rxelems.multiplier import symbolic
 from typing import Tuple
 
 class nomatch(Exception):
