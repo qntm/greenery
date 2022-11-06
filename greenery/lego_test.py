@@ -987,18 +987,18 @@ def test_silly_reduction():
 # reduce() tests
 
 def test_mult_reduction_easy():
-    assert parse("a").reduce() == charclass("a")
-    assert parse("a").reduce() == charclass("a")
-    assert parse("a?").reduce() == mult(charclass("a"), qm)
-    assert parse("a{0}").reduce() == emptystring
-    assert parse("[]").reduce() == nothing
-    assert parse("[]?").reduce() == emptystring
-    assert parse("[]{0}").reduce() == emptystring
-    assert parse("[]{0,5}").reduce() == emptystring
-    assert mult(pattern(), one).reduce() == nothing
-    assert mult(pattern(), qm).reduce() == emptystring
-    assert mult(pattern(), zero).reduce() == emptystring
-    assert mult(pattern(), multiplier(bound(0), bound(5))).reduce() == emptystring
+    assert str(parse("a").reduce()) == "a"
+    assert str(parse("a").reduce()) == "a"
+    assert str(parse("a?").reduce()) == "a?"
+    assert str(parse("a{0}").reduce()) == ""
+    assert str(parse("[]").reduce()) == "[]"
+    assert str(parse("[]?").reduce()) == ""
+    assert str(parse("[]{0}").reduce()) == ""
+    assert str(parse("[]{0,5}").reduce()) == ""
+    assert str(mult(pattern(), one).reduce()) == "[]"
+    assert str(mult(pattern(), qm).reduce()) == ""
+    assert str(mult(pattern(), zero).reduce()) == ""
+    assert str(mult(pattern(), multiplier(bound(0), bound(5))).reduce()) == ""
 
 
 def test_conc_reduction_basic():
@@ -1017,20 +1017,11 @@ def test_pattern_reduce_basic():
 
 
 def test_empty_pattern_reduction():
-    assert pattern().reduce() == charclass("")
-
-
-def test_empty_mult_suppression():
-    assert str(parse("[]0\\d").reduce()) == "[]"
-    assert conc(
-        mult(pattern(), one), # this can never actually match anything
-        mult(charclass("0"), one),
-        mult(charclass("0123456789"), one),
-    ).reduce() == charclass("")
+    assert str(pattern().reduce()) == "[]"
 
 
 def test_empty_conc_suppression():
-    assert parse("[]0\\d").reduce() == charclass("")
+    assert str(parse("[]0\\d").reduce()) == "[]"
     assert pattern(
         conc(
             mult(pattern(), one),  # this can never actually match anything
