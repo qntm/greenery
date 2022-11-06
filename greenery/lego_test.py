@@ -4,6 +4,8 @@ if __name__ == "__main__":
     raise Exception("Test files can't be run directly. Use `python -m pytest greenery`")
 
 import pickle
+import pytest
+
 from greenery.lego import conc, mult, charclass, emptystring, \
     nothing, pattern, d, w, s, W, D, S, dot, from_fsm
 from greenery.rxelems.bound import bound, inf
@@ -181,7 +183,7 @@ def test_parse_str_round_trip():
 # Test to_fsm() and alphabet-related functionality
 
 def test_alphabet():
-    # rxelems.alphabet() should include `fsm.anything_else`
+    # `.alphabet()` should include `fsm.anything_else`
     assert parse("").alphabet() == {fsm.anything_else}
 
 def test_charclass_fsm():
@@ -258,7 +260,7 @@ def test_odd_bug():
     assert int5C.accepts(["c"])
 
 def test_bug_28():
-    # Starification is broken in FSMs
+    # Starification was broken in FSMs
     assert not parse("(ab*)").to_fsm().star().accepts("bb")
     assert not parse("(ab*)*").to_fsm().accepts("bb")
 
@@ -531,6 +533,9 @@ def test_binary_3():
             None      : {"0" : None  , "1" : None},
         },
     ))
+    assert str(parse("(0|1)").reduce()) == "[01]"
+    assert str(parse("(0|12)").reduce()) == "0|12"
+    assert str(parse("(0|1(01*0|10*1)*10*)").reduce()) == "0|1(01*0|10*1)*10*"
     assert str(div3) == "0|1(01*0|10*1)*10*"
     gen = div3.strings()
     assert next(gen) == "0"
@@ -698,8 +703,8 @@ def test_regex_reversal():
 # Tests for some more set operations
 
 def test_set_ops():
-    assert parse("[abcd]") - parse("a") == charclass("bcd")
-    assert parse("[abcd]") ^ parse("[cdef]") == charclass("abef")
+    assert parse("[abcd]") - parse("a") == parse("[bcd]")
+    assert parse("[abcd]") ^ parse("[cdef]") == parse("[abef]")
 
 ###############################################################################
 # Concatenation tests (+)
@@ -858,40 +863,27 @@ def test_reduce_concatenations():
 ###############################################################################
 # Multiplication tests
 
-def test_charclass_multiplication():
-    assert (parse("a") * one).reduce() == parse("a").reduce()
-    assert (parse("a") * multiplier(bound(1), bound(3))).reduce() == parse("a{1,3}").reduce()
-    assert (parse("a") * multiplier(bound(4), inf)).reduce() == parse("a{4,}").reduce()
-
 def test_mult_multiplication():
-    assert (parse("a{2,3}") * one).reduce() == \
+    assert parse("(a{2,3}){1,1}").reduce() == \
         parse("a{2,3}").reduce()
-    assert (parse("a{2,3}") * multiplier(bound(4), bound(5))).reduce() == \
+    assert parse("(a{2,3}){1}").reduce() == \
+        parse("a{2,3}").reduce()
+    assert parse("(a{2,3})").reduce() == \
+        parse("a{2,3}").reduce()
+    assert parse("(a{2,3}){4,5}").reduce() == \
         parse("a{8,15}").reduce()
-    assert (parse("a{2,}") * multiplier(bound(2), inf)).reduce() == \
+    assert parse("(a{2,}){2,}").reduce() == \
         parse("a{4,}").reduce()
-
-def test_conc_multiplication():
-    assert (parse("ab?") * qm).reduce() == parse("(ab?)?").reduce()
-
-def test_pattern_multiplication():
-    assert (parse("ab?|ba?") * multiplier(bound(2), bound(3))).reduce() == \
-        parse("(ab?|ba?){2,3}").reduce()
-    # TODO
-    #assert (parse("(ab?|ba?)") * multiplier(bound(2), bound(3))).reduce() == \
-    #    parse("(ab?|ba?){2,3}").reduce()
 
 def test_even_star_bug():
     # Defect: (a{2})* should NOT reduce to a*
-    a2 = mult(charclass("a"), multiplier(bound(2), bound(2)))
-    a2star = a2 * star
-    assert str(a2star) == "(a{2})*"
+    assert parse("(a{2})*").reduce() != parse("a*").reduce()
 
 def test_two_or_more_qm_bug():
-    assert str(mult(charclass("a"), multiplier(bound(2), inf)) * qm) == "(a{2,})?"
+    assert str(parse("(a{2,})?").reduce()) == "(a{2,})?"
 
 def test_two_two_bug():
-    assert str(mult(charclass("a"), multiplier(bound(2), bound(2))) * multiplier(bound(2), bound(2))) == "a{4}"
+    assert str(parse("(a{2}){2}").reduce()) == "a{4}"
 
 ###############################################################################
 # Test intersection (&)
@@ -990,6 +982,10 @@ def test_mult_reduction_easy():
     assert str(parse("a").reduce()) == "a"
     assert str(parse("a").reduce()) == "a"
     assert str(parse("a?").reduce()) == "a?"
+    assert pattern(conc()).reduce() == pattern(conc())
+    assert conc(mult(charclass("a"), zero)).reduce() == conc()
+    assert pattern(conc(mult(charclass("a"), zero))).reduce() == pattern(conc())
+    assert str(pattern(conc(mult(charclass("a"), zero))).reduce()) == ""
     assert str(parse("a{0}").reduce()) == ""
     assert str(parse("[]").reduce()) == "[]"
     assert str(parse("[]?").reduce()) == ""
@@ -1022,13 +1018,13 @@ def test_empty_pattern_reduction():
 
 def test_empty_conc_suppression():
     assert str(parse("[]0\\d").reduce()) == "[]"
-    assert pattern(
+    assert str(pattern(
         conc(
             mult(pattern(), one),  # this can never actually match anything
             mult(charclass("0"), one),
             mult(charclass("0123456789"), one),
         ) # so neither can this conc
-    ).reduce() == charclass("")
+    ).reduce()) == "[]"
 
 
 def test_nested_pattern_reduction():
@@ -1171,6 +1167,7 @@ def test_bug_36_2():
     assert not etc2.isdisjoint(etc1)
 
 
+@pytest.mark.skip(reason="too slow")
 def test_bug_slow():
     # issue #43
     import time
@@ -1224,6 +1221,7 @@ def test_bug_48_simpler():
     ))) == 'd'
 
 
+@pytest.mark.skip(reason="too slow")
 def test_bug_48():
     S5, S26, S45, S63, S80, S97, S113, S127, S140, S152, S163, S175, S182 = \
         range(13)

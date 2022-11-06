@@ -40,15 +40,6 @@ from dataclasses import dataclass, field
 from greenery.rxelems.bound import bound, inf
 from greenery.rxelems.multiplier import multiplier, star, one, zero, qm
 
-def reduce_after(method):
-    '''reduce() the result of this method call (unless you already reduced it).'''
-    def new_method(self, *args, **kwargs):
-        result = method(self, *args, **kwargs)
-        if result == self:
-            return result
-        return result.reduce()
-    return new_method
-
 def call_fsm(method):
     '''
         Take a method which acts on 0 or more regular expression objects... return a
@@ -108,17 +99,23 @@ def from_fsm(f: fsm.fsm):
     for a in f.states:
         brz[a] = {}
         for b in f.states:
-            brz[a][b] = nothing
-        brz[a][outside] = emptystring if a in f.finals else nothing
+            brz[a][b] = pattern(conc(mult(nothing, one)))
+
+        if a in f.finals:
+            brz[a][outside] = pattern(conc())
+        else:
+            brz[a][outside] = pattern(conc(mult(nothing, one)))
 
     # Populate it with some initial data.
     for a in f.map:
         for symbol in f.map[a]:
             b = f.map[a][symbol]
             if symbol == fsm.anything_else:
-                brz[a][b] |= ~charclass(f.alphabet - {fsm.anything_else})
+                linkcharclass = ~charclass(f.alphabet - {fsm.anything_else})
             else:
-                brz[a][b] |= charclass({symbol})
+                linkcharclass = charclass({symbol})
+
+            brz[a][b] = pattern(*brz[a][b].concs, conc(mult(linkcharclass, one)))
 
     # Now perform our back-substitution
     for i in reversed(range(len(states))):
@@ -128,11 +125,11 @@ def from_fsm(f: fsm.fsm):
         # equations, we need to resolve the self-transition (if any).
         # e.g.    R_a = 0 R_a |   1 R_b |   2 R_c
         # becomes R_a =         0*1 R_b | 0*2 R_c
-        loop = brz[a][a] * star # i.e. "0*"
+        loopmult = mult(brz[a][a], star) # i.e. "0*"
         del brz[a][a]
 
         for right in brz[a]:
-            brz[a][right] = (loop + brz[a][right]).reduce()
+            brz[a][right] = pattern(conc(loopmult, mult(brz[a][right], one)))
 
         # Note: even if we're down to our final equation, the above step still
         # needs to be performed before anything is returned.
@@ -148,7 +145,13 @@ def from_fsm(f: fsm.fsm):
             del brz[b][a]
 
             for right in brz[a]:
-                brz[b][right] = (brz[b][right] | (univ + brz[a][right])).reduce()
+                brz[b][right] = pattern(
+                    *brz[b][right].concs,
+                    conc(
+                        mult(univ, one),
+                        mult(brz[a][right], one)
+                    )
+                )
 
     return brz[f.initial][outside].reduce()
 
@@ -193,21 +196,6 @@ class rxelem:
         '''
         raise NotImplementedError()
 
-    @reduce_after
-    def reduce(self):
-        '''
-            The most important and algorithmically complex method. Takes the current
-            element and simplifies it in every way possible, returning a simpler
-            element which is quite probably not of the same class as the original.
-            Approaches vary by the class of the present element.
-
-            It is critically important to (1) always call reduce() on whatever you're
-            returning before you return it and therefore (2) always return something
-            STRICTLY SIMPLER than the current object. Otherwise, infinite loops become
-            possible in reduce() calls.
-        '''
-        raise NotImplementedError()
-
     @call_fsm
     def concatenate(*elems):
         '''
@@ -218,18 +206,6 @@ class rxelem:
 
     def __add__(self, other):
         return self.concatenate(other)
-
-    @call_fsm
-    def times(self, multiplier):
-        '''
-            Equivalent to repeated concatenation. Multiplier consists of a minimum
-            and a maximum; maximum may be infinite (for Kleene star closure).
-            Call using "a = b * qm"
-        '''
-        raise NotImplementedError()
-
-    def __mul__(self, multiplier):
-        return self.times(multiplier)
 
     @call_fsm
     def union(*elems):
@@ -436,12 +412,6 @@ class charclass(rxelem):
     def __hash__(self):
         return hash((self.chars, self.negated))
 
-    def times(self, multiplier):
-        # e.g. "a" * {0,1} = "a?"
-        if multiplier == one:
-            return self
-        return mult(self, multiplier)
-
     # These are the characters carrying special meanings when they appear "outdoors"
     # within a regular expression. To be interpreted literally, they must be
     # escaped with a backslash.
@@ -587,9 +557,8 @@ class charclass(rxelem):
         string += ")"
         return string
 
-    @reduce_after
     def reduce(self):
-        # Charclasses cannot be reduced().
+        # charclasses cannot be reduced.
         return self
 
     def concatenate(self, other):
@@ -670,6 +639,9 @@ class mult(rxelem):
     '''
 
     def __init__(self, multiplicand, multiplier):
+        if not hasattr(multiplicand, "chars") \
+        and not hasattr(multiplicand, "concs"):
+            raise Exception("what " + repr(multiplicand))
         self.__dict__["multiplicand"] = multiplicand
         self.__dict__["multiplier"]   = multiplier
 
@@ -689,13 +661,6 @@ class mult(rxelem):
         string += ", " + repr(self.multiplier)
         string += ")"
         return string
-
-    def times(self, multiplier):
-        if multiplier == one:
-            return self
-        if self.multiplier.canmultiplyby(multiplier):
-            return mult(self.multiplicand, self.multiplier * multiplier)
-        return mult(pattern(conc(self)), multiplier)
 
     def concatenate(self, other):
         return conc(self) + other
@@ -752,73 +717,51 @@ class mult(rxelem):
     def empty(self):
         return self.multiplicand.empty() and self.multiplier.min > bound(0)
 
-    @reduce_after
     def reduce(self):
-        # Can't match anything: reduce to nothing
+        if self == emptymult:
+            return self
+
+        # Can't match anything: reduce to empty mult
         if self.empty():
-            return nothing
+            return emptymult
+
+        # Try recursively reducing our multiplicand
+        reduced = self.multiplicand.reduce()
+        if reduced != self.multiplicand:
+            return mult(reduced, self.multiplier).reduce()
 
         # If our multiplicand is a pattern containing an empty conc()
         # we can pull that "optional" bit out into our own multiplier
         # instead.
-        # e.g. (A|B|C|)D -> (A|B|C)?D
+        # e.g. (A|B|C|) -> (A|B|C)?
         # e.g. (A|B|C|){2} -> (A|B|C){0,2}
-        try:
-            if emptystring in self.multiplicand.concs \
-            and self.multiplier.canmultiplyby(qm):
-                return mult(
-                    pattern(
-                        *self.multiplicand.concs.difference({emptystring})
-                    ),
-                    self.multiplier * qm,
-                )
-        except AttributeError:
-            # self.multiplicand has no attribute "concs"; isn't a pattern; never mind
-            pass
-
-        # If we have an empty multiplicand, we can only match it
-        # zero times
-        if self.multiplicand.empty() \
-        and self.multiplier.min == bound(0):
-            return emptystring
-
-        # Failing that, we have a positive multiplicand which we
-        # intend to match zero times. In this case the only possible
-        # match is the empty string.
-        if self.multiplier == zero:
-            return emptystring
-
-        # no point multiplying in the singular
-        if self.multiplier == one:
-            return self.multiplicand
-
-        # Try recursively reducing our internal.
-        reduced = self.multiplicand.reduce()
-        # "bulk up" smaller lego pieces to pattern if need be
-        if hasattr(reduced, "multiplicand"):
-            reduced = conc(reduced)
-        if hasattr(reduced, "mults"):
-            reduced = pattern(reduced)
-        if reduced != self.multiplicand:
-            return mult(reduced, self.multiplier)
+        if hasattr(self.multiplicand, "concs") \
+        and emptystring in self.multiplicand.concs \
+        and self.multiplier.canmultiplyby(qm):
+            return mult(
+                pattern(
+                    *self.multiplicand.concs.difference({emptystring})
+                ),
+                self.multiplier * qm,
+            ).reduce()
 
         # If our multiplicand is a pattern containing a single conc
-        # containing a single mult, we can separate that out a lot
+        # containing a single mult, we can scrap the pattern in favour of that mult's multiplicand
         # e.g. ([ab])* -> [ab]*
-        try:
-            if len(self.multiplicand.concs) == 1:
-                (singleton,) = self.multiplicand.concs
-                if len(singleton.mults) == 1:
-                    singlemult = singleton.mults[0]
-                    if singlemult.multiplier.canmultiplyby(self.multiplier):
-                        return mult(
-                            singlemult.multiplicand,
-                            singlemult.multiplier * self.multiplier
-                        )
-        except AttributeError:
-            # self.multiplicand has no attribute "concs"; isn't a pattern; never mind
-            pass
+        # e.g. ((a))* -> (a)* -> a*
+        # NOTE: this logic lives here at the `mult` level, NOT in `pattern.reduce`
+        # because we want to return another `mult` (same type)
+        if hasattr(self.multiplicand, "concs") \
+        and len(self.multiplicand.concs) == 1:
+            (conc,) = self.multiplicand.concs
+            if len(conc.mults) == 1 \
+            and conc.mults[0].multiplier.canmultiplyby(self.multiplier):
+                return mult(
+                    conc.mults[0].multiplicand,
+                    conc.mults[0].multiplier * self.multiplier
+                ).reduce()
 
+        # no reduction possible
         return self
 
     def __str__(self):
@@ -866,6 +809,8 @@ class mult(rxelem):
     def copy(self):
         return mult(self.multiplicand.copy(), self.multiplier.copy())
 
+emptymult = mult(charclass(""), one)
+
 class conc(rxelem):
     '''
         A conc (short for "concatenation") is a tuple of mults i.e. an unbroken
@@ -892,12 +837,6 @@ class conc(rxelem):
         string += ")"
         return string
 
-    def times(self, multiplier):
-        if multiplier == one:
-            return self
-        # Have to replace self with a pattern unfortunately
-        return pattern(self) * multiplier
-
     def concatenate(self, other):
         # other must be a conc too
         if hasattr(other, "chars") or hasattr(other, "concs"):
@@ -913,38 +852,41 @@ class conc(rxelem):
     def intersection(self, other):
         return pattern(self) & other
 
-    @reduce_after
     def reduce(self):
-        # Can't match anything
+        if self == emptyconc:
+            return self
+
         if self.empty():
-            return nothing
+            return emptyconc
 
-        # no point concatenating one thing (note: concatenating 0 things is
-        # entirely valid)
-        if len(self.mults) == 1:
-            return self.mults[0]
-
-        # Try recursively reducing our internals
-        reduced = [m.reduce() for m in self.mults]
-        # "bulk up" smaller lego pieces to concs if need be
-        reduced = [
-            pattern(x) if hasattr(x, "mults") else x
-            for x in reduced
-        ]
-        reduced = [
-            mult(x, one) if hasattr(x, "chars") or hasattr(x, "concs") else x
-            for x in reduced
-        ]
-        reduced = tuple(reduced)
+        # Try recursively reducing our mults
+        reduced = tuple(m.reduce() for m in self.mults)
         if reduced != self.mults:
-            return conc(*reduced)
+            return conc(*reduced).reduce()
 
-        # Conc contains "()" (i.e. a mult containing only a pattern containing the
-        # empty string)? That can be removed e.g. "a()b" -> "ab"
+        # strip out mults which can only match the empty string
         for i in range(len(self.mults)):
-            if self.mults[i].multiplicand == pattern(emptystring):
+            if (
+                # Conc contains "()" (i.e. a mult containing only a pattern containing the
+                # empty string)? That can be removed e.g. "a()b" -> "ab"
+                self.mults[i].multiplicand == pattern(emptystring) \
+
+                # If a mult has an empty multiplicand, we can only match it
+                # zero times => empty string => remove it entirely
+                # e.g. "a[]{0,3}b" -> "ab"
+                or (
+                    self.mults[i].multiplicand.empty() \
+                    and self.mults[i].multiplier.min == bound(0)
+                ) \
+
+                # Failing that, we have a positive multiplicand which we
+                # intend to match zero times. In this case the only possible
+                # match is the empty string => remove it
+                # e.g. "a[XYZ]{0}b" -> "ab"
+                or self.mults[i].multiplier == zero
+            ):
                 new = self.mults[:i] + self.mults[i + 1:]
-                return conc(*new)
+                return conc(*new).reduce()
 
         # We might be able to combine some mults together or at least simplify the multiplier on
         # one of them.
@@ -961,7 +903,7 @@ class conc(rxelem):
                         r.multiplier + s.multiplier
                     )
                     new = self.mults[:i] + (squished,) + self.mults[i + 2:]
-                    return conc(*new)
+                    return conc(*new).reduce()
 
                 # If R's language is a subset of S's, then R{a,b}S{c,} reduces to R{a}S{c,}...
                 # e.g. \d+\w+ -> \d\w+
@@ -974,7 +916,7 @@ class conc(rxelem):
                         multiplier(r.multiplier.min, r.multiplier.min)
                     )
                     new = self.mults[:i] + (trimmed, s) + self.mults[i + 2:]
-                    return conc(*new)
+                    return conc(*new).reduce()
 
                 # Conversely, if R is superset of S, then R{c,}S{a,b} reduces to R{c,}S{a}.
                 # e.g. [ab]+a? -> [ab]+
@@ -987,7 +929,7 @@ class conc(rxelem):
                         multiplier(s.multiplier.min, s.multiplier.min)
                     )
                     new = self.mults[:i] + (r, trimmed) + self.mults[i + 2:]
-                    return conc(*new)
+                    return conc(*new).reduce()
 
         # Conc contains (among other things) a *singleton* mult containing a pattern
         # with only one internal conc? Flatten out.
@@ -995,15 +937,12 @@ class conc(rxelem):
         # BUT NOT "a(d(ab|a*c)){2,}"
         # AND NOT "a(d(ab|a*c)|y)"
         for i in range(len(self.mults)):
-            m = self.mults[i]
-            try:
-                if m.multiplier == one and len(m.multiplicand.concs) == 1:
-                    (single,) = m.multiplicand.concs
-                    new = self.mults[:i] + single.mults + self.mults[i+1:]
-                    return conc(*new)
-            except AttributeError:
-                # m.multiplicand has no attribute "concs"; isn't a pattern; never mind
-                pass
+            if self.mults[i].multiplier == one \
+            and hasattr(self.mults[i].multiplicand, "concs") \
+            and len(self.mults[i].multiplicand.concs) == 1:
+                (singleton,) = self.mults[i].multiplicand.concs
+                new = self.mults[:i] + singleton.mults + self.mults[i + 1:]
+                return conc(*new).reduce()
 
         return self
 
@@ -1115,6 +1054,8 @@ class conc(rxelem):
     def copy(self):
         return conc(*[m.copy() for m in self.mults])
 
+emptyconc = conc(emptymult)
+
 class pattern(rxelem):
     '''
         A pattern (also known as an "alt", short for "alternation") is a
@@ -1132,6 +1073,9 @@ class pattern(rxelem):
     '''
     def __init__(self, *concs):
         self.__dict__["concs"] = frozenset(concs)
+        for c in concs:
+            if not hasattr(c, "mults"):
+                raise Exception(repr(c))
 
     def __eq__(self, other):
         try:
@@ -1147,11 +1091,6 @@ class pattern(rxelem):
         string += ", ".join(repr(c) for c in self.concs)
         string += ")"
         return string
-
-    def times(self, multiplier):
-        if multiplier == one:
-            return self
-        return mult(self, multiplier)
 
     def concatenate(self, other):
         return mult(self, one) + other
@@ -1194,36 +1133,32 @@ class pattern(rxelem):
         # 1+ elements.
         return "|".join(sorted(str(c) for c in self.concs))
 
-    @reduce_after
     def reduce(self):
-        # emptiness
+        if self == emptypattern:
+            return self
+
         if self.empty():
-            return nothing
+            return emptypattern
+
+        # Try recursively reducing our internal concs.
+        reduced = frozenset(c.reduce() for c in self.concs)
+        if reduced != self.concs:
+            return pattern(*reduced).reduce()
 
         # If one of our internal concs is empty, remove it
         for c in self.concs:
             if c.empty():
                 new = self.concs - {c}
-                return pattern(*new)
+                return pattern(*new).reduce()
 
-        # no point alternating among one possibility
+        # If we have just one conc with just one mult with a multiplier of 1,
+        # and the multiplicand is a pattern, pull that up
         if len(self.concs) == 1:
-            return list(self.concs)[0]
-
-        # Try recursively reducing our internals first.
-        reduced = [c.reduce() for c in self.concs]
-        # "bulk up" smaller lego pieces to concs if need be
-        reduced = [
-            mult(x, one) if hasattr(x, "chars") or hasattr(x, "concs") else x
-            for x in reduced
-        ]
-        reduced = [
-            conc(x) if hasattr(x, "multiplicand") else x
-            for x in reduced
-        ]
-        reduced = frozenset(reduced)
-        if reduced != self.concs:
-            return pattern(*reduced)
+            (singleconc,) = self.concs
+            if len(singleconc.mults) == 1 \
+            and singleconc.mults[0].multiplier == one \
+            and hasattr(singleconc.mults[0].multiplicand, "concs"):
+                return singleconc.mults[0].multiplicand.reduce()
 
         # If this pattern contains several concs each containing just 1 mult and
         # their multiplicands agree, we may be able to merge the multipliers
@@ -1252,7 +1187,7 @@ class pattern(rxelem):
                     oldconcs[i + 1:j] + \
                     oldconcs[j + 1:] + \
                     [conc(mult(multiplicand, multiplier))]
-                return pattern(*newconcs)
+                return pattern(*newconcs).reduce()
 
         # If this pattern contains several concs each containing just 1 mult
         # each containing just a charclass, with a multiplier of 1,
@@ -1274,7 +1209,7 @@ class pattern(rxelem):
                 rest.append(c)
         if changed:
             rest.append(conc(mult(merger, one)))
-            return pattern(*rest)
+            return pattern(*rest).reduce()
 
         # If one of the present pattern's concs is the empty string, and
         # there is another conc with a single mult whose lower bound is 0, we
@@ -1283,35 +1218,36 @@ class pattern(rxelem):
         # If there is another conc with a single mult whose lower bound is 1,
         # we can merge the empty string into that.
         # E.g. "|(ab)+|def" => "(ab)*|def".
-        if conc() in self.concs:
+        if emptystring in self.concs:
             for c in self.concs:
                 if len(c.mults) != 1:
                     continue
                 m = c.mults[0]
                 if m.multiplier.min == bound(0):
-                    rest = self.concs - {conc()}
+                    rest = self.concs - {emptystring}
                     return pattern(*rest)
                 if m.multiplier.min == bound(1):
-                    rest = self.concs - {conc(), c} | {m * qm}
-                    return pattern(*rest)
+                    rest = self.concs - {emptystring, c} | {conc(mult(m.multiplicand, m.multiplier * qm))}
+                    return pattern(*rest).reduce()
 
         # If the present pattern's concs all have a common prefix, split
         # that out. This increases the depth of the object
         # but it is still arguably simpler/ripe for further reduction
         # e.g. "abc|ade" -> a(bc|de)"
-        prefix = self._commonconc()
-        if prefix != emptystring:
-            leftovers = self.behead(prefix)
-            mults = prefix.mults + (mult(leftovers, one),)
-            return conc(*mults)
+        if len(self.concs) > 1:
+            prefix = self._commonconc()
+            if prefix != emptystring:
+                leftovers = self.behead(prefix)
+                mults = prefix.mults + (mult(leftovers, one),)
+                return pattern(conc(*mults)).reduce()
 
-        # Same but for suffixes.
-        # e.g. "xyz|stz -> (xy|st)z"
-        suffix = self._commonconc(suffix=True)
-        if suffix != emptystring:
-            leftovers = self.dock(suffix)
-            mults = (mult(leftovers, one),) + suffix.mults
-            return conc(*mults)
+            # Same but for suffixes.
+            # e.g. "xyz|stz -> (xy|st)z"
+            suffix = self._commonconc(suffix=True)
+            if suffix != emptystring:
+                leftovers = self.dock(suffix)
+                mults = (mult(leftovers, one),) + suffix.mults
+                return pattern(conc(*mults)).reduce()
 
         return self
 
@@ -1366,6 +1302,8 @@ class pattern(rxelem):
     def copy(self):
         return pattern(*(c.copy() for c in self.concs))
 
+emptypattern = pattern(emptyconc)
+
 # Special and useful values go here.
 
 # Standard character classes
@@ -1375,11 +1313,12 @@ s = charclass("\t\n\v\f\r ")
 W = ~w
 D = ~d
 S = ~s
-dot = ~charclass("")
 
 # This charclasses expresses "no possibilities at all"
 # and can never match anything.
 nothing = charclass("")
+
+dot = ~nothing
 
 # Textual representations of standard character classes
 shorthand = {
