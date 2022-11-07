@@ -6,12 +6,17 @@ from .bound import Bound, INF
 from .multiplier import Multiplier, ONE, QM, STAR, PLUS
 from .rxelems import Mult, Multiplicand
 
+
 def test_mult_equality():
     a = Mult(Multiplicand(Charclass("a")), ONE)
     assert a == a
     assert a != Mult(Multiplicand(Charclass("b")), ONE)
     assert a != Mult(Multiplicand(Charclass("a")), QM)
-    assert a != Mult(Multiplicand(Charclass("a")), Multiplier(Bound(1), Bound(2)))
+    assert a != Mult(
+        Multiplicand(Charclass("a")),
+        Multiplier(Bound(1), Bound(2))
+    )
+
 
 def test_mult_str():
     a = Multiplicand(Charclass("a"))
@@ -30,6 +35,7 @@ def test_mult_str():
     assert str(Mult(digit, ONE)) == "\\d"
     assert str(Mult(digit, Multiplier(Bound(2), Bound(2)))) == "\\d{2}"
     assert str(Mult(digit, Multiplier(Bound(3), Bound(3)))) == "\\d{3}"
+
 
 def test_odd_bug():
     # Odd bug with ([bc]*c)?[ab]*
@@ -55,6 +61,7 @@ def test_odd_bug():
     assert int5C.accepts("c")
     assert int5C.accepts(["c"])
 
+
 def test_mult_common():
     a = Multiplicand(Charclass("a"))
     assert Mult(a, Multiplier(Bound(3), Bound(4))) \
@@ -66,6 +73,7 @@ def test_mult_common():
     assert Mult(a, Multiplier(Bound(3), INF)) \
         .common(Mult(a, Multiplier(Bound(2), INF))) == \
         Mult(a, Multiplier(Bound(2), INF))
+
 
 def test_mult_dock():
     a = Multiplicand(Charclass("a"))

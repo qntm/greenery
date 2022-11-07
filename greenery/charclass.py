@@ -48,6 +48,7 @@ class Charclass():
     w = frozenset("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz")
     d = frozenset("0123456789")
     s = frozenset("\t\n\v\f\r ")
+
     shorthand = {
         w: "\\w",
         d: "\\d",

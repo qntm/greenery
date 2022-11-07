@@ -672,9 +672,9 @@ class Pattern():
     @call_fsm
     def times(self, multiplier):
         '''
-            Equivalent to repeated concatenation. Multiplier consists of a minimum
-            and a maximum; maximum may be infinite (for Kleene star closure).
-            Call using "a = b * qm"
+            Equivalent to repeated concatenation. Multiplier consists of a
+            minimum and a maximum; maximum may be infinite (for Kleene star
+            closure). Call using "a = b * qm"
         '''
         return from_fsm(self.to_fsm().times(multiplier))
 
@@ -771,7 +771,7 @@ class Multiplicand:
         self.__dict__["inner"] = inner
 
     def __eq__(self, other):
-        return type(self.inner) == type(other.inner) \
+        return isinstance(other.inner, type(self.inner)) \
                and self.inner == other.inner
 
     def __hash__(self):
@@ -801,7 +801,7 @@ class Multiplicand:
 
         # Try recursively reducing `self.inner`
         reduced = self.inner.reduce()
-        if type(reduced) != type(self.inner) or reduced != self.inner:
+        if not isinstance(reduced, type(self.inner)) or reduced != self.inner:
             return Multiplicand(reduced).reduce()
 
         return self

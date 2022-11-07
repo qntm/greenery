@@ -101,7 +101,8 @@ def test_empty_pattern_reduction():
 def test_empty_conc_suppression():
     assert str(Pattern(
         Conc(
-            Mult(Multiplicand(Pattern()), ONE),  # this can never actually match anything
+            # this `Mult` can never actually match anything
+            Mult(Multiplicand(Pattern()), ONE),
             Mult(Multiplicand(Charclass("0")), ONE),
             Mult(Multiplicand(Charclass("0123456789")), ONE),
         )  # so neither can this `Conc`

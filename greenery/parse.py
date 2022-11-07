@@ -95,16 +95,16 @@ def match_internal_char(string, i):
 
 def match_class_interior_1(string, i):
     # Attempt 1: shorthand e.g. "\w"
-    for frozenset in Charclass.shorthand:
+    for frozenset, shorthand in enumerate(Charclass.shorthand):
         try:
-            return frozenset, False, static(string, i, Charclass.shorthand[frozenset])
+            return frozenset, False, static(string, i, shorthand)
         except NoMatch:
             pass
 
     # Attempt 1B: shorthand e.g. "\W"
-    for frozenset in Charclass.negated_shorthand:
+    for frozenset, shorthand in enumerate(Charclass.negated_shorthand):
         try:
-            return frozenset, True, static(string, i, Charclass.negated_shorthand[frozenset])
+            return frozenset, True, static(string, i, shorthand)
         except NoMatch:
             pass
 
