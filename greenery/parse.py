@@ -95,16 +95,16 @@ def match_internal_char(string, i):
 
 def match_class_interior_1(string, i):
     # Attempt 1: shorthand e.g. "\w"
-    for key in Charclass.shorthand:
+    for frozenset in Charclass.shorthand:
         try:
-            return key, False, static(string, i, Charclass.shorthand[key])
+            return frozenset, False, static(string, i, Charclass.shorthand[frozenset])
         except NoMatch:
             pass
 
     # Attempt 1B: shorthand e.g. "\W"
-    for key in Charclass.negated_shorthand:
+    for frozenset in Charclass.negated_shorthand:
         try:
-            return key, True, static(string, i, Charclass.negated_shorthand[key])
+            return frozenset, True, static(string, i, Charclass.negated_shorthand[frozenset])
         except NoMatch:
             pass
 
@@ -121,7 +121,7 @@ def match_class_interior_1(string, i):
         if firstIndex >= lastIndex:
             raise NoMatch(f"Range '{first}' to '{last}' not allowed")
 
-        chars = "".join([
+        chars = set([
             chr(i) for i in range(firstIndex, lastIndex + 1)
         ])
         return chars, False, k
@@ -130,11 +130,11 @@ def match_class_interior_1(string, i):
 
     # Attempt 3: just a character on its own
     (char, j) = match_internal_char(string, i)
-    return char, False, j
+    return set(char), False, j
 
 
 def match_class_interior(string, i):
-    internals = ""
+    internals = set()
     internals_negated = False
     try:
         while True:
@@ -142,21 +142,15 @@ def match_class_interior(string, i):
             if internal_negated:
                 if internals_negated:
                     # E.g. [a1\D\W]
-                    internals += internal
+                    internals |= internal
                 else:
-                    # E.g. [a1\D]: `internals` is "a1", `internal` is "0123456789"
-                    # Result should be "023456789"
                     internals_negated = True
-                    internals = "".join(char for char in internal if char not in internals)
+                    internals = internal - internals
             else:
                 if internals_negated:
-                    # E.g. [\D1]: `internals` is "0123456789" negated, `internal` is "1"
-                    # Result should be "023456789"
-                    # E.g. [\D1a]: `internals` is "023456789" negated, `internal` is "a"
-                    # Result should be "023456789"
-                    internals = "".join(char for char in internals if char not in internal)
+                    internals = internals - internal
                 else:
-                    internals += internal
+                    internals |= internal
     except NoMatch:
         pass
     return internals, internals_negated, i

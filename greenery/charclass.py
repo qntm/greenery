@@ -45,9 +45,9 @@ class Charclass():
     classSpecial = set("\\[]^-")
 
     # Shorthand codes for use inside `Charclass`es e.g. [abc\d]
-    w = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz"
-    d = "0123456789"
-    s = "\t\n\v\f\r "
+    w = frozenset("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz")
+    d = frozenset("0123456789")
+    s = frozenset("\t\n\v\f\r ")
     shorthand = {
         w: "\\w",
         d: "\\d",
@@ -93,7 +93,6 @@ class Charclass():
         return "[" + self.escape() + "]"
 
     def escape(self):
-
         def escapeChar(char):
             if char in Charclass.classSpecial:
                 return "\\" + char
