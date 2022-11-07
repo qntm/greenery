@@ -3,34 +3,38 @@
 from .bound import Bound
 from .multiplier import Multiplier, ZERO, QM, ONE, STAR, PLUS
 from .charclass import Charclass
-from .rxelems import Conc, Mult, EMPTYSTRING
+from .rxelems import Conc, Mult, EMPTYSTRING, Multiplicand
 
 def test_conc_equality():
-    assert Conc(Mult(Charclass("a"), ONE)) == Conc(Mult(Charclass("a"), ONE))
-    assert Conc(Mult(Charclass("a"), ONE)) != Conc(Mult(Charclass("b"), ONE))
-    assert Conc(Mult(Charclass("a"), ONE)) != Conc(Mult(Charclass("a"), QM))
-    assert Conc(Mult(Charclass("a"), ONE)) != Conc(Mult(Charclass("a"), Multiplier(Bound(1), Bound(2))))
-    assert Conc(Mult(Charclass("a"), ONE)) != EMPTYSTRING
+    a = Conc(Mult(Multiplicand(Charclass("a")), ONE))
+    assert a == Conc(Mult(Multiplicand(Charclass("a")), ONE))
+    assert a != Conc(Mult(Multiplicand(Charclass("b")), ONE))
+    assert a != Conc(Mult(Multiplicand(Charclass("a")), QM))
+    assert a != Conc(Mult(
+        Multiplicand(Charclass("a")),
+        Multiplier(Bound(1), Bound(2)))
+    )
+    assert a != EMPTYSTRING
 
 def test_conc_str():
     assert str(Conc(
-        Mult(Charclass("a"), ONE),
-        Mult(Charclass("b"), ONE),
-        Mult(Charclass("c"), ONE),
-        Mult(Charclass("d"), ONE),
-        Mult(Charclass("e"), ONE),
-        Mult(~Charclass("fg"), STAR),
-        Mult(Charclass("h"), Multiplier(Bound(5), Bound(5))),
-        Mult(Charclass("abcdefghijklmnopqrstuvwxyz"), PLUS),
+        Mult(Multiplicand(Charclass("a")), ONE),
+        Mult(Multiplicand(Charclass("b")), ONE),
+        Mult(Multiplicand(Charclass("c")), ONE),
+        Mult(Multiplicand(Charclass("d")), ONE),
+        Mult(Multiplicand(Charclass("e")), ONE),
+        Mult(Multiplicand(~Charclass("fg")), STAR),
+        Mult(Multiplicand(Charclass("h")), Multiplier(Bound(5), Bound(5))),
+        Mult(Multiplicand(Charclass("abcdefghijklmnopqrstuvwxyz")), PLUS),
     )) == "abcde[^fg]*h{5}[a-z]+"
 
 def test_conc_common():
-    a = Mult(Charclass("A"), ONE)
-    b = Mult(Charclass("B"), ONE)
-    c = Mult(Charclass("C"), ONE)
-    y = Mult(Charclass("y"), ONE)
-    z = Mult(Charclass("Z"), ONE)
-    zstar = Mult(Charclass("Z"), STAR)
+    a = Mult(Multiplicand(Charclass("A")), ONE)
+    b = Mult(Multiplicand(Charclass("B")), ONE)
+    c = Mult(Multiplicand(Charclass("C")), ONE)
+    y = Mult(Multiplicand(Charclass("y")), ONE)
+    z = Mult(Multiplicand(Charclass("Z")), ONE)
+    zstar = Mult(Multiplicand(Charclass("Z")), STAR)
 
     assert Conc(a, a, z, y).common(Conc(b, b, z, y), suffix=True) == Conc(z, y)
     assert Conc(c, z).common(Conc(c, z), suffix=True) == Conc(c, z)
@@ -40,12 +44,12 @@ def test_conc_common():
     assert Conc(a).common(Conc(b), suffix=True) == Conc()
 
 def test_conc_dock():
-    a = Mult(Charclass("A"), ONE)
-    b = Mult(Charclass("B"), ONE)
-    x = Mult(Charclass("X"), ONE)
-    x2 = Mult(Charclass("X"), Multiplier(Bound(2), Bound(2)))
-    yplus = Mult(Charclass("y"), PLUS)
-    z = Mult(Charclass("Z"), ONE)
+    a = Mult(Multiplicand(Charclass("A")), ONE)
+    b = Mult(Multiplicand(Charclass("B")), ONE)
+    x = Mult(Multiplicand(Charclass("X")), ONE)
+    x2 = Mult(Multiplicand(Charclass("X")), Multiplier(Bound(2), Bound(2)))
+    yplus = Mult(Multiplicand(Charclass("y")), PLUS)
+    z = Mult(Multiplicand(Charclass("Z")), ONE)
 
     assert Conc(a, z).dock(Conc(z)) == Conc(a)
     assert Conc(a, b, x, yplus, z).dock(Conc(x, yplus, z)) == Conc(a, b)
@@ -61,4 +65,7 @@ def test_conc_dock():
         pass
 
 def test_mult_reduction_easy():
-    assert Conc(Mult(Charclass("a"), ZERO)).reduce() == Conc()
+    assert Conc(Mult(
+        Multiplicand(Charclass("a")),
+        ZERO
+    )).reduce() == Conc()
