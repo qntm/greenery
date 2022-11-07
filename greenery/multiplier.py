@@ -22,9 +22,13 @@ class Multiplier:
 
     def __post_init__(self):
         if self.min == INF:
-            raise Exception("Minimum bound of a multiplier can't be " + repr(INF))
+            raise Exception(
+                f"Minimum bound of a multiplier can't be {repr(INF)}"
+            )
         if self.min > self.max:
-            raise Exception("Invalid multiplier bounds: " + repr(self.min) + " and " + repr(self.max))
+            raise Exception(
+                f"Invalid multiplier bounds: {repr(self.min)} and {repr(self.max)}"
+            )
 
         # More useful than "min" and "max" in many situations
         # are "mandatory" and "optional".
@@ -32,10 +36,7 @@ class Multiplier:
         object.__setattr__(self, "optional", self.max - self.min)
 
     def __eq__(self, other):
-        try:
-            return self.min == other.min and self.max == other.max
-        except AttributeError:
-            return False
+        return self.min == other.min and self.max == other.max
 
     def __hash__(self):
         return hash((self.min, self.max))
@@ -45,7 +46,9 @@ class Multiplier:
 
     def __str__(self):
         if self.max == Bound(0):
-            raise Exception("Can't serialise a multiplier with bound " + repr(self.max))
+            raise Exception(
+                f"Can't serialise a multiplier with bound {repr(self.max)}"
+            )
         if self in symbolic.keys():
             return symbolic[self]
         if self.min == self.max:
@@ -71,7 +74,9 @@ class Multiplier:
     def __mul__(self, other):
         '''Multiply this multiplier by another'''
         if not self.canmultiplyby(other):
-            raise Exception("Can't multiply " + repr(self) + " by " + repr(other))
+            raise Exception(
+                f"Can't multiply {repr(self)} by {repr(other)}"
+            )
         return Multiplier(self.min * other.min, self.max * other.max)
 
     def __add__(self, other):
@@ -105,7 +110,9 @@ class Multiplier:
             defined for all multipliers since they may not overlap.
         '''
         if not self.canintersect(other):
-            raise Exception("Can't compute intersection of " + repr(self) + " and " + repr(other))
+            raise Exception(
+                f"Can't compute intersection of {repr(self)} and {repr(other)}"
+            )
         a = max(self.min, other.min)
         b = min(self.max, other.max)
         return Multiplier(a, b)
@@ -121,7 +128,9 @@ class Multiplier:
             all multipliers since they may not intersect.
         '''
         if not self.canunion(other):
-            raise Exception("Can't compute the union of " + repr(self) + " and " + repr(other))
+            raise Exception(
+                f"Can't compute the union of {repr(self)} and {repr(other)}"
+            )
         a = min(self.min, other.min)
         b = max(self.max, other.max)
         return Multiplier(a, b)

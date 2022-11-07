@@ -22,7 +22,9 @@ class Charclass():
         object.__setattr__(self, "chars", frozenset(self.chars))
         # chars should consist only of chars
         if ANYTHING_ELSE in self.chars:
-            raise Exception("Can't put " + repr(ANYTHING_ELSE) + " in a `Charclass`")
+            raise Exception(
+                f"Can't put {repr(ANYTHING_ELSE)} in a `Charclass`"
+            )
 
     def __eq__(self, other):
         return hasattr(other, "chars") \
@@ -203,7 +205,9 @@ class Charclass():
         return self
 
 # Standard character classes
-WORDCHAR = Charclass("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz")
+WORDCHAR = Charclass(
+    "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz"
+)
 DIGIT = Charclass("0123456789")
 SPACECHAR = Charclass("\t\n\v\f\r ")
 
@@ -211,24 +215,28 @@ SPACECHAR = Charclass("\t\n\v\f\r ")
 # and can never match anything.
 NULLCHARCLASS = Charclass("")
 
-W = ~WORDCHAR
-D = ~DIGIT
-S = ~SPACECHAR
+NONWORDCHAR = ~WORDCHAR
+NONDIGITCHAR = ~DIGIT
+NONSPACECHAR = ~SPACECHAR
 DOT = ~NULLCHARCLASS
 
 # Textual representations of standard character classes
 shorthand = {
-    WORDCHAR : "\\w", DIGIT : "\\d", SPACECHAR : "\\s",
-    W : "\\W", D : "\\D", S : "\\S",
+    WORDCHAR: "\\w",
+    DIGIT: "\\d",
+    SPACECHAR : "\\s",
+    NONWORDCHAR: "\\W",
+    NONDIGITCHAR: "\\D",
+    NONSPACECHAR: "\\S",
     DOT : ".",
 }
 
 # Characters which users may escape in a regex instead of inserting them
 # literally. In ASCII order:
 escapes = {
-    "\t" : "\\t", # tab
-    "\n" : "\\n", # line feed
-    "\v" : "\\v", # vertical tab
-    "\f" : "\\f", # form feed
-    "\r" : "\\r", # carriage return
+    "\t": "\\t",  # tab
+    "\n": "\\n",  # line feed
+    "\v": "\\v",  # vertical tab
+    "\f": "\\f",  # form feed
+    "\r": "\\r",  # carriage return
 }

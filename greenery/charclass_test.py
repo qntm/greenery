@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
-from .charclass import Charclass, WORDCHAR, DIGIT, SPACECHAR, W, D, S, DOT, NULLCHARCLASS
+from .charclass import Charclass, WORDCHAR, DIGIT, SPACECHAR, NONWORDCHAR, \
+    NONDIGITCHAR, NONSPACECHAR, DOT, NULLCHARCLASS
 from .fsm import ANYTHING_ELSE
 
 def test_charclass_equality():
@@ -36,10 +37,12 @@ def test_charclass_str():
     assert str(Charclass("\t\v\r A")) == "[\\t\\v\\r A]"
     assert str(Charclass("\n\f A")) == "[\\n\\f A]"
     assert str(Charclass("\t\n\v\f\r A")) == "[\\t-\\r A]"
-    assert str(Charclass("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz|")) == "[0-9A-Z_a-z|]"
-    assert str(W) == "\\W"
-    assert str(D) == "\\D"
-    assert str(S) == "\\S"
+    assert str(Charclass(
+        "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz|"
+    )) == "[0-9A-Z_a-z|]"
+    assert str(NONWORDCHAR) == "\\W"
+    assert str(NONDIGITCHAR) == "\\D"
+    assert str(NONSPACECHAR) == "\\S"
     assert str(DOT) == "."
     assert str(~Charclass("")) == "."
     assert str(~Charclass("a")) == "[^a]"

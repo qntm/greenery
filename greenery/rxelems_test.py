@@ -2,8 +2,7 @@
 
 if __name__ == "__main__":
     raise Exception(
-        "Test files can't be run directly. "
-        "Use `python -m pytest greenery`"
+        "Test files can't be run directly. Use `python -m pytest greenery`"
     )
 
 import pickle
@@ -479,7 +478,7 @@ def test_bad_alphabet():
             from_fsm(f)
             assert False
         except AssertionError as e:
-            raise Exception("Accepted bad symbol: " + repr(bad_symbol))
+            raise Exception(f"Accepted bad symbol: {repr(bad_symbol)}")
         except Exception as e:
             pass
 

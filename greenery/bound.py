@@ -10,7 +10,7 @@ class Bound:
 
     def __post_init__(self):
         if not self.v is None and self.v < 0:
-            raise Exception("Invalid bound: " + repr(self.v))
+            raise Exception(f"Invalid bound: {repr(self.v)}")
 
     def __repr__(self):
         return "Bound(" + repr(self.v) + ")"
@@ -22,10 +22,7 @@ class Bound:
         return str(self.v)
 
     def __eq__(self, other):
-        try:
-            return self.v == other.v
-        except AttributeError:
-            return False
+        return self.v == other.v
 
     def __hash__(self):
         return hash(self.v)
@@ -61,7 +58,9 @@ class Bound:
         '''
         if other == INF:
             if self != INF:
-                raise Exception("Can't subtract " + repr(other) + " from " + repr(self))
+                raise Exception(
+                    f"Can't subtract {repr(other)} from {repr(self)}"
+                )
 
             # Infinity minus infinity is zero. This has to be true so that
             # we can for example subtract Multiplier(Bound(0), INF) from

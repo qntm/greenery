@@ -1,3 +1,3 @@
 # -*- coding: utf-8 -*-
 
-__all__ = ["fsm", "rx"]
+__all__ = ["Fsm", "rx"]

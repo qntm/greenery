@@ -15,10 +15,11 @@ def alphabet_key(symbol):
 
 class OblivionError(Exception):
     '''
-        This exception is thrown while `crawl()`ing an FSM if we transition to the
-        oblivion state. For example while crawling two FSMs in parallel we may
-        transition to the oblivion state of both FSMs at once. This warrants an
-        out-of-bound signal which will reduce the complexity of the new FSM's map.
+        This exception is thrown while `crawl()`ing an FSM if we transition to
+        the oblivion state. For example while crawling two FSMs in parallel we
+        may transition to the oblivion state of both FSMs at once. This
+        warrants an out-of-band signal which will reduce the complexity of the
+        new FSM's map.
     '''
     pass
 
@@ -27,10 +28,10 @@ state_type = Optional[Union[int, str]]
 @dataclass(frozen=True)
 class Fsm:
     '''
-        A Finite State Machine or FSM has an alphabet and a set of states. At any
-        given moment, the FSM is in one state. When passed a symbol from the
-        alphabet, the FSM jumps to another state (or possibly the same state).
-        A map (Python dictionary) indicates where to jump.
+        A Finite State Machine or FSM has an alphabet and a set of states. At
+        any given moment, the FSM is in one state. When passed a symbol from
+        the alphabet, the FSM jumps to another state (or possibly the same
+        state). A map (Python dictionary) indicates where to jump.
         One state is nominated as a starting state. Zero or more states are
         nominated as final states. If, after consuming a string of symbols,
         the FSM is in a final state, then it is said to "accept" the string.
@@ -51,19 +52,25 @@ class Fsm:
             `states` is the set of states for the FSM
             `initial` is the initial state
             `finals` is the set of accepting states
-            `map` may be sparse (i.e. it may omit transitions). In the case of omitted
-            transitions, a non-final "oblivion" state is simulated.
+            `map` may be sparse (i.e. it may omit transitions). In the case of
+            omitted transitions, a non-final "oblivion" state is simulated.
         '''
 
         # Validation. Thanks to immutability, this only needs to be carried out once.
         if not self.initial in self.states:
-            raise Exception("Initial state " + repr(self.initial) + " must be one of " + repr(self.states))
+            raise Exception(
+                f"Initial state {repr(self.initial)} must be one of {repr(self.states)}"
+            )
         if not self.finals.issubset(self.states):
-            raise Exception("Final states " + repr(self.finals) + " must be a subset of " + repr(self.states))
+            raise Exception(
+                f"Final states {repr(self.finals)} must be a subset of {repr(self.states)}"
+            )
         for state, symbol in self.map.items():
             for symbol in self.map[state]:
                 if not self.map[state][symbol] in self.states:
-                    raise Exception("Transition for state " + repr(state) + " and symbol " + repr(symbol) + " leads to " + repr(self.map[state][symbol]) + ", which is not a state")
+                    raise Exception(
+                        f"Transition for state {repr(state)} and symbol {repr(symbol)} leads to {repr(self.map[state][symbol])}, which is not a state"
+                    )
 
         # Initialise the hard way due to immutability.
         object.__setattr__(self, "alphabet", set(self.alphabet))
@@ -265,7 +272,7 @@ class Fsm:
             Given an FSM and a multiplier, return the multiplied FSM.
         '''
         if multiplier < 0:
-            raise Exception("Can't multiply an FSM by " + repr(multiplier))
+            raise Exception(f"Can't multiply an FSM by {repr(multiplier)}")
 
         alphabet = self.alphabet
 
