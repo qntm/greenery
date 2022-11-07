@@ -12,7 +12,6 @@ def test_mult_equality():
     assert a != Mult(Multiplicand(Charclass("b")), ONE)
     assert a != Mult(Multiplicand(Charclass("a")), QM)
     assert a != Mult(Multiplicand(Charclass("a")), Multiplier(Bound(1), Bound(2)))
-    assert a != Charclass("a")
 
 def test_mult_str():
     a = Multiplicand(Charclass("a"))

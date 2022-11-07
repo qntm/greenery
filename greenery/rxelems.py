@@ -85,11 +85,8 @@ class Mult():
             raise Exception(str(type(multiplicand)))
 
     def __eq__(self, other):
-        try:
-            return self.multiplicand == other.multiplicand \
-                   and self.multiplier == other.multiplier
-        except AttributeError:
-            return False
+        return self.multiplicand == other.multiplicand \
+               and self.multiplier == other.multiplier
 
     def __hash__(self):
         return hash((self.multiplicand, self.multiplier))
@@ -629,10 +626,7 @@ class Pattern():
                 raise Exception(repr(c))
 
     def __eq__(self, other):
-        try:
-            return self.concs == other.concs
-        except AttributeError:
-            return False
+        return self.concs == other.concs
 
     def __hash__(self):
         return hash(self.concs)
