@@ -4,52 +4,17 @@ if __name__ == "__main__":
     raise Exception("Test files can't be run directly. Use `python -m pytest greenery`")
 
 import pickle
-import pytest
 
-from greenery.lego import conc, mult, charclass, emptystring, \
-    pattern, from_fsm
-from greenery.rxelems.bound import bound, inf
-from greenery.rxelems.charclass import d, w, s, W, D, S, dot, nothing
-from greenery.rxelems.multiplier import multiplier, one, star, plus, qm, zero
-from greenery.parse import parse
-from greenery import fsm
+from .fsm import Fsm, ANYTHING_ELSE
+from .rxelems import from_fsm
+from .bound import Bound, INF
+from .charclass import Charclass, DIGIT, WORDCHAR, SPACECHAR
+from .multiplier import Multiplier, ONE, STAR, PLUS, QM, ZERO
+from .parse import parse
 
 # In general the idea for unit tests is that every unit test relies only on
 # functionality which has already been unit-tested. If this isn't possible, then
 # additional tests are required!
-
-###############################################################################
-# Equality tests. No point in comparing different regular expression elements
-# in tests unless this part works
-
-def test_mult_equality():
-    assert mult(charclass("a"), one) == mult(charclass("a"), one)
-    assert mult(charclass("a"), one) != mult(charclass("b"), one)
-    assert mult(charclass("a"), one) != mult(charclass("a"), qm)
-    assert mult(charclass("a"), one) != mult(charclass("a"), multiplier(bound(1), bound(2)))
-    assert mult(charclass("a"), one) != charclass("a")
-
-def test_conc_equality():
-    assert conc(mult(charclass("a"), one)) == conc(mult(charclass("a"), one))
-    assert conc(mult(charclass("a"), one)) != conc(mult(charclass("b"), one))
-    assert conc(mult(charclass("a"), one)) != conc(mult(charclass("a"), qm))
-    assert conc(mult(charclass("a"), one)) != conc(mult(charclass("a"), multiplier(bound(1), bound(2))))
-    assert conc(mult(charclass("a"), one)) != emptystring
-
-def test_pattern_equality():
-    assert pattern(
-        conc(mult(charclass("a"), one)),
-        conc(mult(charclass("b"), one)),
-    ) == pattern(
-        conc(mult(charclass("b"), one)),
-        conc(mult(charclass("a"), one)),
-    )
-    assert pattern(
-        conc(mult(charclass("a"), one)),
-        conc(mult(charclass("a"), one)),
-    ) == pattern(
-        conc(mult(charclass("a"), one)),
-    )
 
 ###############################################################################
 # Stringification tests
@@ -65,70 +30,6 @@ def test_charclass_str():
     # Printing ASCII control characters? You should get hex escapes
     assert str(parse("\\x00")) == "\\x00"
 
-def test_mult_str():
-    a = charclass("a")
-    assert str(mult(a, one)) == "a"
-    assert str(mult(a, multiplier(bound(2), bound(2)))) == "a{2}"
-    assert str(mult(a, multiplier(bound(3), bound(3)))) == "a{3}"
-    assert str(mult(a, multiplier(bound(4), bound(4)))) == "a{4}"
-    assert str(mult(a, multiplier(bound(5), bound(5)))) == "a{5}"
-    assert str(mult(a, qm)) == "a?"
-    assert str(mult(a, star)) == "a*"
-    assert str(mult(a, plus)) == "a+"
-    assert str(mult(a, multiplier(bound(2), bound(5)))) == "a{2,5}"
-    assert str(mult(a, multiplier(bound(2), inf))) == "a{2,}"
-    assert str(mult(d, one)) == "\\d"
-    assert str(mult(d, multiplier(bound(2), bound(2)))) == "\\d{2}"
-    assert str(mult(d, multiplier(bound(3), bound(3)))) == "\\d{3}"
-
-def test_conc_str():
-    assert str(conc(
-        mult(charclass("a"), one),
-        mult(charclass("b"), one),
-        mult(charclass("c"), one),
-        mult(charclass("d"), one),
-        mult(charclass("e"), one),
-        mult(~charclass("fg"), star),
-        mult(charclass("h"), multiplier(bound(5), bound(5))),
-        mult(charclass("abcdefghijklmnopqrstuvwxyz"), plus),
-    )) == "abcde[^fg]*h{5}[a-z]+"
-
-def test_pattern_str():
-    assert str(pattern(
-        conc(mult(charclass("a"), one)),
-        conc(mult(charclass("b"), one)),
-    )) == "a|b"
-    assert str(pattern(
-        conc(mult(charclass("a"), one)),
-        conc(mult(charclass("a"), one)),
-    )) == "a"
-    assert str(pattern(
-        conc(
-            mult(charclass("a"), one),
-            mult(charclass("b"), one),
-            mult(charclass("c"), one),
-        ),
-        conc(
-            mult(charclass("d"), one),
-            mult(charclass("e"), one),
-            mult(charclass("f"), one),
-            mult(
-                pattern(
-                    conc(
-                        mult(charclass("g"), one),
-                        mult(charclass("h"), one),
-                        mult(charclass("i"), one),
-                    ),
-                    conc(
-                        mult(charclass("j"), one),
-                        mult(charclass("k"), one),
-                        mult(charclass("l"), one),
-                    ),
-                ), one
-            ),
-        ),
-    )) == "abc|def(ghi|jkl)"
-
 def test_parse_str_round_trip():
     assert str(parse("a.b")) == "a.b" # not "a[ab]b"
     assert str(parse("\\d{4}")) == "\\d{4}"
@@ -138,8 +39,8 @@ def test_parse_str_round_trip():
 # Test to_fsm() and alphabet-related functionality
 
 def test_alphabet():
-    # `.alphabet()` should include `fsm.anything_else`
-    assert parse("").alphabet() == {fsm.anything_else}
+    # `.alphabet()` should include `ANYTHING_ELSE`
+    assert parse("").alphabet() == {ANYTHING_ELSE}
 
 def test_pattern_fsm():
     # "a[^a]"
@@ -153,24 +54,24 @@ def test_pattern_fsm():
     assert not anota.accepts(["a", "a"])
     assert anota.accepts("ab")
     assert anota.accepts(["a", "b"])
-    assert anota.accepts(["a", fsm.anything_else])
+    assert anota.accepts(["a", ANYTHING_ELSE])
     assert not anota.accepts("ba")
     assert not anota.accepts("bb")
 
     # "0\\d"
-    zeroD = parse("0\\d").to_fsm(d.chars)
+    zeroD = parse("0\\d").to_fsm(DIGIT.chars)
     assert zeroD.accepts("01")
     assert not zeroD.accepts("10")
 
     # "\\d{2}"
-    d2 = parse("\\d{2}").to_fsm(d.chars)
+    d2 = parse("\\d{2}").to_fsm(DIGIT.chars)
     assert not d2.accepts("")
     assert not d2.accepts("1")
     assert d2.accepts("11")
     assert not d2.accepts("111")
 
     # abc|def(ghi|jkl)
-    conventional = parse("abc|def(ghi|jkl)").to_fsm(w.chars)
+    conventional = parse("abc|def(ghi|jkl)").to_fsm(WORDCHAR.chars)
     assert not conventional.accepts("a")
     assert not conventional.accepts("ab")
     assert conventional.accepts("abc")
@@ -184,7 +85,7 @@ def test_fsm():
     # context.
     assert parse("a.b").to_fsm().accepts("acb")
 
-    bad = parse("0{2}|1{2}").to_fsm({"0", "1", fsm.anything_else})
+    bad = parse("0{2}|1{2}").to_fsm({"0", "1", ANYTHING_ELSE})
     assert bad.accepts("00")
     assert bad.accepts("11")
     assert not bad.accepts("01")
@@ -193,18 +94,6 @@ def test_fsm():
     assert bad.accepts("00")
     assert bad.accepts("11")
     assert not bad.accepts("01")
-
-def test_odd_bug():
-    # Odd bug with ([bc]*c)?[ab]*
-    int5A = mult(charclass("bc"), star).to_fsm({"a", "b", "c", fsm.anything_else})
-    assert int5A.accepts([])
-    assert int5A.accepts("")
-    int5B = mult(charclass("c"), one).to_fsm({"a", "b", "c", fsm.anything_else})
-    assert int5B.accepts("c")
-    assert int5B.accepts(["c"])
-    int5C = int5A + int5B
-    assert int5C.accepts("c")
-    assert int5C.accepts(["c"])
 
 def test_bug_28():
     # Starification was broken in FSMs
@@ -215,7 +104,7 @@ def test_bug_28():
 # Test matches(). Quite sparse at the moment
 
 def test_wildcards_in_charclasses():
-    # Allow "\w", "\d" and "\s" in charclasses
+    # Allow "\w", "\d" and "\s" in `Charclass`es
     assert parse("[\\w~]*").matches("a0~")
     assert parse("[\\da]*").matches("0129a")
     assert parse("[\\s]+").matches(" \t \t ")
@@ -388,37 +277,37 @@ def test_dot():
 
 def test_abstar():
     # Buggggs.
-    abstar = fsm.fsm(
-        alphabet={'a', fsm.anything_else, 'b'},
+    abstar = Fsm(
+        alphabet={'a', ANYTHING_ELSE, 'b'},
         states={0, 1},
         initial=0,
         finals={0},
         map={
-            0: {'a': 0, fsm.anything_else: 1, 'b': 0},
-            1: {'a': 1, fsm.anything_else: 1, 'b': 1}
+            0: {'a': 0, ANYTHING_ELSE: 1, 'b': 0},
+            1: {'a': 1, ANYTHING_ELSE: 1, 'b': 1}
         }
     )
     assert str(from_fsm(abstar)) == "[ab]*"
 
 def test_adotb():
-    adotb = fsm.fsm(
-        alphabet={'a', fsm.anything_else, 'b'},
+    adotb = Fsm(
+        alphabet={'a', ANYTHING_ELSE, 'b'},
         states={0, 1, 2, 3, 4},
         initial=0,
         finals={4},
         map={
-            0: {'a': 2, fsm.anything_else: 1, 'b': 1},
-            1: {'a': 1, fsm.anything_else: 1, 'b': 1},
-            2: {'a': 3, fsm.anything_else: 3, 'b': 3},
-            3: {'a': 1, fsm.anything_else: 1, 'b': 4},
-            4: {'a': 1, fsm.anything_else: 1, 'b': 1}
+            0: {'a': 2, ANYTHING_ELSE: 1, 'b': 1},
+            1: {'a': 1, ANYTHING_ELSE: 1, 'b': 1},
+            2: {'a': 3, ANYTHING_ELSE: 3, 'b': 3},
+            3: {'a': 1, ANYTHING_ELSE: 1, 'b': 4},
+            4: {'a': 1, ANYTHING_ELSE: 1, 'b': 1}
         }
     )
     assert str(from_fsm(adotb)) == "a.b"
 
 def test_rxelems_recursion_error():
     # Catch a recursion error
-    assert str(from_fsm(fsm.fsm(
+    assert str(from_fsm(Fsm(
         alphabet={"0", "1"},
         states={0, 1, 2, 3},
         initial=3,
@@ -435,7 +324,7 @@ def test_even_star_bug():
     # Bug fix. This is a(a{2})* (i.e. accepts an odd number of "a" chars in a
     # row), but when from_fsm() is called, the result is "a+". Turned out to be
     # a fault in the rxelems.multiplier.__mul__() routine
-    elesscomplex = fsm.fsm(
+    elesscomplex = Fsm(
         alphabet={"a"},
         states={0, 1},
         initial=0,
@@ -466,7 +355,7 @@ def test_binary_3():
     # Binary numbers divisible by 3.
     # Disallows the empty string
     # Allows "0" on its own, but not leading zeroes.
-    div3 = from_fsm(fsm.fsm(
+    div3 = from_fsm(Fsm(
         alphabet={"0", "1"},
         states={"initial", "zero", 0, 1, 2, None},
         initial="initial",
@@ -498,7 +387,7 @@ def test_base_N():
     base = 2
     N = 3
     assert base <= 10
-    divN = from_fsm(fsm.fsm(
+    divN = from_fsm(Fsm(
         alphabet=set(str(i) for i in range(base)),
         states=set(range(N)) | {"initial", "zero", None},
         initial="initial",
@@ -525,9 +414,9 @@ def test_base_N():
 def test_bad_alphabet():
     # You can use anything you like in your FSM alphabet, but if you try to
     # convert it to an `rxelems` object then the only acceptable symbols are
-    # single characters or `fsm.anything_else`.
+    # single characters or `ANYTHING_ELSE`.
     for bad_symbol in [None, (), 0, ("a",), "", "aa", "ab", True]:
-        f = fsm.fsm(
+        f = Fsm(
             alphabet={bad_symbol},
             states={0},
             initial=0,
@@ -545,16 +434,16 @@ def test_bad_alphabet():
             pass
 
 def test_dead_default():
-    blockquote = from_fsm(fsm.fsm(
-        alphabet={"/", "*", fsm.anything_else},
+    blockquote = from_fsm(Fsm(
+        alphabet={"/", "*", ANYTHING_ELSE},
         states={0, 1, 2, 3, 4},
         initial=0,
         finals={4},
         map={
                 0    : {"/" : 1},
                 1    : {"*" : 2},
-                2    : {"/" : 2, fsm.anything_else : 2, "*" : 3},
-                3    : {"/" : 4, fsm.anything_else : 2, "*" : 3},
+                2    : {"/" : 2, ANYTHING_ELSE : 2, "*" : 3},
+                3    : {"/" : 4, ANYTHING_ELSE : 2, "*" : 3},
         }
     ))
 
@@ -582,7 +471,6 @@ def test_empty():
     assert not parse("[]?").empty()
     assert parse("a[]").empty()
     assert not parse("a[]?").empty()
-    assert pattern().empty()
     assert not parse("a{0}").empty()
     assert not parse("[]?").empty()
 
@@ -608,9 +496,9 @@ def test_everythingbut():
     assert str(parse("[]").everythingbut()) == ".*"
 
 def test_isinstance_bug():
-    # Problem relating to isinstance(). The class "mult" was occurring as both
-    # rxelems.mult and as __main__.mult and apparently these count as different
-    # classes for some reason, so isinstance(m, mult) was returning false.
+    # Problem relating to isinstance(). The class `Mult` was occurring as both
+    # rxelems.Mult and as __main__.Mult and apparently these count as different
+    # classes for some reason, so isinstance(m, Mult) was returning false.
     starfree = parse(str(parse("").everythingbut()) + "aa" + str(parse("").everythingbut())).everythingbut()
 
 ###############################################################################
@@ -640,32 +528,6 @@ def test_set_ops():
 ###############################################################################
 # Test methods for finding common parts of regular expressions.
 
-def test_mult_common():
-    assert mult(charclass("a"), multiplier(bound(3), bound(4))) \
-        .common(mult(charclass("a"), multiplier(bound(2), bound(5)))) == \
-        mult(charclass("a"), multiplier(bound(2), bound(3)))
-    assert mult(charclass("a"), multiplier(bound(2), inf)) \
-        .common(mult(charclass("a"), multiplier(bound(1), bound(5)))) == \
-        mult(charclass("a"), multiplier(bound(1), bound(5)))
-    assert mult(charclass("a"), multiplier(bound(3), inf)) \
-        .common(mult(charclass("a"), multiplier(bound(2), inf))) == \
-        mult(charclass("a"), multiplier(bound(2), inf))
-
-def test_conc_common():
-    a = mult(charclass("A"), one)
-    b = mult(charclass("B"), one)
-    c = mult(charclass("C"), one)
-    y = mult(charclass("y"), one)
-    z = mult(charclass("Z"), one)
-    zstar = mult(charclass("Z"), star)
-
-    assert conc(a, a, z, y).common(conc(b, b, z, y), suffix=True) == conc(z, y)
-    assert conc(c, z).common(conc(c, z), suffix=True) == conc(c, z)
-    assert conc(c, y).common(conc(c, z), suffix=True) == conc()
-    assert conc(a, z).common(conc(b, z), suffix=True) == conc(z)
-    assert conc(a, zstar).common(conc(b, z), suffix=True) == conc()
-    assert conc(a).common(conc(b), suffix=True) == conc()
-
 def test_pattern_commonconc():
     assert str(parse("aa|aa")._commonconc()) == "aa"
     assert str(parse("abc|aa")._commonconc()) == "a"
@@ -681,63 +543,6 @@ def test_pattern_commonconc_suffix():
     assert str(parse("xyza|abca|a")._commonconc(suffix=True)) == "a"
     assert str(parse("f{2,3}c|fc")._commonconc(suffix=True)) == "fc"
     assert str(parse("aa")._commonconc(suffix=True)) == "aa"
-
-###############################################################################
-# Inverse concatenation tests: behead() and dock()
-
-def test_mult_dock():
-    assert mult(charclass("a"), multiplier(bound(4), bound(5))) \
-        .dock(mult(charclass("a"), multiplier(bound(3), bound(3)))) == \
-        mult(charclass("a"), multiplier(bound(1), bound(2)))
-
-def test_conc_dock():
-    a = mult(charclass("A"), one)
-    b = mult(charclass("B"), one)
-    x = mult(charclass("X"), one)
-    x2 = mult(charclass("X"), multiplier(bound(2), bound(2)))
-    yplus = mult(charclass("y"), plus)
-    z = mult(charclass("Z"), one)
-
-    assert conc(a, z).dock(conc(z)) == conc(a)
-    assert conc(a, b, x, yplus, z).dock(conc(x, yplus, z)) == conc(a, b)
-    assert conc(a, b, x, yplus, z).behead(conc(a, b, x, yplus)) == conc(z)
-    assert conc(a).dock(conc()) == conc(a)
-
-    try:
-        conc(x2, yplus, z).behead(conc(x, yplus))
-        assert False
-    except AssertionError:
-        assert False
-    except Exception:
-        pass
-
-def test_pattern_dock():
-    a = mult(charclass("a"), one)
-    c = mult(charclass("c"), one)
-    f = mult(charclass("f"), one)
-
-    assert parse("a|bc").dock(conc()) == parse("a|bc")
-    assert parse("aa|bca").dock(conc(a)) == parse("a|bc")
-    assert parse("xyza|abca|a").dock(conc(a)) == parse("xyz|abc|")
-    assert parse("f{2,3}c|fc").dock(conc(f, c)) == parse("f{1,2}|")
-    assert parse("aa").dock(conc(a, a)) == parse("")
-
-def test_pattern_beheading():
-    a = mult(charclass("a"), one)
-    c = mult(charclass("c"), one)
-    f = mult(charclass("f"), one)
-    z = mult(charclass("Z"), one)
-
-    assert parse("aa").behead(conc(a)) == parse("a")
-    assert parse("abc|aa").behead(conc(a)) == parse("a|bc")
-    assert parse("cf{1,2}|cf").behead(conc(c)) == parse("f{1,2}|f")
-    assert parse("aa|aa").behead(conc(a, a)) == parse("")
-    assert parse("abc|aa").behead(conc(a)) == parse("a|bc")
-    assert parse("a|bc").behead(conc()) == parse("a|bc")
-    assert parse("cf{1,2}|cf").behead(conc(c, f)) == parse("f?|")
-    assert parse("ZA|ZB|ZC").behead(conc(z)) == parse("A|B|C")
-    assert parse("Z+A|ZB|ZZC").behead(conc(z)) == parse("Z*A|B|ZC")
-    assert parse("a{2}b|a+c").behead(conc(a)) == parse("ab|a*c")
 
 ###############################################################################
 # Basic concatenation reduction tests
@@ -887,10 +692,6 @@ def test_mult_reduction_easy():
     assert str(parse("a").reduce()) == "a"
     assert str(parse("a").reduce()) == "a"
     assert str(parse("a?").reduce()) == "a?"
-    assert pattern(conc()).reduce() == pattern(conc())
-    assert conc(mult(charclass("a"), zero)).reduce() == conc()
-    assert pattern(conc(mult(charclass("a"), zero))).reduce() == pattern(conc())
-    assert str(pattern(conc(mult(charclass("a"), zero))).reduce()) == ""
     assert str(parse("a{0}").reduce()) == ""
     assert str(parse("[]").reduce()) == "[]"
     assert str(parse("[]?").reduce()) == ""
@@ -913,19 +714,8 @@ def test_pattern_reduce_basic():
     assert str(parse("(((a)))").reduce()) == "a"
 
 
-def test_empty_pattern_reduction():
-    assert str(pattern().reduce()) == "[]"
-
-
 def test_empty_conc_suppression():
     assert str(parse("[]0\\d").reduce()) == "[]"
-    assert str(pattern(
-        conc(
-            mult(pattern(), one),  # this can never actually match anything
-            mult(charclass("0"), one),
-            mult(charclass("0123456789"), one),
-        ) # so neither can this conc
-    ).reduce()) == "[]"
 
 
 def test_nested_pattern_reduction():
@@ -934,19 +724,19 @@ def test_nested_pattern_reduction():
 
 
 def test_mult_factor_out_qm():
-    # mult contains a pattern containing an empty conc? Pull the empty
+    # `Mult` contains a `Pattern` containing an empty `Conc`? Pull the empty
     # part out where it's external
     assert str(parse("a|b*|").reduce()) == "a|b*"
     assert str(parse("(a|b*|)").reduce()) == "a|b*"
     assert str(parse("(a|b*|)c").reduce()) == "(a|b*)c"
-    # This happens even if emptystring is the only thing left inside the mult
+    # This happens even if `EMPTYSTRING` is the only thing left inside the `Mult`
     assert str(parse("()").reduce()) == ""
     assert str(parse("([$%\\^]|){1}").reduce()) == "[$%\\^]?"
 
 
 def test_remove_unnecessary_parens():
-    # mult contains a pattern containing a single conc containing a single
-    # mult? That can be reduced greatly
+    # `Mult` contains a `Pattern` containing a single `Conc` containing a single
+    # `Mult`? That can be reduced greatly
     assert str(parse("(a){2}b").reduce()) == "a{2}b"
     assert str(parse("(a?)+b").reduce()) == "a*b"
     assert str(parse("([ab])*").reduce()) == "[ab]*"
@@ -958,7 +748,7 @@ def test_obvious_reduction():
 
 
 def test_mult_squoosh():
-    # sequence squooshing of mults within a conc
+    # sequence squooshing of mults within a `Conc`
     assert str(parse("[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]").reduce()) == \
         "[0-9A-Fa-f]{3}"
     assert str(parse("[$%\\^]?[$%\\^]").reduce()) == \
@@ -1010,7 +800,7 @@ def test_new_reduce():
     # The @reduce_after decorator has been removed from many methods since it
     # takes unnecessary time which the user may not wish to spend.
     # This alters the behaviour of several methods and also exposes a new
-    # opportunity for conc.reduce()
+    # opportunity for `Conc.reduce()`
     assert str(parse("a()").reduce()) == "a"
     assert str(parse("a()()").reduce()) == "a"
     assert str(parse("a.b()()").reduce()) == "a.b"
@@ -1072,7 +862,7 @@ def test_bug_36_2():
 def test_bug_slow():
     # issue #43
     import time
-    m = fsm.fsm(
+    m = Fsm(
         alphabet={'R', 'L', 'U', 'D'},
         states={
             0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
@@ -1111,7 +901,7 @@ def test_bug_slow():
 
 
 def test_bug_48_simpler():
-    assert str(from_fsm(fsm.fsm(
+    assert str(from_fsm(Fsm(
         alphabet={'d'},
         states={0, 1},
         initial=0,
@@ -1128,7 +918,7 @@ def test_bug_48():
     char0, char1, char2, char3, char4, char5, char6, char7, char8 = \
         '_', 'a', 'd', 'e', 'g', 'm', 'n', 'o', 'p'
 
-    machine = fsm.fsm(
+    machine = Fsm(
         alphabet={
             char0, char1, char2, char3, char4,
             char5, char6, char7, char8

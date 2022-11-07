@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 
-from greenery.lego import inf, \
-    charclass, bound, multiplier, mult, conc, pattern
-from greenery.rxelems.charclass import shorthand, escapes
-from .rxelems.multiplier import symbolic
 from typing import Tuple
+
+from .bound import Bound, INF
+from .charclass import Charclass, shorthand, escapes
+from .multiplier import Multiplier, symbolic
+from .rxelems import Pattern, Conc, Mult
 
 class nomatch(Exception):
     '''Thrown when parsing fails. Almost always caught and almost never fatal'''
@@ -34,7 +35,7 @@ def select_static(string, i, *statics):
     raise nomatch
 
 # Turn e.g. "\\x40" into "@". Exactly two hex digits
-def unescapeHex(string, i):
+def unescape_hex(string, i):
     hex_digits = "0123456789AaBbCcDdEeFf"
 
     j = static(string, i, "\\x")
@@ -53,7 +54,7 @@ def unescapeHex(string, i):
     char = chr(codepoint) # "@"
     return char, j
 
-def matchInternalChar(string, i):
+def match_internal_char(string, i):
     # e.g. if we see "\\t", return "\t"
     for key in escapes.keys():
         try:
@@ -62,7 +63,7 @@ def matchInternalChar(string, i):
             pass
 
     # special chars e.g. "\\-" returns "-"
-    for char in charclass.classSpecial:
+    for char in Charclass.classSpecial:
         try:
             return char, static(string, i, "\\" + char)
         except nomatch:
@@ -70,31 +71,31 @@ def matchInternalChar(string, i):
 
     # hex escape e.g. "\\x40" returns "@"
     try:
-        return unescapeHex(string, i)
+        return unescape_hex(string, i)
     except nomatch:
         pass
 
     # single non-special character, not contained
     # inside square brackets
     char, j = string[i], i+1
-    if char in charclass.classSpecial:
+    if char in Charclass.classSpecial:
         raise nomatch
 
     return char, j
 
-def matchClassInterior1(string, i):
+def match_class_interior_1(string, i):
     # Attempt 1: shorthand e.g. "\w"
-    for key in charclass.shorthand:
+    for key in Charclass.shorthand:
         try:
-            return key, static(string, i, charclass.shorthand[key])
+            return key, static(string, i, Charclass.shorthand[key])
         except nomatch:
             pass
 
     # Attempt 2: a range e.g. "d-h"
     try:
-        first, j = matchInternalChar(string, i) # `first` is "d"
+        first, j = match_internal_char(string, i) # `first` is "d"
         k = static(string, j, "-")
-        last, k = matchInternalChar(string, k) # `last` is "h"
+        last, k = match_internal_char(string, k) # `last` is "h"
 
         firstIndex = ord(first) # 100
         lastIndex = ord(last) # 104
@@ -111,19 +112,19 @@ def matchClassInterior1(string, i):
         pass
 
     # Attempt 3: just a character on its own
-    return matchInternalChar(string, i)
+    return match_internal_char(string, i)
 
-def matchClassInterior(string, i):
+def match_class_interior(string, i):
     internals = ""
     try:
         while True:
-            internal, i = matchClassInterior1(string, i)
+            internal, i = match_class_interior_1(string, i)
             internals += internal
     except nomatch:
         pass
     return internals, i
 
-def matchCharclass(string: str, i = 0):
+def match_charclass(string: str, i = 0):
     if i >= len(string):
         raise nomatch
 
@@ -137,57 +138,57 @@ def matchCharclass(string: str, i = 0):
     # "[^dsgsdg]"
     try:
         j = static(string, i, "[^")
-        chars, j = matchClassInterior(string, j)
+        chars, j = match_class_interior(string, j)
         j = static(string, j, "]")
-        return ~charclass(chars), j
+        return ~Charclass(chars), j
     except nomatch:
         pass
 
     # "[sdfsf]"
     try:
         j = static(string, i, "[")
-        chars, j = matchClassInterior(string, j)
+        chars, j = match_class_interior(string, j)
         j = static(string, j, "]")
-        return charclass(chars), j
+        return Charclass(chars), j
     except nomatch:
         pass
 
     # e.g. if seeing "\\t", return "\t"
     for key in escapes.keys():
         try:
-            return charclass(key), static(string, i, escapes[key])
+            return Charclass(key), static(string, i, escapes[key])
         except nomatch:
             pass
 
     # e.g. if seeing "\\{", return "{"
-    for char in charclass.allSpecial:
+    for char in Charclass.allSpecial:
         try:
-            return charclass(char), static(string, i, "\\" + char)
+            return Charclass(char), static(string, i, "\\" + char)
         except nomatch:
             pass
 
     # e.g. if seeing "\\x40", return "@"
     try:
-        char, j = unescapeHex(string, i)
-        return charclass(char), j
+        char, j = unescape_hex(string, i)
+        return Charclass(char), j
     except nomatch:
         pass
 
     # single non-special character, not contained inside square brackets
     char, i = string[i], i+1
-    if char in charclass.allSpecial:
+    if char in Charclass.allSpecial:
         raise nomatch
 
-    return charclass(char), i
+    return Charclass(char), i
 
-def matchMultiplicand(string, i):
+def match_multiplicand(string, i):
     # explicitly non-capturing "(?:...)" syntax. No special significance
     try:
         j = static(string, i, "(?")
         j, st = select_static(string, j, ':', 'P<')
         if st == 'P<':
             j, group_name = read_until(string, j, '>')
-        multiplicand, j = matchPattern(string, j)
+        multiplicand, j = match_pattern(string, j)
         j = static(string, j, ")")
         return multiplicand, j
     except nomatch:
@@ -196,16 +197,16 @@ def matchMultiplicand(string, i):
     # normal "(...)" syntax
     try:
         j = static(string, i, "(")
-        multiplicand, j = matchPattern(string, j)
+        multiplicand, j = match_pattern(string, j)
         j = static(string, j, ")")
         return multiplicand, j
     except nomatch:
         pass
 
-    # Just a charclass on its own
-    return matchCharclass(string, i)
+    # Just a `Charclass` on its own
+    return match_charclass(string, i)
 
-def matchAnyOf(string, i, collection):
+def match_any_of(string, i, collection):
     for char in collection:
         try:
             return char, static(string, i, char)
@@ -213,48 +214,48 @@ def matchAnyOf(string, i, collection):
             pass
     raise nomatch
 
-def matchBound(string: str, i = 0):
+def match_bound(string: str, i = 0):
     # "0"
     try:
-        return bound(0), static(string, i, "0")
+        return Bound(0), static(string, i, "0")
     except nomatch:
         pass
 
     # "1", etc.
     try:
-        digit, j = matchAnyOf(string, i, "123456789")
+        digit, j = match_any_of(string, i, "123456789")
         integer = int(digit)
         try:
             while True:
-                digit, j = matchAnyOf(string, j, "0123456789")
+                digit, j = match_any_of(string, j, "0123456789")
                 integer *= 10
                 integer += int(digit)
         except nomatch:
-            return bound(integer), j
+            return Bound(integer), j
     except nomatch:
         pass
 
     # "" empty string = infinite bound as in "{4,}"
-    return inf, i
+    return INF, i
 
-def matchMultiplier(string: str, i = 0):
+def match_multiplier(string: str, i = 0):
     # {2,3} or {2,}
     try:
         j = static(string, i, "{")
-        min, j = matchBound(string, j)
+        min, j = match_bound(string, j)
         j = static(string, j, ",")
-        max, j = matchBound(string, j)
+        max, j = match_bound(string, j)
         j = static(string, j, "}")
-        return multiplier(min, max), j
+        return Multiplier(min, max), j
     except nomatch:
         pass
 
     # {2}
     try:
         j = static(string, i, "{")
-        min, j = matchBound(string, j)
+        min, j = match_bound(string, j)
         j = static(string, j, "}")
-        return multiplier(min, min), j
+        return Multiplier(min, min), j
     except nomatch:
         pass
 
@@ -269,43 +270,43 @@ def matchMultiplier(string: str, i = 0):
 
     raise nomatch
 
-def matchMult(string: str, i = 0):
-    multiplicand, j = matchMultiplicand(string, i)
-    multiplier_, j = matchMultiplier(string, j)
-    return mult(multiplicand, multiplier_), j
+def match_mult(string: str, i = 0):
+    multiplicand, j = match_multiplicand(string, i)
+    multiplier, j = match_multiplier(string, j)
+    return Mult(multiplicand, multiplier), j
 
-def matchConc(string: str, i = 0):
+def match_conc(string: str, i = 0):
     mults = list()
     try:
         while True:
-            m, i = matchMult(string, i)
+            m, i = match_mult(string, i)
             mults.append(m)
     except nomatch:
         pass
-    return conc(*mults), i
+    return Conc(*mults), i
 
-def matchPattern(string: str, i = 0):
+def match_pattern(string: str, i = 0):
     concs = list()
 
     # first one
-    c, i = matchConc(string, i)
+    c, i = match_conc(string, i)
     concs.append(c)
 
     # the rest
     while True:
         try:
             i = static(string, i, "|")
-            c, i = matchConc(string, i)
+            c, i = match_conc(string, i)
             concs.append(c)
         except nomatch:
-            return pattern(*concs), i
+            return Pattern(*concs), i
 
 def parse(string: str):
     '''
-        Parse a full string and return a pattern object. Fail if
+        Parse a full string and return a `Pattern` object. Fail if
         the whole string wasn't parsed
     '''
-    obj, i = matchPattern(string, 0)
+    obj, i = match_pattern(string, 0)
     if i != len(string):
         raise Exception("Could not parse '" + string + "' beyond index " + str(i))
     return obj

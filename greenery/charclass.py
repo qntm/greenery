@@ -1,16 +1,15 @@
 # -*- coding: utf-8 -*-
 
 from dataclasses import dataclass
-from greenery import fsm
 from typing import Union, FrozenSet
-from .rxelem import rxelem
+
+from .fsm import Fsm, ANYTHING_ELSE
 
 @dataclass(frozen=True)
-class charclass(rxelem):
+class Charclass():
     '''
-        A charclass is basically a frozenset of symbols. The reason for the
-        charclass object instead of using frozenset directly is to allow us to
-        set a "negated" flag. A charclass with the negation flag set is assumed
+        A `Charclass` is basically a `frozenset` of symbols.
+        A `Charclass` with the `negated` flag set is assumed
         to contain every symbol that is in the alphabet of all symbols but not
         explicitly listed inside the frozenset. e.g. [^a]. This is very handy
         if the full alphabet is extremely large, but also requires dedicated
@@ -22,8 +21,8 @@ class charclass(rxelem):
     def __post_init__(self):
         object.__setattr__(self, "chars", frozenset(self.chars))
         # chars should consist only of chars
-        if fsm.anything_else in self.chars:
-            raise Exception("Can't put " + repr(fsm.anything_else) + " in a charclass")
+        if ANYTHING_ELSE in self.chars:
+            raise Exception("Can't put " + repr(ANYTHING_ELSE) + " in a `Charclass`")
 
     def __eq__(self, other):
         return hasattr(other, "chars") \
@@ -46,7 +45,7 @@ class charclass(rxelem):
     # hyphen and caret do NOT appear above.
     classSpecial = set("\\[]^-")
 
-    # Shorthand codes for use inside charclasses e.g. [abc\d]
+    # Shorthand codes for use inside `Charclass`es e.g. [abc\d]
     w = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz"
     d = "0123456789"
     s = "\t\n\v\f\r "
@@ -74,7 +73,7 @@ class charclass(rxelem):
             if char in escapes.keys():
                 return escapes[char]
 
-            if char in charclass.allSpecial:
+            if char in Charclass.allSpecial:
                 return "\\" + char
 
             # If char is an ASCII control character, don't print it directly,
@@ -91,7 +90,7 @@ class charclass(rxelem):
     def escape(self):
 
         def escapeChar(char):
-            if char in charclass.classSpecial:
+            if char in Charclass.classSpecial:
                 return "\\" + char
             if char in escapes.keys():
                 return escapes[char]
@@ -161,7 +160,7 @@ class charclass(rxelem):
                 0: dict([(symbol, 1) for symbol in self.chars]),
             }
 
-        return fsm.fsm(
+        return Fsm(
             alphabet = alphabet,
             states   = {0, 1},
             initial  = 0,
@@ -173,18 +172,18 @@ class charclass(rxelem):
         string = ""
         if self.negated is True:
             string += "~"
-        string += "charclass("
+        string += "Charclass("
         if len(self.chars) > 0:
             string += repr("".join(str(char) for char in sorted(self.chars, key=str)))
         string += ")"
         return string
 
     def reduce(self):
-        # charclasses cannot be reduced.
+        # `Charclass`es cannot be reduced.
         return self
 
     def alphabet(self):
-        return {fsm.anything_else} | self.chars
+        return {ANYTHING_ELSE} | self.chars
 
     def empty(self):
         return len(self.chars) == 0 and self.negated == False
@@ -192,10 +191,10 @@ class charclass(rxelem):
     # set operations
     def negate(self):
         '''
-            Negate the current charclass. e.g. [ab] becomes [^ab]. Call
+            Negate the current `Charclass`. e.g. [ab] becomes [^ab]. Call
             using "charclass2 = ~charclass1"
         '''
-        return charclass(self.chars, negated=not self.negated)
+        return Charclass(self.chars, negated=not self.negated)
 
     def __invert__(self):
         return self.negate()
@@ -204,24 +203,24 @@ class charclass(rxelem):
         return self
 
 # Standard character classes
-w = charclass("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz")
-d = charclass("0123456789")
-s = charclass("\t\n\v\f\r ")
+WORDCHAR = Charclass("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz")
+DIGIT = Charclass("0123456789")
+SPACECHAR = Charclass("\t\n\v\f\r ")
 
-# This charclasses expresses "no possibilities at all"
+# This `Charclass` expresses "no possibilities at all"
 # and can never match anything.
-nothing = charclass("")
+NULLCHARCLASS = Charclass("")
 
-W = ~w
-D = ~d
-S = ~s
-dot = ~nothing
+W = ~WORDCHAR
+D = ~DIGIT
+S = ~SPACECHAR
+DOT = ~NULLCHARCLASS
 
 # Textual representations of standard character classes
 shorthand = {
-    w : "\\w", d : "\\d", s : "\\s",
+    WORDCHAR : "\\w", DIGIT : "\\d", SPACECHAR : "\\s",
     W : "\\W", D : "\\D", S : "\\S",
-    dot : ".",
+    DOT : ".",
 }
 
 # Characters which users may escape in a regex instead of inserting them

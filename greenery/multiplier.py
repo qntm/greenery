@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 
 from dataclasses import dataclass, field
-from .bound import bound, inf
+
+from .bound import Bound, INF
 
 @dataclass(frozen=True)
-class multiplier:
+class Multiplier:
     '''
         A min and a max. The vast majority of characters in regular
         expressions occur without a specific multiplier, which is implicitly
@@ -12,16 +13,16 @@ class multiplier:
         multipliers like "*" (min = 0, max = inf) and so on.
         Although it seems odd and can lead to some confusing edge cases, we do
         also permit a max of 0 (iff min is 0 too). This allows the multiplier
-        "zero" to exist, which actually are quite useful in their own special way.
+        `ZERO` to exist, which actually are quite useful in their own special way.
     '''
-    min: bound
-    max: bound
-    mandatory: bound = field(init=False)
-    optional: bound = field(init=False)
+    min: Bound
+    max: Bound
+    mandatory: Bound = field(init=False)
+    optional: Bound = field(init=False)
 
     def __post_init__(self):
-        if self.min == inf:
-            raise Exception("Minimum bound of a multiplier can't be " + repr(inf))
+        if self.min == INF:
+            raise Exception("Minimum bound of a multiplier can't be " + repr(INF))
         if self.min > self.max:
             raise Exception("Invalid multiplier bounds: " + repr(self.min) + " and " + repr(self.max))
 
@@ -40,10 +41,10 @@ class multiplier:
         return hash((self.min, self.max))
 
     def __repr__(self):
-        return "multiplier(" + repr(self.min) + ", " + repr(self.max) + ")"
+        return "Multiplier(" + repr(self.min) + ", " + repr(self.max) + ")"
 
     def __str__(self):
-        if self.max == bound(0):
+        if self.max == Bound(0):
             raise Exception("Can't serialise a multiplier with bound " + repr(self.max))
         if self in symbolic.keys():
             return symbolic[self]
@@ -64,18 +65,18 @@ class multiplier:
             equal to {pr, (p+q)(r+s)} only if s=0 or qr+1 >= p. If not, then at least
             one gap appears in the range. The first inaccessible number is (p+q)r + 1.
         '''
-        return other.optional == bound(0) or \
-        self.optional * other.mandatory + bound(1) >= self.mandatory
+        return other.optional == Bound(0) or \
+        self.optional * other.mandatory + Bound(1) >= self.mandatory
 
     def __mul__(self, other):
         '''Multiply this multiplier by another'''
         if not self.canmultiplyby(other):
             raise Exception("Can't multiply " + repr(self) + " by " + repr(other))
-        return multiplier(self.min * other.min, self.max * other.max)
+        return Multiplier(self.min * other.min, self.max * other.max)
 
     def __add__(self, other):
         '''Add two multipliers together'''
-        return multiplier(self.min + other.min, self.max + other.max)
+        return Multiplier(self.min + other.min, self.max + other.max)
 
     def __sub__(self, other):
         '''
@@ -85,7 +86,7 @@ class multiplier:
         '''
         mandatory = self.mandatory - other.mandatory
         optional = self.optional - other.optional
-        return multiplier(mandatory, mandatory + optional)
+        return Multiplier(mandatory, mandatory + optional)
 
     def canintersect(self, other):
         '''
@@ -107,11 +108,11 @@ class multiplier:
             raise Exception("Can't compute intersection of " + repr(self) + " and " + repr(other))
         a = max(self.min, other.min)
         b = min(self.max, other.max)
-        return multiplier(a, b)
+        return Multiplier(a, b)
 
     def canunion(self, other):
         '''Union is not defined for all pairs of multipliers. e.g. {0,1} | {3,4}'''
-        return not (self.max + bound(1) < other.min or other.max + bound(1) < self.min)
+        return not (self.max + Bound(1) < other.min or other.max + Bound(1) < self.min)
 
     def __or__(self, other):
         '''
@@ -123,32 +124,32 @@ class multiplier:
             raise Exception("Can't compute the union of " + repr(self) + " and " + repr(other))
         a = min(self.min, other.min)
         b = max(self.max, other.max)
-        return multiplier(a, b)
+        return Multiplier(a, b)
 
     def common(self, other):
         '''
             Find the shared part of two multipliers. This is the largest multiplier
             which can be safely subtracted from both the originals. This may
-            return the "zero" multiplier.
+            return the `ZERO` multiplier.
         '''
         mandatory = min(self.mandatory, other.mandatory)
         optional = min(self.optional, other.optional)
-        return multiplier(mandatory, mandatory + optional)
+        return Multiplier(mandatory, mandatory + optional)
 
     def copy(self):
-        return multiplier(self.min.copy(), self.max.copy())
+        return Multiplier(self.min.copy(), self.max.copy())
 
 # Preset multipliers. These get used ALL THE TIME in unit tests
-zero = multiplier(bound(0), bound(0)) # has some occasional uses
-qm   = multiplier(bound(0), bound(1))
-one  = multiplier(bound(1), bound(1))
-star = multiplier(bound(0), inf)
-plus = multiplier(bound(1), inf)
+ZERO = Multiplier(Bound(0), Bound(0)) # has some occasional uses
+QM   = Multiplier(Bound(0), Bound(1))
+ONE  = Multiplier(Bound(1), Bound(1))
+STAR = Multiplier(Bound(0), INF)
+PLUS = Multiplier(Bound(1), INF)
 
 # Symbol lookup table for preset multipliers.
 symbolic = {
-    qm   : "?",
-    one  : "" ,
-    star : "*",
-    plus : "+",
+    QM   : "?",
+    ONE  : "" ,
+    STAR : "*",
+    PLUS : "+",
 }

@@ -7,11 +7,11 @@
 from typing import Optional, Union, Set, Dict
 from dataclasses import dataclass
 
-anything_else = '9bd74361-04f9-4742-9d3a-1d14a6f0044c'
+ANYTHING_ELSE = '9bd74361-04f9-4742-9d3a-1d14a6f0044c'
 
-def key(symbol):
-    '''Ensure `fsm.anything_else` always sorts last'''
-    return (symbol is anything_else, symbol)
+def alphabet_key(symbol):
+    '''Ensure `ANYTHING_ELSE` always sorts last'''
+    return (symbol is ANYTHING_ELSE, symbol)
 
 class OblivionError(Exception):
     '''
@@ -25,7 +25,7 @@ class OblivionError(Exception):
 state_type = Optional[Union[int, str]]
 
 @dataclass(frozen=True)
-class fsm:
+class Fsm:
     '''
         A Finite State Machine or FSM has an alphabet and a set of states. At any
         given moment, the FSM is in one state. When passed a symbol from the
@@ -76,13 +76,13 @@ class fsm:
             symbols). Equivalently, consider `self` as a possibly-infinite set of
             strings and test whether `string` is a member of it.
             This is actually mainly used for unit testing purposes.
-            If `fsm.anything_else` is in your alphabet, then any symbol not in your
-            alphabet will be converted to `fsm.anything_else`.
+            If `ANYTHING_ELSE` is in your alphabet, then any symbol not in your
+            alphabet will be converted to `ANYTHING_ELSE`.
         '''
         state = self.initial
         for symbol in input:
-            if anything_else in self.alphabet and not symbol in self.alphabet:
-                symbol = anything_else
+            if ANYTHING_ELSE in self.alphabet and not symbol in self.alphabet:
+                symbol = ANYTHING_ELSE
 
             # Missing transition = transition to dead state
             if not (state in self.map and symbol in self.map[state]):
@@ -107,7 +107,7 @@ class fsm:
         return reversed(reversed(self))
 
     def __repr__(self):
-        string = "fsm("
+        string = "Fsm("
         string += "alphabet = " + repr(self.alphabet)
         string += ", states = " + repr(self.states)
         string += ", initial = " + repr(self.initial)
@@ -119,12 +119,12 @@ class fsm:
     def __str__(self):
         rows = []
 
-        sorted_alphabet = sorted(self.alphabet, key=key)
+        sorted_alphabet = sorted(self.alphabet, key=alphabet_key)
 
         # top row
         row = ["", "name", "final?"]
         row.extend(
-          'anything_else' if symbol is anything_else else str(symbol)
+          'ANYTHING_ELSE' if symbol is ANYTHING_ELSE else str(symbol)
           for symbol in sorted_alphabet
         )
         rows.append(row)
@@ -209,8 +209,8 @@ class fsm:
                 if substate in fsm.map:
                     if symbol in fsm.map[substate]:
                         next.update(connect_all(i, fsm.map[substate][symbol]))
-                    elif anything_else in fsm.map[substate] and symbol not in fsm.alphabet:
-                        next.update(connect_all(i, fsm.map[substate][anything_else]))
+                    elif ANYTHING_ELSE in fsm.map[substate] and symbol not in fsm.alphabet:
+                        next.update(connect_all(i, fsm.map[substate][ANYTHING_ELSE]))
             if len(next) == 0:
                 raise OblivionError
             return frozenset(next)
@@ -335,7 +335,7 @@ class fsm:
         '''
             Treat the FSMs as sets of strings and return the intersection of those
             sets in the form of a new FSM. `fsm1.intersection(fsm2, ...)` or
-            `fsm.intersection(fsm1, ...)` are acceptable.
+            `Fsm.intersection(fsm1, ...)` are acceptable.
         '''
         return self.intersection(other)
 
@@ -477,7 +477,7 @@ class fsm:
         while i < len(strings):
             (cstring, cstate) = strings[i]
             if cstate in self.map:
-                for symbol in sorted(self.map[cstate], key=key):
+                for symbol in sorted(self.map[cstate], key=alphabet_key):
                     nstate = self.map[cstate][symbol]
                     nstring = cstring + [symbol]
                     if nstate in livestates:
@@ -637,7 +637,7 @@ class fsm:
             For completeness only, since `set.copy()` also exists. FSM objects are
             immutable, so I can see only very odd reasons to need this.
         '''
-        return fsm(
+        return Fsm(
             alphabet = self.alphabet,
             states   = self.states,
             initial  = self.initial,
@@ -658,9 +658,9 @@ class fsm:
             state = self.initial
             for symbol in input:
                 if not symbol in self.alphabet:
-                    if not anything_else in self.alphabet:
+                    if not ANYTHING_ELSE in self.alphabet:
                         raise KeyError(symbol)
-                    symbol = anything_else
+                    symbol = ANYTHING_ELSE
 
                 # Missing transition = transition to dead state
                 if not (state in self.map and symbol in self.map[state]):
@@ -670,7 +670,7 @@ class fsm:
 
             # OK so now we have consumed that string, use the new location as the
             # starting point.
-            return fsm(
+            return Fsm(
                 alphabet = self.alphabet,
                 states   = self.states,
                 initial  = state,
@@ -688,7 +688,7 @@ def null(alphabet):
         demonstrates that this is possible, and is also extremely useful
         in some situations
     '''
-    return fsm(
+    return Fsm(
         alphabet = alphabet,
         states   = {0},
         initial  = 0,
@@ -703,7 +703,7 @@ def epsilon(alphabet):
         Return an FSM matching an empty string, "", only.
         This is very useful in many situations
     '''
-    return fsm(
+    return Fsm(
         alphabet = alphabet,
         states   = {0},
         initial  = 0,
@@ -726,8 +726,8 @@ def parallel(fsms, test):
     def follow(current, symbol):
         next = {}
         for i in range(len(fsms)):
-            if symbol not in fsms[i].alphabet and anything_else in fsms[i].alphabet:
-                actual_symbol = anything_else
+            if symbol not in fsms[i].alphabet and ANYTHING_ELSE in fsms[i].alphabet:
+                actual_symbol = ANYTHING_ELSE
             else:
                 actual_symbol = symbol
             if i in current \
@@ -769,7 +769,7 @@ def crawl(alphabet, initial, final, follow):
 
         # compute map for this state
         map[i] = {}
-        for symbol in sorted(alphabet, key=key):
+        for symbol in sorted(alphabet, key=alphabet_key):
             try:
                 next = follow(state, symbol)
 
@@ -787,7 +787,7 @@ def crawl(alphabet, initial, final, follow):
 
         i += 1
 
-    return fsm(
+    return Fsm(
         alphabet = alphabet,
         states   = set(range(len(states))),
         initial  = 0,

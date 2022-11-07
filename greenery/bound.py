@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 @dataclass(frozen=True)
-class bound:
+class Bound:
     '''An integer but sometimes also possibly infinite (None)'''
     v: Optional[int]
 
@@ -13,10 +13,10 @@ class bound:
             raise Exception("Invalid bound: " + repr(self.v))
 
     def __repr__(self):
-        return "bound(" + repr(self.v) + ")"
+        return "Bound(" + repr(self.v) + ")"
 
     def __str__(self):
-        if self == inf:
+        if self == INF:
             # This only happens for an unlimited upper bound
             return ""
         return str(self.v)
@@ -31,9 +31,9 @@ class bound:
         return hash(self.v)
 
     def __lt__(self, other):
-        if self == inf:
+        if self == INF:
             return False
-        if other == inf:
+        if other == INF:
             return True
         return self.v < other.v
 
@@ -42,37 +42,37 @@ class bound:
 
     def __mul__(self, other):
         '''Multiply this bound by another'''
-        if self == bound(0) or other == bound(0):
-            return bound(0)
-        if self == inf or other == inf:
-            return inf
-        return bound(self.v * other.v)
+        if self == Bound(0) or other == Bound(0):
+            return Bound(0)
+        if self == INF or other == INF:
+            return INF
+        return Bound(self.v * other.v)
 
     def __add__(self, other):
         '''Add this bound to another'''
-        if self == inf or other == inf:
-            return inf
-        return bound(self.v + other.v)
+        if self == INF or other == INF:
+            return INF
+        return Bound(self.v + other.v)
 
     def __sub__(self, other):
         '''
             Subtract another bound from this one.
             Caution: this operation is not meaningful for all bounds.
         '''
-        if other == inf:
-            if self != inf:
+        if other == INF:
+            if self != INF:
                 raise Exception("Can't subtract " + repr(other) + " from " + repr(self))
 
             # Infinity minus infinity is zero. This has to be true so that
-            # we can for example subtract multiplier(bound(0), inf) from
-            # multiplier(bound(1), inf) to get multiplier(bound(1), bound(1))
-            return bound(0)
-        if self == inf:
+            # we can for example subtract Multiplier(Bound(0), INF) from
+            # Multiplier(Bound(1), INF) to get Multiplier(Bound(1), Bound(1))
+            return Bound(0)
+        if self == INF:
             return self
-        return bound(self.v - other.v)
+        return Bound(self.v - other.v)
 
     def copy(self):
-        return bound(self.v)
+        return Bound(self.v)
 
 # Use this for cases where no upper bound is needed
-inf = bound(None)
+INF = Bound(None)

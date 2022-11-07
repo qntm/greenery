@@ -3,42 +3,43 @@
 if __name__ == "__main__":
     raise Exception("Test files can't be run directly. Use `python -m pytest greenery`")
 
-from greenery.lego import conc, mult, charclass, pattern, multiplier, bound, inf
-from .rxelems.charclass import charclass, d, dot
-from .rxelems.multiplier import one, star, plus, qm
-from greenery.parse import nomatch, matchCharclass, parse, matchMult
+from .bound import Bound, INF
+from .charclass import Charclass, DOT
+from .multiplier import Multiplier, ONE, STAR, PLUS
+from .rxelems import Mult, Conc, Pattern
+from .parse import nomatch, match_charclass, parse, match_mult
 
 def test_charclass_matching():
-    assert matchCharclass("a", 0) == (charclass("a"), 1)
-    assert matchCharclass("aa", 1) == (charclass("a"), 2)
-    assert matchCharclass("a$", 1) == (charclass("$"), 2)
-    assert matchCharclass(".", 0) == (dot, 1)
+    assert match_charclass("a", 0) == (Charclass("a"), 1)
+    assert match_charclass("aa", 1) == (Charclass("a"), 2)
+    assert match_charclass("a$", 1) == (Charclass("$"), 2)
+    assert match_charclass(".", 0) == (DOT, 1)
     try:
-        matchCharclass("[", 0)
+        match_charclass("[", 0)
         assert False
     except IndexError:
         pass
     try:
-        matchCharclass("a", 1)
+        match_charclass("a", 1)
         assert False
     except nomatch:
         pass
 
 def test_mult_matching():
-    assert matchMult("abcde[^fg]*", 5) == (
-        mult(~charclass("fg"), star),
+    assert match_mult("abcde[^fg]*", 5) == (
+        Mult(~Charclass("fg"), STAR),
         11
     )
-    assert matchMult("abcde[^fg]*h{5}[a-z]+", 11) == (
-        mult(charclass("h"), multiplier(bound(5), bound(5))),
+    assert match_mult("abcde[^fg]*h{5}[a-z]+", 11) == (
+        Mult(Charclass("h"), Multiplier(Bound(5), Bound(5))),
         15
     )
-    assert matchMult("abcde[^fg]*h{5}[a-z]+T{1,}", 15) == (
-        mult(charclass("abcdefghijklmnopqrstuvwxyz"), plus),
+    assert match_mult("abcde[^fg]*h{5}[a-z]+T{1,}", 15) == (
+        Mult(Charclass("abcdefghijklmnopqrstuvwxyz"), PLUS),
         21
     )
-    assert matchMult("abcde[^fg]*h{5}[a-z]+T{2,}", 21) == (
-        mult(charclass("T"), multiplier(bound(2), inf)),
+    assert match_mult("abcde[^fg]*h{5}[a-z]+T{2,}", 21) == (
+        Mult(Charclass("T"), Multiplier(Bound(2), INF)),
         26
     )
 
@@ -63,73 +64,73 @@ def test_w_d_s():
     assert parse("[\\s]") == parse("[\t\n\r\f\v ]")
 
 def test_mult_parsing():
-    assert parse("[a-g]+") == pattern(conc(mult(charclass("abcdefg"), plus)))
-    assert parse("[a-g0-8$%]+") == pattern(conc(mult(charclass("abcdefg012345678$%"), plus)))
-    assert parse("[a-g0-8$%\\^]+") == pattern(conc(mult(charclass("abcdefg012345678$%^"), plus)))
+    assert parse("[a-g]+") == Pattern(Conc(Mult(Charclass("abcdefg"), PLUS)))
+    assert parse("[a-g0-8$%]+") == Pattern(Conc(Mult(Charclass("abcdefg012345678$%"), PLUS)))
+    assert parse("[a-g0-8$%\\^]+") == Pattern(Conc(Mult(Charclass("abcdefg012345678$%^"), PLUS)))
 
 def test_conc_parsing():
-    assert parse("abcde[^fg]*h{5}[a-z]+") == pattern(
-        conc(
-            mult(charclass("a"), one),
-            mult(charclass("b"), one),
-            mult(charclass("c"), one),
-            mult(charclass("d"), one),
-            mult(charclass("e"), one),
-            mult(~charclass("fg"), star),
-            mult(charclass("h"), multiplier(bound(5), bound(5))),
-            mult(charclass("abcdefghijklmnopqrstuvwxyz"), plus),
+    assert parse("abcde[^fg]*h{5}[a-z]+") == Pattern(
+        Conc(
+            Mult(Charclass("a"), ONE),
+            Mult(Charclass("b"), ONE),
+            Mult(Charclass("c"), ONE),
+            Mult(Charclass("d"), ONE),
+            Mult(Charclass("e"), ONE),
+            Mult(~Charclass("fg"), STAR),
+            Mult(Charclass("h"), Multiplier(Bound(5), Bound(5))),
+            Mult(Charclass("abcdefghijklmnopqrstuvwxyz"), PLUS),
         )
     )
-    assert parse("[bc]*[ab]*") == pattern(
-        conc(
-            mult(charclass("bc"), star),
-            mult(charclass("ab"), star),
+    assert parse("[bc]*[ab]*") == Pattern(
+        Conc(
+            Mult(Charclass("bc"), STAR),
+            Mult(Charclass("ab"), STAR),
         )
     )
-    assert parse("abc...") == pattern(
-        conc(
-            mult(charclass("a"), one),
-            mult(charclass("b"), one),
-            mult(charclass("c"), one),
-            mult(dot, one),
-            mult(dot, one),
-            mult(dot, one),
+    assert parse("abc...") == Pattern(
+        Conc(
+            Mult(Charclass("a"), ONE),
+            Mult(Charclass("b"), ONE),
+            Mult(Charclass("c"), ONE),
+            Mult(DOT, ONE),
+            Mult(DOT, ONE),
+            Mult(DOT, ONE),
         )
     )
-    assert parse("\\d{4}-\\d{2}-\\d{2}") == pattern(
-        conc(
-            mult(charclass("0123456789"), multiplier(bound(4), bound(4))),
-            mult(charclass("-"), one),
-            mult(charclass("0123456789"), multiplier(bound(2), bound(2))),
-            mult(charclass("-"), one),
-            mult(charclass("0123456789"), multiplier(bound(2), bound(2))),
+    assert parse("\\d{4}-\\d{2}-\\d{2}") == Pattern(
+        Conc(
+            Mult(Charclass("0123456789"), Multiplier(Bound(4), Bound(4))),
+            Mult(Charclass("-"), ONE),
+            Mult(Charclass("0123456789"), Multiplier(Bound(2), Bound(2))),
+            Mult(Charclass("-"), ONE),
+            Mult(Charclass("0123456789"), Multiplier(Bound(2), Bound(2))),
         )
     )
 
 def test_pattern_parsing():
-    assert parse("abc|def(ghi|jkl)") == pattern(
-        conc(
-            mult(charclass("a"), one),
-            mult(charclass("b"), one),
-            mult(charclass("c"), one),
+    assert parse("abc|def(ghi|jkl)") == Pattern(
+        Conc(
+            Mult(Charclass("a"), ONE),
+            Mult(Charclass("b"), ONE),
+            Mult(Charclass("c"), ONE),
         ),
-        conc(
-            mult(charclass("d"), one),
-            mult(charclass("e"), one),
-            mult(charclass("f"), one),
-            mult(
-                pattern(
-                    conc(
-                        mult(charclass("g"), one),
-                        mult(charclass("h"), one),
-                        mult(charclass("i"), one),
+        Conc(
+            Mult(Charclass("d"), ONE),
+            Mult(Charclass("e"), ONE),
+            Mult(Charclass("f"), ONE),
+            Mult(
+                Pattern(
+                    Conc(
+                        Mult(Charclass("g"), ONE),
+                        Mult(Charclass("h"), ONE),
+                        Mult(Charclass("i"), ONE),
                     ),
-                    conc(
-                        mult(charclass("j"), one),
-                        mult(charclass("k"), one),
-                        mult(charclass("l"), one),
+                    Conc(
+                        Mult(Charclass("j"), ONE),
+                        Mult(Charclass("k"), ONE),
+                        Mult(Charclass("l"), ONE),
                     ),
-                ), one
+                ), ONE
             ),
         )
     )
