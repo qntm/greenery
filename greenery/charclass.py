@@ -27,10 +27,7 @@ class Charclass():
             )
 
     def __eq__(self, other):
-        return hasattr(other, "chars") \
-            and self.chars == other.chars \
-            and hasattr(other, "negated") \
-            and self.negated == other.negated
+        return self.chars == other.chars and self.negated == other.negated
 
     def __hash__(self):
         return hash((self.chars, self.negated))
@@ -175,8 +172,7 @@ class Charclass():
         if self.negated is True:
             string += "~"
         string += "Charclass("
-        if len(self.chars) > 0:
-            string += repr("".join(str(char) for char in sorted(self.chars, key=str)))
+        string += repr("".join(str(char) for char in sorted(self.chars, key=str)))
         string += ")"
         return string
 
@@ -203,6 +199,22 @@ class Charclass():
 
     def reversed(self):
         return self
+
+    def __or__(self, other):
+        # ¬A OR ¬B = ¬(A AND B)
+        # ¬A OR B = ¬(A - B)
+        # A OR ¬B = ¬(B - A)
+        # A OR B
+        if self.negated:
+            if other.negated:
+                return ~Charclass(self.chars & other.chars)
+            else:
+                return ~Charclass(self.chars - other.chars)
+        else:
+            if other.negated:
+                return ~Charclass(other.chars - self.chars)
+            else:
+                return Charclass(self.chars | other.chars)
 
 # Standard character classes
 WORDCHAR = Charclass(

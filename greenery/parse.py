@@ -36,7 +36,7 @@ def static(string, i, static):
 
 def select_static(string, i, *statics):
     for st in statics:
-        j = i+len(st)
+        j = i + len(st)
         if string[i:j] == st:
             return j, st
     raise NoMatch

@@ -42,7 +42,7 @@ class Multiplier:
         return hash((self.min, self.max))
 
     def __repr__(self):
-        return "Multiplier(" + repr(self.min) + ", " + repr(self.max) + ")"
+        return f"Multiplier({repr(self.min)}, {repr(self.max)})"
 
     def __str__(self):
         if self.max == Bound(0):

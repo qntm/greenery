@@ -13,7 +13,7 @@ class Bound:
             raise Exception(f"Invalid bound: {repr(self.v)}")
 
     def __repr__(self):
-        return "Bound(" + repr(self.v) + ")"
+        return f"Bound({repr(self.v)})"
 
     def __str__(self):
         if self == INF:

@@ -114,14 +114,14 @@ class Fsm:
         return reversed(reversed(self))
 
     def __repr__(self):
-        string = "Fsm("
-        string += "alphabet = " + repr(self.alphabet)
-        string += ", states = " + repr(self.states)
-        string += ", initial = " + repr(self.initial)
-        string += ", finals = " + repr(self.finals)
-        string += ", map = " + repr(self.map)
-        string += ")"
-        return string
+        args = ", ".join([
+            f"alphabet={repr(self.alphabet)}",
+            f"states={repr(self.states)}",
+            f"initial={repr(self.initial)}",
+            f"finals={repr(self.finals)}",
+            f"map={repr(self.map)}",
+        ])
+        return f"Fsm({args})"
 
     def __str__(self):
         rows = []
