@@ -5,6 +5,7 @@ from .multiplier import Multiplier, ZERO, QM, ONE, STAR, PLUS
 from .charclass import Charclass
 from .rxelems import Conc, Mult, EMPTYSTRING, Multiplicand
 
+
 def test_conc_equality():
     a = Conc(Mult(Multiplicand(Charclass("a")), ONE))
     assert a == Conc(Mult(Multiplicand(Charclass("a")), ONE))
@@ -15,6 +16,7 @@ def test_conc_equality():
         Multiplier(Bound(1), Bound(2)))
     )
     assert a != EMPTYSTRING
+
 
 def test_conc_str():
     assert str(Conc(
@@ -27,6 +29,7 @@ def test_conc_str():
         Mult(Multiplicand(Charclass("h")), Multiplier(Bound(5), Bound(5))),
         Mult(Multiplicand(Charclass("abcdefghijklmnopqrstuvwxyz")), PLUS),
     )) == "abcde[^fg]*h{5}[a-z]+"
+
 
 def test_conc_common():
     a = Mult(Multiplicand(Charclass("A")), ONE)
@@ -42,6 +45,7 @@ def test_conc_common():
     assert Conc(a, z).common(Conc(b, z), suffix=True) == Conc(z)
     assert Conc(a, zstar).common(Conc(b, z), suffix=True) == Conc()
     assert Conc(a).common(Conc(b), suffix=True) == Conc()
+
 
 def test_conc_dock():
     a = Mult(Multiplicand(Charclass("A")), ONE)
@@ -63,6 +67,7 @@ def test_conc_dock():
         assert False
     except Exception:
         pass
+
 
 def test_mult_reduction_easy():
     assert Conc(Mult(

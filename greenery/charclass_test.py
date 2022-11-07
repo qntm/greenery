@@ -4,14 +4,17 @@ from .charclass import Charclass, WORDCHAR, DIGIT, SPACECHAR, NONWORDCHAR, \
     NONDIGITCHAR, NONSPACECHAR, DOT, NULLCHARCLASS
 from .fsm import ANYTHING_ELSE
 
+
 def test_charclass_equality():
     assert Charclass("a") == Charclass("a")
     assert ~Charclass("a") == ~Charclass("a")
     assert ~Charclass("a") != Charclass("a")
     assert Charclass("ab") == Charclass("ba")
 
+
 def test_repr():
     assert repr(~Charclass("a")) == "~Charclass('a')"
+
 
 def test_charclass_str():
     assert str(WORDCHAR) == "\\w"
@@ -50,6 +53,7 @@ def test_charclass_str():
     assert str(~Charclass("\t")) == "[^\\t]"
     assert str(~Charclass("^")) == "[^\\^]"
 
+
 def test_charclass_fsm():
     # "[^a]"
     nota = (~Charclass("a")).to_fsm()
@@ -58,9 +62,11 @@ def test_charclass_fsm():
     assert nota.accepts(["b"])
     assert nota.accepts([ANYTHING_ELSE])
 
+
 def test_charclass_negation():
     assert ~~Charclass("a") == Charclass("a")
     assert Charclass("a") == ~~Charclass("a")
+
 
 def test_empty():
     assert NULLCHARCLASS.empty()

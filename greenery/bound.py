@@ -3,13 +3,14 @@
 from dataclasses import dataclass
 from typing import Optional
 
+
 @dataclass(frozen=True)
 class Bound:
     '''An integer but sometimes also possibly infinite (None)'''
     v: Optional[int]
 
     def __post_init__(self):
-        if not self.v is None and self.v < 0:
+        if self.v is not None and self.v < 0:
             raise Exception(f"Invalid bound: {repr(self.v)}")
 
     def __repr__(self):
@@ -72,6 +73,7 @@ class Bound:
 
     def copy(self):
         return Bound(self.v)
+
 
 # Use this for cases where no upper bound is needed
 INF = Bound(None)

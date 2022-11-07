@@ -5,6 +5,7 @@ from typing import Union, FrozenSet
 
 from .fsm import Fsm, ANYTHING_ELSE
 
+
 @dataclass(frozen=True)
 class Charclass():
     '''
@@ -32,20 +33,22 @@ class Charclass():
     def __hash__(self):
         return hash((self.chars, self.negated))
 
-    # These are the characters carrying special meanings when they appear "outdoors"
-    # within a regular expression. To be interpreted literally, they must be
-    # escaped with a backslash.
+    # These are the characters carrying special meanings when they appear
+    # "outdoors" within a regular expression. To be interpreted literally, they
+    # must be escaped with a backslash.
     allSpecial = set("\\[]|().?*+{}")
 
-    # These are the characters carrying special meanings when they appear INSIDE a
-    # character class (delimited by square brackets) within a regular expression.
-    # To be interpreted literally, they must be escaped with a backslash.
-    # Notice how much smaller this class is than the one above; note also that the
-    # hyphen and caret do NOT appear above.
+    # These are the characters carrying special meanings when they appear
+    # INSIDE a character class (delimited by square brackets) within a regular
+    # expression. To be interpreted literally, they must be escaped with a
+    # backslash. Notice how much smaller this class is than the one above; note
+    # also that the hyphen and caret do NOT appear above.
     classSpecial = set("\\[]^-")
 
     # Shorthand codes for use inside `Charclass`es e.g. [abc\d]
-    w = frozenset("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz")
+    w = frozenset(
+        "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz"
+    )
     d = frozenset("0123456789")
     s = frozenset("\t\n\v\f\r ")
 
@@ -83,8 +86,8 @@ class Charclass():
                 return "\\" + char
 
             # If char is an ASCII control character, don't print it directly,
-            # return a hex escape sequence e.g. "\\x00". Note that this includes
-            # tab and other characters already handled above
+            # return a hex escape sequence e.g. "\\x00". Note that this
+            # includes tab and other characters already handled above
             if 0 <= ord(char) <= 0x1F or ord(char) == 0x7f:
                 return "\\x" + "{0:02x}".format(ord(char))
 
@@ -101,8 +104,8 @@ class Charclass():
                 return escapes[char]
 
             # If char is an ASCII control character, don't print it directly,
-            # return a hex escape sequence e.g. "\\x00". Note that this includes
-            # tab and other characters already handled above
+            # return a hex escape sequence e.g. "\\x00". Note that this
+            # includes tab and other characters already handled above
             if 0 <= ord(char) <= 0x1F or ord(char) == 0x7f:
                 return "\\x" + "{0:02x}".format(ord(char))
 
@@ -115,7 +118,11 @@ class Charclass():
                 # "ab" or "abc" or "abcd"
                 "".join(escapeChar(char) for char in currentRange),
                 # "a-b" or "a-c" or "a-d"
-                escapeChar(currentRange[0]) + "-" + escapeChar(currentRange[-1]),
+                (
+                    escapeChar(currentRange[0]) +
+                    "-" +
+                    escapeChar(currentRange[-1])
+                ),
             ]
             return sorted(strs, key=lambda str: len(str))[0]
 
@@ -166,11 +173,11 @@ class Charclass():
             }
 
         return Fsm(
-            alphabet = alphabet,
-            states   = {0, 1},
-            initial  = 0,
-            finals   = {1},
-            map      = map,
+            alphabet=alphabet,
+            states={0, 1},
+            initial=0,
+            finals={1},
+            map=map,
         )
 
     def __repr__(self):
@@ -178,7 +185,9 @@ class Charclass():
         if self.negated is True:
             string += "~"
         string += "Charclass("
-        string += repr("".join(str(char) for char in sorted(self.chars, key=str)))
+        string += repr("".join(
+            str(char) for char in sorted(self.chars, key=str)
+        ))
         string += ")"
         return string
 
@@ -190,7 +199,7 @@ class Charclass():
         return {ANYTHING_ELSE} | self.chars
 
     def empty(self):
-        return len(self.chars) == 0 and self.negated == False
+        return len(self.chars) == 0 and not self.negated
 
     # set operations
     def negate(self):
@@ -222,6 +231,7 @@ class Charclass():
             else:
                 return Charclass(self.chars | other.chars)
 
+
 # Standard character classes
 WORDCHAR = Charclass(
     "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz"
@@ -242,11 +252,11 @@ DOT = ~NULLCHARCLASS
 shorthand = {
     WORDCHAR: "\\w",
     DIGIT: "\\d",
-    SPACECHAR : "\\s",
+    SPACECHAR: "\\s",
     NONWORDCHAR: "\\W",
     NONDIGITCHAR: "\\D",
     NONSPACECHAR: "\\S",
-    DOT : ".",
+    DOT: ".",
 }
 
 # Characters which users may escape in a regex instead of inserting them
