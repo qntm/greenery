@@ -7,8 +7,9 @@ import pickle
 import pytest
 
 from greenery.lego import conc, mult, charclass, emptystring, \
-    nothing, pattern, d, w, s, W, D, S, dot, from_fsm
+    pattern, from_fsm
 from greenery.rxelems.bound import bound, inf
+from greenery.rxelems.charclass import d, w, s, W, D, S, dot, nothing
 from greenery.rxelems.multiplier import multiplier, one, star, plus, qm, zero
 from greenery.parse import parse
 from greenery import fsm
@@ -20,12 +21,6 @@ from greenery import fsm
 ###############################################################################
 # Equality tests. No point in comparing different regular expression elements
 # in tests unless this part works
-
-def test_charclass_equality():
-    assert charclass("a") == charclass("a")
-    assert ~charclass("a") == ~charclass("a")
-    assert ~charclass("a") != charclass("a")
-    assert charclass("ab") == charclass("ba")
 
 def test_mult_equality():
     assert mult(charclass("a"), one) == mult(charclass("a"), one)
@@ -57,49 +52,9 @@ def test_pattern_equality():
     )
 
 ###############################################################################
-# repr() tests
-
-def test_repr():
-    assert repr(~charclass("a")) == "~charclass('a')"
-
-###############################################################################
 # Stringification tests
 
 def test_charclass_str():
-    assert str(w) == "\\w"
-    assert str(d) == "\\d"
-    assert str(s) == "\\s"
-    assert str(charclass("a")) == "a"
-    assert str(charclass("{")) == "\\{"
-    assert str(charclass("\t")) == "\\t"
-    assert str(charclass("ab")) == "[ab]"
-    assert str(charclass("a{")) == "[a{]"
-    assert str(charclass("a\t")) == "[\\ta]"
-    assert str(charclass("a-")) == "[\\-a]"
-    assert str(charclass("a[")) == "[\\[a]"
-    assert str(charclass("a]")) == "[\\]a]"
-    assert str(charclass("ab")) == "[ab]"
-    assert str(charclass("abc")) == "[abc]"
-    assert str(charclass("abcd")) == "[a-d]"
-    assert str(charclass("abcdfghi")) == "[a-df-i]"
-    assert str(charclass("^")) == "^"
-    assert str(charclass("\\")) == "\\\\"
-    assert str(charclass("a^")) == "[\\^a]"
-    assert str(charclass("0123456789a")) == "[0-9a]"
-    assert str(charclass("\t\v\r A")) == "[\\t\\v\\r A]"
-    assert str(charclass("\n\f A")) == "[\\n\\f A]"
-    assert str(charclass("\t\n\v\f\r A")) == "[\\t-\\r A]"
-    assert str(charclass("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz|")) == "[0-9A-Z_a-z|]"
-    assert str(W) == "\\W"
-    assert str(D) == "\\D"
-    assert str(S) == "\\S"
-    assert str(dot) == "."
-    assert str(~charclass("")) == "."
-    assert str(~charclass("a")) == "[^a]"
-    assert str(~charclass("{")) == "[^{]"
-    assert str(~charclass("\t")) == "[^\\t]"
-    assert str(~charclass("^")) == "[^\\^]"
-
     # Arbitrary ranges
     assert str(parse("[\\w:;<=>?@\\[\\\\\\]\\^`]")) == "[0-z]"
     # TODO: what if \d is a proper subset of `chars`?
@@ -185,14 +140,6 @@ def test_parse_str_round_trip():
 def test_alphabet():
     # `.alphabet()` should include `fsm.anything_else`
     assert parse("").alphabet() == {fsm.anything_else}
-
-def test_charclass_fsm():
-    # "[^a]"
-    nota = (~charclass("a")).to_fsm()
-    assert nota.alphabet == {"a", fsm.anything_else}
-    assert nota.accepts("b")
-    assert nota.accepts(["b"])
-    assert nota.accepts([fsm.anything_else])
 
 def test_pattern_fsm():
     # "a[^a]"
@@ -304,7 +251,7 @@ def test_in():
 # Test string generators
 
 def test_charclass_gen():
-    gen = charclass("xyz").strings()
+    gen = parse("[xyz]").strings()
     assert next(gen) == "x"
     assert next(gen) == "y"
     assert next(gen) == "z"
@@ -614,37 +561,22 @@ def test_dead_default():
 ###############################################################################
 # charclass set operations
 
-def test_charclass_negation():
-    assert ~~charclass("a") == charclass("a")
-    assert charclass("a") == ~~charclass("a")
-
 def test_charclass_union():
-    # [ab] u [bc] = [abc]
-    assert charclass("ab") | charclass("bc") == charclass("abc")
-    # [ab] u [^bc] = [^c]
-    assert charclass("ab") | ~charclass("bc") == ~charclass("c")
-    # [^a] u [bc] = [^a]
-    assert ~charclass("ab") | charclass("bc") == ~charclass("a")
-    # [^ab] u [^bc] = [^b]
-    assert ~charclass("ab") | ~charclass("bc") == ~charclass("b")
+    assert (parse("[ab]") | parse("[bc]")).reduce() == parse("[abc]")
+    assert (parse("[ab]") | parse("[^bc]")).reduce() == parse("[^c]")
+    assert (parse("[^ab]") | parse("[bc]")).reduce() == parse("[^a]")
+    assert (parse("[^ab]") | parse("[^bc]")).reduce() == parse("[^b]")
 
 def test_charclass_intersection():
-    # [ab] n [bc] = [b]
-    assert charclass("ab") & charclass("bc") == charclass("b")
-    # [ab] n [^bc] = [a]
-    assert charclass("ab") & ~charclass("bc") == charclass("a")
-    # [^ab] n [bc] = [c]
-    assert ~charclass("ab") & charclass("bc") == charclass("c")
-    # [^ab] n [^bc] = [^abc]
-    assert ~charclass("ab") & ~charclass("bc") == ~charclass("abc")
+    assert parse("[ab]") & parse("[bc]") == parse("b")
+    assert parse("[ab]") & parse("[^bc]") == parse("a")
+    assert parse("[^ab]") & parse("[bc]") == parse("c")
+    assert parse("[^ab]") & parse("[^bc]") == parse("[^abc]")
 
 ###############################################################################
 # Emptiness detection
 
 def test_empty():
-    assert nothing.empty()
-    assert charclass("").empty()
-    assert not dot.empty()
     assert not parse("a{0}").empty()
     assert parse("[]").empty()
     assert not parse("[]?").empty()
@@ -672,15 +604,14 @@ def test_everythingbut():
     assert str(beer2) == "be{2}r"
 
     # ".*" becomes "[]" and vice versa under this call.
-    everything = parse(".*")
-    assert str(everything.everythingbut()) == str(nothing)
-    assert str(nothing.everythingbut()) == str(everything)
+    assert str(parse(".*").everythingbut()) == "[]"
+    assert str(parse("[]").everythingbut()) == ".*"
 
 def test_isinstance_bug():
     # Problem relating to isinstance(). The class "mult" was occurring as both
     # rxelems.mult and as __main__.mult and apparently these count as different
     # classes for some reason, so isinstance(m, mult) was returning false.
-    starfree = (parse("").everythingbut() + parse("aa") + parse("").everythingbut()).everythingbut()
+    starfree = parse(str(parse("").everythingbut()) + "aa" + str(parse("").everythingbut())).everythingbut()
 
 ###############################################################################
 
@@ -705,28 +636,6 @@ def test_regex_reversal():
 def test_set_ops():
     assert parse("[abcd]") - parse("a") == parse("[bcd]")
     assert parse("[abcd]") ^ parse("[cdef]") == parse("[abef]")
-
-###############################################################################
-# Concatenation tests (+)
-
-def test_concatenation():
-    assert str((parse("a") + parse("b")).reduce()) == "ab"
-    assert str((parse("a") + parse("b{0,8}")).reduce()) == "ab{0,8}"
-    assert str((parse("a") + parse("bc")).reduce()) == "abc"
-    assert str((parse("a") + parse("b|cd")).reduce()) == "a(b|cd)"
-    assert str((parse("b{0,8}") + parse("c")).reduce()) == "b{0,8}c"
-    assert str((parse("a{3,4}") + parse("b?")).reduce()) == "a{3,4}b?"
-    assert str((parse("a{2}") + parse("bc")).reduce()) == "a{2}bc"
-    assert str((parse("a{2,3}") + parse("b|cd")).reduce()) == "a{2,3}(b|cd)"
-    assert str((parse("ab") + parse("c")).reduce()) == "abc"
-    assert str((parse("ab") + parse("c*")).reduce()) == "abc*"
-    assert str((parse("") + parse("")).reduce()) == ""
-    assert str((parse("ab") + parse("cd")).reduce()) == "abcd"
-    assert str((parse("za{2,3}") + parse("b|cd")).reduce()) == "za{2,3}(b|cd)"
-    assert str((parse("a|bd") + parse("c")).reduce()) == "(a|bd)c"
-    assert str((parse("b|cd") + parse("a{2,3}")).reduce()) == "(b|cd)a{2,3}"
-    assert str((parse("b|cd") + parse("za{2,3}")).reduce()) == "(b|cd)za{2,3}"
-    assert str((parse("a|bc") + parse("c|de")).reduce()) == "(a|bc)(c|de)"
 
 ###############################################################################
 # Test methods for finding common parts of regular expressions.
@@ -1160,7 +1069,6 @@ def test_bug_36_2():
     assert not etc2.isdisjoint(etc1)
 
 
-@pytest.mark.skip(reason="too slow")
 def test_bug_slow():
     # issue #43
     import time
@@ -1214,7 +1122,6 @@ def test_bug_48_simpler():
     ))) == 'd'
 
 
-@pytest.mark.skip(reason="too slow")
 def test_bug_48():
     S5, S26, S45, S63, S80, S97, S113, S127, S140, S152, S163, S175, S182 = \
         range(13)

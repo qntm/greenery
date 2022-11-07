@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 
-from greenery.lego import escapes, shorthand, inf, \
+from greenery.lego import inf, \
     charclass, bound, multiplier, mult, conc, pattern
+from greenery.rxelems.charclass import shorthand, escapes
 from .rxelems.multiplier import symbolic
 from typing import Tuple
 

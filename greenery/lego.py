@@ -28,7 +28,7 @@
     return a finite state machine capable of accepting strings described by
     that element.
 
-    Most important are the reduce() methods present in charclass, mult, conc and
+    Most important are the reduce() methods present in mult, conc and
     pattern. While there is no such thing as a canonical form for a given regex
     pattern, these procedures can drastically simplify a regex structure for
     readability. They're also pretty extensible.
@@ -39,6 +39,8 @@ from greenery import fsm
 from dataclasses import dataclass, field
 from greenery.rxelems.bound import bound, inf
 from greenery.rxelems.multiplier import multiplier, star, one, zero, qm
+from greenery.rxelems.charclass import charclass, nothing
+from greenery.rxelems.rxelem import rxelem
 
 def call_fsm(method):
     '''
@@ -115,7 +117,7 @@ def from_fsm(f: fsm.fsm):
             else:
                 linkcharclass = charclass({symbol})
 
-            brz[a][b] = pattern(*brz[a][b].concs, conc(mult(linkcharclass, one)))
+            brz[a][b] = pattern(*brz[a][b].concs, conc(mult(linkcharclass, one))).reduce()
 
     # Now perform our back-substitution
     for i in reversed(range(len(states))):
@@ -129,7 +131,7 @@ def from_fsm(f: fsm.fsm):
         del brz[a][a]
 
         for right in brz[a]:
-            brz[a][right] = pattern(conc(loopmult, mult(brz[a][right], one)))
+            brz[a][right] = pattern(conc(loopmult, mult(brz[a][right], one))).reduce()
 
         # Note: even if we're down to our final equation, the above step still
         # needs to be performed before anything is returned.
@@ -151,467 +153,9 @@ def from_fsm(f: fsm.fsm):
                         mult(univ, one),
                         mult(brz[a][right], one)
                     )
-                )
+                ).reduce()
 
     return brz[f.initial][outside].reduce()
-
-class rxelem:
-    '''
-        Parent class for all regular expression elements. All elements have
-        some things in common. This parent class mainly hosts documentation
-        though.
-    '''
-
-    def __setattr__(self, name, value):
-        '''
-            Lego pieces are immutable. It caused some pretty serious problems when
-            I didn't have this.
-        '''
-        raise Exception("This object is immutable.")
-
-    def to_fsm(self, alphabet=None):
-        '''
-            Return the present element in the form of a finite state machine,
-            as imported from the fsm module.
-            If no alphabet is explicitly supplied, which seems quite probable,
-            we use the elem.alphabet() method (later) to list all the characters
-            mentioned in self. However, if we intend to connect this FSM to another
-            one which uses different characters, we may need to supply an alphabet
-            which is a superset of both sets.
-        '''
-        raise NotImplementedError()
-
-    def __repr__(self):
-        '''
-            Return a string approximating the instantiation line
-            for the present element.
-        '''
-        raise NotImplementedError()
-
-    def __str__(self):
-        '''
-            Render the present element in the form of a regular expression.
-            Some elements may be created which cannot be rendered in this way.
-            In particular: a pattern containing no concs; a multiplier of zero.
-        '''
-        raise NotImplementedError()
-
-    @call_fsm
-    def concatenate(*elems):
-        '''
-            Concatenate a sequence of elements, regardless of differing classes.
-            Call using "a = b + c"
-        '''
-        pass
-
-    def __add__(self, other):
-        return self.concatenate(other)
-
-    @call_fsm
-    def union(*elems):
-        '''
-            Alternate between any two elements, regardless of differing classes.
-            Call using "a = b | c".
-            This method MUST NOT call the to_fsm() method, because this method is used
-            in turn when converting an FSM back to a regex.
-        '''
-        pass
-
-    def __or__(self, other):
-        return self.union(other)
-
-    @call_fsm
-    def intersection(self, other):
-        '''
-            Intersection function. Return an element which can match any string
-            that both self and other can match. Fairly elementary results relating
-            to regular languages and finite state machines show that this is
-            possible, but implementation is a BEAST in many cases. Here, we convert
-            both elements to FSMs (see to_fsm(), above) for the intersection, then
-            back to elements afterwards.
-            Call using "a = b & c"
-        '''
-        pass
-
-    def __and__(self, other):
-        return self.intersection(other)
-
-    @call_fsm
-    def difference(*elems):
-        '''
-            Return a regular expression which matches any string which `self` matches
-            but none of the strings which `other` matches.
-        '''
-        pass
-
-    def __sub__(self, other):
-        return self.difference(other)
-
-    @call_fsm
-    def symmetric_difference(*elems):
-        '''
-            Return a regular expression matching only the strings recognised by
-            `self` or `other` but not both.
-        '''
-        pass
-
-    def __xor__(self, other):
-        return self.symmetric_difference(other)
-
-    def equivalent(self, other):
-        '''
-            Two lego objects are equivalent if they recognise the same strings. Note
-            that in the general case this is actually quite an intensive calculation,
-            but far from unsolvable, as we demonstrate here:
-        '''
-        return self.to_fsm().equivalent(other.to_fsm())
-
-    def alphabet(self):
-        '''
-            Return a set of all unique characters used in this lego piece.
-            In theory this could be a static property, self.alphabet, not
-            a function, self.alphabet(), but in the vast majority of cases
-            this will never be queried so it's a waste of computation to
-            calculate it every time a lego piece is instantiated.
-            By convention, fsm.anything_else is always included in this result.
-        '''
-        raise NotImplementedError()
-
-    @call_fsm
-    def everythingbut(self):
-        '''
-            Return a lego object which will match any string not matched by self,
-            and which will not match any string matched by self.
-            Another task which is very difficult in general (and typically returns
-            utter garbage when actually printed), but becomes trivial to code
-            thanks to FSM routines.
-        '''
-        pass
-
-    def reversed(self):
-        '''
-            Return a lego object which will match any string which, when reversed,
-            self would match. E.g. if self matches "beer" then reversed(self) will
-            match "reeb".
-        '''
-        raise NotImplementedError()
-
-    def __reversed__(self):
-        return self.reversed()
-
-    def empty(self):
-        '''
-            Return False if there exists a string which the present lego piece
-            can match. Return True if no such string exists. Examples of empty
-            lego pieces are charclass() and pattern()
-        '''
-        raise NotImplementedError()
-
-    def matches(self, string):
-        return self.to_fsm().accepts(string)
-
-    def __contains__(self, string):
-        '''
-            This lets you use the syntax `"a" in pattern1` to see whether the string
-            "a" is in the set of strings matched by `pattern1`.
-        '''
-        return self.matches(string)
-
-    def strings(self, otherchar=None):
-        '''
-            Each time next() is called on this iterator, a new string is returned
-            which will the present lego piece can match. StopIteration is raised once
-            all such strings have been returned, although a regex with a * in may
-            match infinitely many strings.
-        '''
-
-        # In the case of a regex like "[^abc]", there are infinitely many (well, a
-        # very large finite number of) single characters which will match. It's not
-        # productive to iterate over all of these giving every single example.
-        # You must supply your own "otherchar" to stand in for all of these
-        # possibilities.
-        for string in self.to_fsm().strings():
-
-            # Have to represent `fsm.anything_else` somehow.
-            if fsm.anything_else in string:
-                if otherchar == None:
-                    raise Exception("Please choose an 'otherchar'")
-                string = [
-                    otherchar if char == fsm.anything_else else char
-                    for char in string
-                ]
-
-            yield "".join(string)
-
-    def __iter__(self):
-        '''
-            This allows you to do `for string in pattern1` as a list comprehension!
-        '''
-        return self.strings()
-
-    def cardinality(self):
-        '''
-            Consider the regular expression as a set of strings and return the
-            cardinality of that set, or raise an OverflowError if there are infinitely
-            many.
-        '''
-        # There is no way to do this other than converting to an FSM, because the
-        # pattern may allow duplicate routes, such as "a|a".
-        return self.to_fsm().cardinality()
-
-    def __len__(self):
-        return self.cardinality()
-
-    @call_fsm
-    def isdisjoint(self, other):
-        '''
-            Treat `self` and `other` as sets of strings and see if they are disjoint
-        '''
-        pass
-
-    def copy(self):
-        '''
-            For completeness only, since `set.copy()` also exists. Regular expression
-            objects are immutable, so I can see only very odd reasons to need this.
-        '''
-        raise NotImplementedError()
-
-    def __hash__(self):
-        '''For dictionaries'''
-        raise NotImplementedError()
-
-    def derive(self, string):
-        return from_fsm(self.to_fsm().derive(string))
-
-@dataclass(frozen=True)
-class charclass(rxelem):
-    '''
-        A charclass is basically a frozenset of symbols. The reason for the
-        charclass object instead of using frozenset directly is to allow us to
-        set a "negated" flag. A charclass with the negation flag set is assumed
-        to contain every symbol that is in the alphabet of all symbols but not
-        explicitly listed inside the frozenset. e.g. [^a]. This is very handy
-        if the full alphabet is extremely large, but also requires dedicated
-        combination functions.
-    '''
-    chars: Union[FrozenSet[str], str]
-    negated: bool = False
-
-    def __post_init__(self):
-        object.__setattr__(self, "chars", frozenset(self.chars))
-        # chars should consist only of chars
-        if fsm.anything_else in self.chars:
-            raise Exception("Can't put " + repr(fsm.anything_else) + " in a charclass")
-
-    def __eq__(self, other):
-        try:
-            return self.chars == other.chars and self.negated == other.negated
-        except AttributeError:
-            return False
-
-    def __hash__(self):
-        return hash((self.chars, self.negated))
-
-    # These are the characters carrying special meanings when they appear "outdoors"
-    # within a regular expression. To be interpreted literally, they must be
-    # escaped with a backslash.
-    allSpecial = set("\\[]|().?*+{}")
-
-    # These are the characters carrying special meanings when they appear INSIDE a
-    # character class (delimited by square brackets) within a regular expression.
-    # To be interpreted literally, they must be escaped with a backslash.
-    # Notice how much smaller this class is than the one above; note also that the
-    # hyphen and caret do NOT appear above.
-    classSpecial = set("\\[]^-")
-
-    # Shorthand codes for use inside charclasses e.g. [abc\d]
-    w = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz"
-    d = "0123456789"
-    s = "\t\n\v\f\r "
-    shorthand = {
-        w : "\\w",
-        d : "\\d",
-        s : "\\s",
-    }
-
-    def __str__(self):
-        # e.g. \w
-        if self in shorthand.keys():
-            return shorthand[self]
-
-        # e.g. [^a]
-        if self.negated:
-            return "[^" + self.escape() + "]"
-
-        # single character, not contained inside square brackets.
-        if len(self.chars) == 1:
-            # Python lacks the Axiom of Choice
-            char = "".join(self.chars)
-
-            # e.g. if char is "\t", return "\\t"
-            if char in escapes.keys():
-                return escapes[char]
-
-            if char in charclass.allSpecial:
-                return "\\" + char
-
-            # If char is an ASCII control character, don't print it directly,
-            # return a hex escape sequence e.g. "\\x00". Note that this includes
-            # tab and other characters already handled above
-            if 0 <= ord(char) <= 0x1F or ord(char) == 0x7f:
-                return "\\x" + "{0:02x}".format(ord(char))
-
-            return char
-
-        # multiple characters (or possibly 0 characters)
-        return "[" + self.escape() + "]"
-
-    def escape(self):
-
-        def escapeChar(char):
-            if char in charclass.classSpecial:
-                return "\\" + char
-            if char in escapes.keys():
-                return escapes[char]
-
-            # If char is an ASCII control character, don't print it directly,
-            # return a hex escape sequence e.g. "\\x00". Note that this includes
-            # tab and other characters already handled above
-            if 0 <= ord(char) <= 0x1F or ord(char) == 0x7f:
-                return "\\x" + "{0:02x}".format(ord(char))
-
-            return char
-
-        def recordRange():
-            # there's no point in putting a range when the whole thing is
-            # 3 characters or fewer. "abc" -> "abc" but "abcd" -> "a-d"
-            strs = [
-                # "ab" or "abc" or "abcd"
-                "".join(escapeChar(char) for char in currentRange),
-                # "a-b" or "a-c" or "a-d"
-                escapeChar(currentRange[0]) + "-" + escapeChar(currentRange[-1]),
-            ]
-            return sorted(strs, key=lambda str: len(str))[0]
-
-        output = ""
-
-        # use shorthand for known character ranges
-        # note the nested processing order. DO NOT process \d before processing
-        # \w. if more character class constants arise which do not nest nicely,
-        # a problem will arise because there is no clear ordering to use...
-
-        # look for ranges
-        currentRange = ""
-        for char in sorted(self.chars, key=ord):
-
-            # range is not empty: new char must fit after previous one
-            if len(currentRange) > 0:
-
-                i = ord(char)
-
-                # char doesn't fit old range: restart
-                if i != ord(currentRange[-1]) + 1:
-                    output += recordRange()
-                    currentRange = ""
-
-            currentRange += char
-
-        if len(currentRange) > 0:
-            output += recordRange()
-
-        return output
-
-    def to_fsm(self, alphabet=None):
-        if alphabet is None:
-            alphabet = self.alphabet()
-
-        # 0 is initial, 1 is final
-
-        # If negated, make a singular FSM accepting any other characters
-        if self.negated:
-            map = {
-                0: dict([(symbol, 1) for symbol in alphabet - self.chars]),
-            }
-
-        # If normal, make a singular FSM accepting only these characters
-        else:
-            map = {
-                0: dict([(symbol, 1) for symbol in self.chars]),
-            }
-
-        return fsm.fsm(
-            alphabet = alphabet,
-            states   = {0, 1},
-            initial  = 0,
-            finals   = {1},
-            map      = map,
-        )
-
-    def __repr__(self):
-        string = ""
-        if self.negated is True:
-            string += "~"
-        string += "charclass("
-        if len(self.chars) > 0:
-            string += repr("".join(str(char) for char in sorted(self.chars, key=str)))
-        string += ")"
-        return string
-
-    def reduce(self):
-        # charclasses cannot be reduced.
-        return self
-
-    def concatenate(self, other):
-        return mult(self, one) + other
-
-    def alphabet(self):
-        return {fsm.anything_else} | self.chars
-
-    def empty(self):
-        return len(self.chars) == 0 and self.negated == False
-
-    # set operations
-    def negate(self):
-        '''
-            Negate the current charclass. e.g. [ab] becomes [^ab]. Call
-            using "charclass2 = ~charclass1"
-        '''
-        return charclass(self.chars, negated=not self.negated)
-
-    def __invert__(self):
-        return self.negate()
-
-    def union(self, other):
-        # ¬A OR ¬B = ¬(A AND B)
-        # ¬A OR B = ¬(A - B)
-        # A OR ¬B = ¬(B - A)
-        # A OR B
-        if self.negated:
-            if other.negated:
-                return ~charclass(self.chars & other.chars)
-            return ~charclass(self.chars - other.chars)
-        if other.negated:
-            return ~charclass(other.chars - self.chars)
-        return charclass(self.chars | other.chars)
-
-    def intersection(self, other):
-        # ¬A AND ¬B = ¬(A OR B)
-        # ¬A AND B = B - A
-        # A AND ¬B = A - B
-        # A AND B
-        if self.negated:
-            if other.negated:
-                return ~charclass(self.chars | other.chars)
-            return charclass(other.chars - self.chars)
-        if other.negated:
-            return charclass(self.chars - other.chars)
-        return charclass(self.chars & other.chars)
-
-    def reversed(self):
-        return self
-
-    def copy(self):
-        return charclass(self.chars.copy(), negated=self.negated)
 
 class mult(rxelem):
     '''
@@ -625,9 +169,6 @@ class mult(rxelem):
     '''
 
     def __init__(self, multiplicand, multiplier):
-        if not hasattr(multiplicand, "chars") \
-        and not hasattr(multiplicand, "concs"):
-            raise Exception("what " + repr(multiplicand))
         self.__dict__["multiplicand"] = multiplicand
         self.__dict__["multiplier"]   = multiplier
 
@@ -647,12 +188,6 @@ class mult(rxelem):
         string += ", " + repr(self.multiplier)
         string += ")"
         return string
-
-    def concatenate(self, other):
-        return conc(self) + other
-
-    def union(self, other):
-        return conc(self) | other
 
     def dock(self, other):
         '''
@@ -676,18 +211,6 @@ class mult(rxelem):
 
         # Multiplicands disagree, no common part at all.
         return mult(nothing, zero)
-
-    def intersection(self, other):
-        # If two mults are given which have a common multiplicand, the shortcut
-        # is just to take the intersection of the two multiplicands.
-        if self.multiplicand == other.multiplicand \
-        and self.canintersect(other):
-            return mult(self.multiplicand, self.multiplier & other.multiplier)
-
-        # This situation is substantially more complicated if the multiplicand is,
-        # for example, a pattern. It's difficult to reason sensibly about this
-        # kind of thing.
-        return conc(self) & other
 
     def alphabet(self):
         return {fsm.anything_else} | self.multiplicand.alphabet()
@@ -782,10 +305,7 @@ class mult(rxelem):
         return mandatory + optional
 
     def reversed(self):
-        return mult(reversed(self.multiplicand), self.multiplier)
-
-    def copy(self):
-        return mult(self.multiplicand.copy(), self.multiplier.copy())
+        return mult(self.multiplicand.reversed(), self.multiplier)
 
 emptymult = mult(charclass(""), one)
 
@@ -815,21 +335,6 @@ class conc(rxelem):
         string += ")"
         return string
 
-    def concatenate(self, other):
-        # other must be a conc too
-        if hasattr(other, "chars") or hasattr(other, "concs"):
-            other = mult(other, one)
-        if hasattr(other, "multiplicand"):
-            other = conc(other)
-
-        return conc(*(self.mults + other.mults))
-
-    def union(self, other):
-        return pattern(self) | other
-
-    def intersection(self, other):
-        return pattern(self) & other
-
     def reduce(self):
         if self == emptyconc:
             return self
@@ -847,7 +352,10 @@ class conc(rxelem):
             if (
                 # Conc contains "()" (i.e. a mult containing only a pattern containing the
                 # empty string)? That can be removed e.g. "a()b" -> "ab"
-                self.mults[i].multiplicand == pattern(emptystring) \
+                (
+                    hasattr(self.mults[i].multiplicand, "concs") \
+                    and self.mults[i].multiplicand == pattern(emptystring)
+                ) \
 
                 # If a mult has an empty multiplicand, we can only match it
                 # zero times => empty string => remove it entirely
@@ -873,39 +381,35 @@ class conc(rxelem):
                 r = self.mults[i]
                 s = self.mults[i + 1]
 
-                # If R = S, then we can squish the multipliers together
-                # e.g. ab?b?c -> ab{0,2}c
-                if r.multiplicand == s.multiplicand:
-                    squished = mult(
-                        r.multiplicand,
-                        r.multiplier + s.multiplier
-                    )
-                    new = self.mults[:i] + (squished,) + self.mults[i + 2:]
-                    return conc(*new).reduce()
-
                 def promote(multiplicand):
                     if hasattr(multiplicand, "concs"):
                         return multiplicand
                     return pattern(conc(mult(multiplicand, one)))
 
-                rmPattern = None
-                smPattern = None
+                # promote so we can do intersection
+                rmPattern = promote(r.multiplicand)
+                smPattern = promote(s.multiplicand)
                 rmsmIntersection = None
+
+                # If R = S, then we can squish the multipliers together
+                # e.g. ab?b?c -> ab{0,2}c
+                if rmPattern == smPattern:
+                    squished = mult(
+                        rmPattern,
+                        r.multiplier + s.multiplier
+                    )
+                    new = self.mults[:i] + (squished,) + self.mults[i + 2:]
+                    return conc(*new).reduce()
 
                 # If R's language is a subset of S's, then R{a,b}S{c,} reduces to R{a}S{c,}...
                 # e.g. \d+\w+ -> \d\w+
                 # Do the cheapest checks first
                 if r.multiplier.min < r.multiplier.max \
                 and s.multiplier.max == inf:
-                    # promote so we can do intersection
-                    rmPattern = promote(r.multiplicand)
-                    smPattern = promote(s.multiplicand)
-
                     rmsmIntersection = rmPattern & smPattern
-
                     if rmsmIntersection.equivalent(rmPattern):
                         trimmed = mult(
-                            r.multiplicand,
+                            rmPattern,
                             multiplier(r.multiplier.min, r.multiplier.min)
                         )
                         new = self.mults[:i] + (trimmed, s) + self.mults[i + 2:]
@@ -916,18 +420,11 @@ class conc(rxelem):
                 # Do the cheapest checks first
                 if r.multiplier.max == inf \
                 and s.multiplier.min < s.multiplier.max:
-                    # promote so we can do intersection
-                    if rmPattern is None:
-                        rmPattern = promote(r.multiplicand)
-                    if smPattern is None:
-                        smPattern = promote(s.multiplicand)
-
                     if rmsmIntersection is None:
                         rmsmIntersection = rmPattern & smPattern
-
                     if rmsmIntersection.equivalent(smPattern):
                         trimmed = mult(
-                            s.multiplicand,
+                            smPattern,
                             multiplier(s.multiplier.min, s.multiplier.min)
                         )
                         new = self.mults[:i] + (r, trimmed) + self.mults[i + 2:]
@@ -1048,13 +545,10 @@ class conc(rxelem):
             ABC + DEF = ABCDEF, then ABCDEF.behead(AB) = CDEF.
         '''
         # Observe that FEDCBA - BA = FEDC.
-        return reversed(reversed(self).dock(reversed(other)))
+        return self.reversed().dock(other.reversed()).reversed()
 
     def reversed(self):
-        return conc(*reversed([reversed(m) for m in self.mults]))
-
-    def copy(self):
-        return conc(*[m.copy() for m in self.mults])
+        return conc(*reversed([m.reversed() for m in self.mults]))
 
 emptyconc = conc(emptymult)
 
@@ -1094,9 +588,6 @@ class pattern(rxelem):
         string += ")"
         return string
 
-    def concatenate(self, other):
-        return mult(self, one) + other
-
     def alphabet(self):
         return {fsm.anything_else}.union(*[c.alphabet() for c in self.concs])
 
@@ -1107,6 +598,15 @@ class pattern(rxelem):
         return True
 
     def intersection(self, other):
+        '''
+            Intersection function. Return an element which can match any string
+            that both self and other can match. Fairly elementary results relating
+            to regular languages and finite state machines show that this is
+            possible, but implementation is a BEAST in many cases. Here, we convert
+            both elements to FSMs (see to_fsm(), above) for the intersection, then
+            back to elements afterwards.
+            Call using "a = b & c"
+        '''
         # A deceptively simple method for an astoundingly difficult operation
         alphabet = self.alphabet() | other.alphabet()
 
@@ -1114,16 +614,25 @@ class pattern(rxelem):
         combined = self.to_fsm(alphabet) & other.to_fsm(alphabet)
         return from_fsm(combined)
 
-    def union(self, other):
-        # other must be a pattern too
-        if hasattr(other, "chars"):
-            other = mult(other, one)
-        if hasattr(other, "multiplicand"):
-            other = conc(other)
-        if hasattr(other, "mults"):
-            other = pattern(other)
+    def __and__(self, other):
+        return self.intersection(other)
 
+    @call_fsm
+    def difference(*elems):
+        '''
+            Return a regular expression which matches any string which `self` matches
+            but none of the strings which `other` matches.
+        '''
+        pass
+
+    def __sub__(self, other):
+        return self.difference(other)
+
+    def union(self, other):
         return pattern(*(self.concs | other.concs))
+
+    def __or__(self, other):
+        return self.union(other)
 
     def __str__(self):
         if len(self.concs) == 0:
@@ -1193,45 +702,58 @@ class pattern(rxelem):
 
         # If this pattern contains several concs each containing just 1 mult
         # each containing just a charclass, with a multiplier of 1,
-        # then we can merge those branches together.
+        # then we can merge those charclasses together.
         # e.g. "0|[1-9]|ab" -> "[0-9]|ab"
         changed = False
-        merger = None
+        merger = nothing
         rest = []
         for c in self.concs:
             if len(c.mults) == 1 \
             and c.mults[0].multiplier == one \
             and hasattr(c.mults[0].multiplicand, "chars"):
-                if merger is None:
-                    merger = c.mults[0].multiplicand
-                else:
-                    merger |= c.mults[0].multiplicand
+                if merger != nothing:
                     changed = True
+
+                def union(a, b):
+                    # ¬A OR ¬B = ¬(A AND B)
+                    # ¬A OR B = ¬(A - B)
+                    # A OR ¬B = ¬(B - A)
+                    # A OR B
+                    if a.negated:
+                        if b.negated:
+                            return ~charclass(a.chars & b.chars)
+                        else:
+                            return ~charclass(a.chars - b.chars)
+                    else:
+                        if b.negated:
+                            return ~charclass(b.chars - a.chars)
+                        else:
+                            return charclass(a.chars | b.chars)
+
+                merger = union(merger, c.mults[0].multiplicand)
             else:
                 rest.append(c)
         if changed:
             rest.append(conc(mult(merger, one)))
             return pattern(*rest).reduce()
 
-        # If one of the present pattern's concs is the empty string, and
-        # there is another conc with a single mult...
+        # If one of the present pattern's concs is the empty string...
         if emptystring in self.concs:
             for c in self.concs:
-                if len(c.mults) != 1:
-                    continue
-                # ...whose lower bound is 0, then we can omit the empty string.
-                # E.g. "|(ab)*|def" => "(ab)*|def".
-                if c.mults[0].multiplier.min == bound(0):
+                # ...and there is another conc with a single mult whose lower bound is 0...
+                if len(c.mults) == 1 and c.mults[0].multiplier.min == bound(0):
+                    # Then we can omit the empty string.
+                    # E.g. "|(ab)*|def" => "(ab)*|def".
                     rest = self.concs - {emptystring}
-                    return pattern(*rest)
+                    return pattern(*rest).reduce()
 
             for c in self.concs:
-                if len(c.mults) != 1:
-                    continue
-                # ...whose lower bound is 1, we can merge the empty string into that.
-                # E.g. "|(ab)+|def" => "(ab)*|def".
-                if c.mults[0].multiplier.min == bound(1):
-                    rest = self.concs - {emptystring, c} | {conc(mult(c.mults[0].multiplicand, c.mults[0].multiplier * qm))}
+                # ...and there is another conc with a single mult whose lower bound is 1...
+                if len(c.mults) == 1 and c.mults[0].multiplier.min == bound(1):
+                    # Then we can merge the empty string into that.
+                    # E.g. "|(ab)+|def" => "(ab)*|def".
+                    rest = self.concs - {emptystring}
+                    rest = rest - {c} | {conc(mult(c.mults[0].multiplicand, c.mults[0].multiplier * qm))}
                     return pattern(*rest).reduce()
 
         # If the present pattern's concs all have a common prefix, split
@@ -1254,6 +776,17 @@ class pattern(rxelem):
                 return pattern(conc(*mults)).reduce()
 
         return self
+
+    @call_fsm
+    def symmetric_difference(*elems):
+        '''
+            Return a regular expression matching only the strings recognised by
+            `self` or `other` but not both.
+        '''
+        pass
+
+    def __xor__(self, other):
+        return self.symmetric_difference(other)
 
     def dock(self, other):
         '''
@@ -1301,45 +834,105 @@ class pattern(rxelem):
         return fsm1
 
     def reversed(self):
-        return pattern(*(reversed(c) for c in self.concs))
+        return pattern(*(c.reversed() for c in self.concs))
 
     def copy(self):
-        return pattern(*(c.copy() for c in self.concs))
+        '''
+            For completeness only, since `set.copy()` also exists. `pattern`s
+            are immutable, so I can see only very odd reasons to need this
+        '''
+        return self
+
+    def equivalent(self, other):
+        '''
+            Two lego objects are equivalent if they recognise the same strings. Note
+            that in the general case this is actually quite an intensive calculation,
+            but far from unsolvable, as we demonstrate here:
+        '''
+        return self.to_fsm().equivalent(other.to_fsm())
+
+    @call_fsm
+    def everythingbut(self):
+        '''
+            Return a lego object which will match any string not matched by self,
+            and which will not match any string matched by self.
+            Another task which is very difficult in general (and typically returns
+            utter garbage when actually printed), but becomes trivial to code
+            thanks to FSM routines.
+        '''
+        pass
+
+    def derive(self, string):
+        return from_fsm(self.to_fsm().derive(string))
+
+    @call_fsm
+    def isdisjoint(self, other):
+        '''
+            Treat `self` and `other` as sets of strings and see if they are disjoint
+        '''
+        pass
+
+    def matches(self, string):
+        return self.to_fsm().accepts(string)
+
+    def __contains__(self, string):
+        '''
+            This lets you use the syntax `"a" in pattern1` to see whether the string
+            "a" is in the set of strings matched by `pattern1`.
+        '''
+        return self.matches(string)
+
+    def __reversed__(self):
+        return self.reversed()
+
+    def cardinality(self):
+        '''
+            Consider the regular expression as a set of strings and return the
+            cardinality of that set, or raise an OverflowError if there are infinitely
+            many.
+        '''
+        # There is no way to do this other than converting to an FSM, because the
+        # pattern may allow duplicate routes, such as "a|a".
+        return self.to_fsm().cardinality()
+
+    def __len__(self):
+        return self.cardinality()
+
+    def strings(self, otherchar=None):
+        '''
+            Each time next() is called on this iterator, a new string is returned
+            which will the present lego piece can match. StopIteration is raised once
+            all such strings have been returned, although a regex with a * in may
+            match infinitely many strings.
+        '''
+
+        # In the case of a regex like "[^abc]", there are infinitely many (well, a
+        # very large finite number of) single characters which will match. It's not
+        # productive to iterate over all of these giving every single example.
+        # You must supply your own "otherchar" to stand in for all of these
+        # possibilities.
+        for string in self.to_fsm().strings():
+
+            # Have to represent `fsm.anything_else` somehow.
+            if fsm.anything_else in string:
+                if otherchar == None:
+                    raise Exception("Please choose an 'otherchar'")
+                string = [
+                    otherchar if char == fsm.anything_else else char
+                    for char in string
+                ]
+
+            yield "".join(string)
+
+    def __iter__(self):
+        '''
+            This allows you to do `for string in pattern1` as a list comprehension!
+        '''
+        return self.strings()
 
 emptypattern = pattern(emptyconc)
 
 # Special and useful values go here.
-
-# Standard character classes
-w = charclass("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz")
-d = charclass("0123456789")
-s = charclass("\t\n\v\f\r ")
-W = ~w
-D = ~d
-S = ~s
-
-# This charclasses expresses "no possibilities at all"
-# and can never match anything.
-nothing = charclass("")
-
-dot = ~nothing
-
-# Textual representations of standard character classes
-shorthand = {
-    w : "\\w", d : "\\d", s : "\\s",
-    W : "\\W", D : "\\D", S : "\\S",
-    dot : ".",
-}
-
-# Characters which users may escape in a regex instead of inserting them
-# literally. In ASCII order:
-escapes = {
-    "\t" : "\\t", # tab
-    "\n" : "\\n", # line feed
-    "\v" : "\\v", # vertical tab
-    "\f" : "\\f", # form feed
-    "\r" : "\\r", # carriage return
-}
 
 # A very special conc expressing the empty string, ""
 emptystring = conc()

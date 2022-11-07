@@ -3,7 +3,8 @@
 if __name__ == "__main__":
     raise Exception("Test files can't be run directly. Use `python -m pytest greenery`")
 
-from greenery.lego import conc, mult, charclass, pattern, d, multiplier, bound, dot, inf
+from greenery.lego import conc, mult, charclass, pattern, multiplier, bound, inf
+from .rxelems.charclass import charclass, d, dot
 from .rxelems.multiplier import one, star, plus, qm
 from greenery.parse import nomatch, matchCharclass, parse, matchMult
 
