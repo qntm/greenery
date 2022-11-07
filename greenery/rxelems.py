@@ -5,212 +5,16 @@
     need to be in the same source file?
 '''
 
+from dataclasses import dataclass
+from typing import Union
+
 from .fsm import Fsm, ANYTHING_ELSE, null, epsilon, alphabet_key
 from .multiplier import Multiplier, ZERO, QM, ONE, STAR
 from .charclass import Charclass, NULLCHARCLASS
 from .bound import Bound, INF
 
 
-class Multiplicand:
-    '''
-        Either a `Charclass` or a `Pattern`
-    '''
-    def __init__(self, inner):
-        self.__dict__["inner"] = inner
-
-    def __eq__(self, other):
-        return type(self.inner) == type(other.inner) \
-               and self.inner == other.inner
-
-    def __hash__(self):
-        return hash(self.inner)
-
-    def alphabet(self):
-        return self.inner.alphabet()
-
-    def to_fsm(self, alphabet=None):
-        if alphabet is None:
-            alphabet = self.alphabet()
-        return self.inner.to_fsm()
-
-    def __repr__(self):
-        return f"Multiplicand({repr(self.inner)})"
-
-    def empty(self):
-        return self.inner.empty()
-
-    def reduce(self):
-        if self == NULLMULTIPLICAND:
-            return self
-
-        # Can't match anything: reduce to empty `Multiplicand`
-        if self.empty():
-            return NULLMULTIPLICAND
-
-        # Try recursively reducing `self.inner`
-        reduced = self.inner.reduce()
-        if type(reduced) != type(self.inner) or reduced != self.inner:
-            return Multiplicand(reduced).reduce()
-
-        return self
-
-    def __str__(self):
-        if isinstance(self.inner, Pattern):
-            return "(" + str(self.inner) + ")"
-        if isinstance(self.inner, Charclass):
-            return str(self.inner)
-        raise Exception(f"Unknown type {str(type(self.inner))}")
-
-    def reversed(self):
-        return Multiplicand(self.inner.reversed())
-
-class Mult():
-    '''
-        A `Mult` is a combination of a multiplicand with a multiplier (a min
-        and a max). The vast majority of characters in regular expressions
-        occur without a specific multiplier, which is implicitly equivalent to
-        a min of 1 and a max of 1, but many more have explicit multipliers like
-        "*" (min = 0, max = INF) and so on.
-
-        e.g. a, b{2}, c?, d*, [efg]{2,5}, f{2,}, (anysubpattern)+, .*, ...
-    '''
-
-    def __init__(self, multiplicand, multiplier):
-        self.__dict__["multiplicand"] = multiplicand
-        self.__dict__["multiplier"] = multiplier
-
-    def __eq__(self, other):
-        return self.multiplicand == other.multiplicand \
-               and self.multiplier == other.multiplier
-
-    def __hash__(self):
-        return hash((self.multiplicand, self.multiplier))
-
-    def __repr__(self):
-        return f"Mult({repr(self.multiplicand)}, {repr(self.multiplier)})"
-
-    def dock(self, other):
-        '''
-            "Dock" another `Mult` from this one (i.e. remove part of the tail)
-            and return the result. The reverse of concatenation. This is a lot
-            trickier.
-            e.g. a{4,5} - a{3} = a{1,2}
-        '''
-        if other.multiplicand != self.multiplicand:
-            raise Exception(
-                f"Can't subtract {repr(other)} from {repr(self)}"
-            )
-        return Mult(self.multiplicand, self.multiplier - other.multiplier)
-
-    def common(self, other):
-        '''
-            Return the common part of these two mults. This is the largest
-            `Mult` which can be safely subtracted from both the originals. The
-            multiplier on this `Mult` could be `ZERO`: this is the case if, for
-            example, the multiplicands disagree.
-        '''
-        if self.multiplicand == other.multiplicand:
-            return Mult(
-                self.multiplicand,
-                self.multiplier.common(other.multiplier)
-            )
-
-        # Multiplicands disagree, no common part at all.
-        return Mult(NULLMULTIPLICAND, ZERO)
-
-    def alphabet(self):
-        return {ANYTHING_ELSE} | self.multiplicand.alphabet()
-
-    def empty(self):
-        return self.multiplicand.empty() and self.multiplier.min > Bound(0)
-
-    def reduce(self):
-        if self == NULLMULT:
-            return self
-
-        # Can't match anything: reduce to empty `Mult`
-        if self.empty():
-            return NULLMULT
-
-        # Try recursively reducing our multiplicand
-        reduced = self.multiplicand.reduce()
-        if reduced != self.multiplicand:
-            return Mult(reduced, self.multiplier).reduce()
-
-        # If our multiplicand is a `Pattern` containing an empty `Conc`
-        # we can pull that "optional" bit out into our own multiplier
-        # instead.
-        # e.g. (A|B|C|) -> (A|B|C)?
-        # e.g. (A|B|C|){2} -> (A|B|C){0,2}
-        if isinstance(self.multiplicand.inner, Pattern) \
-           and EMPTYSTRING in self.multiplicand.inner.concs \
-           and self.multiplier.canmultiplyby(QM):
-            return Mult(
-                Multiplicand(
-                    Pattern(
-                        *filter(
-                            lambda conc: len(conc.mults) != 0,
-                            self.multiplicand.inner.concs
-                        )
-                    )
-                ),
-                self.multiplier * QM,
-            ).reduce()
-
-        # If our multiplicand is a `Pattern` containing a single `Conc`
-        # containing a single `Mult`, we can scrap the `Pattern` in favour of
-        # that `Mult`'s multiplicand
-        # e.g. ([ab])* -> [ab]*
-        # e.g. ((a))* -> (a)* -> a*
-        # NOTE: this logic lives here at the `Mult` level, NOT in
-        # `Pattern.reduce` because we want to return another `Mult` (same type)
-        if isinstance(self.multiplicand.inner, Pattern) \
-           and len(self.multiplicand.inner.concs) == 1:
-            (conc,) = self.multiplicand.inner.concs
-            if len(conc.mults) == 1 \
-               and conc.mults[0].multiplier.canmultiplyby(self.multiplier):
-                return Mult(
-                    conc.mults[0].multiplicand,
-                    conc.mults[0].multiplier * self.multiplier
-                ).reduce()
-
-        # no reduction possible
-        return self
-
-    def __str__(self):
-        return str(self.multiplicand) + str(self.multiplier)
-
-    def to_fsm(self, alphabet=None):
-        if alphabet is None:
-            alphabet = self.alphabet()
-
-        # worked example: (min, max) = (5, 7) or (5, INF)
-        # (mandatory, optional) = (5, 2) or (5, INF)
-
-        unit = self.multiplicand.to_fsm(alphabet)
-        # accepts e.g. "ab"
-
-        # accepts "ababababab"
-        mandatory = unit * self.multiplier.mandatory.v
-
-        # unlimited additional copies
-        if self.multiplier.optional == INF:
-            optional = unit.star()
-            # accepts "(ab)*"
-
-        else:
-            optional = epsilon(alphabet) | unit
-            # accepts "(ab)?"
-
-            optional *= self.multiplier.optional.v
-            # accepts "(ab)?(ab)?"
-
-        return mandatory + optional
-
-    def reversed(self):
-        return Mult(self.multiplicand.reversed(), self.multiplier)
-
-
+@dataclass(frozen=True)
 class Conc():
     '''
         A `Conc` (short for "concatenation") is a tuple of `Mult`s i.e. an
@@ -218,9 +22,8 @@ class Conc():
         e.g. abcde[^fg]*h{4}[a-z]+(subpattern)(subpattern2)
         To express the empty string, use an empty `Conc`, Conc().
     '''
-
     def __init__(self, *mults):
-        self.__dict__["mults"] = tuple(mults)
+        object.__setattr__(self, "mults", tuple(mults))
 
     def __eq__(self, other):
         return self.mults == other.mults
@@ -585,6 +388,7 @@ def call_fsm(method):
     return new_method
 
 
+@dataclass(frozen=True)
 class Pattern():
     '''
         A `Pattern` (also known as an "alt", short for "alternation") is a
@@ -602,7 +406,7 @@ class Pattern():
         `Conc`s: "ghi" and "jkl".
     '''
     def __init__(self, *concs):
-        self.__dict__["concs"] = frozenset(concs)
+        object.__setattr__(self, "concs", frozenset(concs))
 
     def __eq__(self, other):
         return self.concs == other.concs
@@ -957,6 +761,206 @@ class Pattern():
             comprehension!
         '''
         return self.strings()
+
+
+@dataclass(frozen=True)
+class Multiplicand:
+    inner: Union[Charclass, Pattern]
+
+    def __init__(self, inner):
+        self.__dict__["inner"] = inner
+
+    def __eq__(self, other):
+        return type(self.inner) == type(other.inner) \
+               and self.inner == other.inner
+
+    def __hash__(self):
+        return hash(self.inner)
+
+    def alphabet(self):
+        return self.inner.alphabet()
+
+    def to_fsm(self, alphabet=None):
+        if alphabet is None:
+            alphabet = self.alphabet()
+        return self.inner.to_fsm()
+
+    def __repr__(self):
+        return f"Multiplicand({repr(self.inner)})"
+
+    def empty(self):
+        return self.inner.empty()
+
+    def reduce(self):
+        if self == NULLMULTIPLICAND:
+            return self
+
+        # Can't match anything: reduce to empty `Multiplicand`
+        if self.empty():
+            return NULLMULTIPLICAND
+
+        # Try recursively reducing `self.inner`
+        reduced = self.inner.reduce()
+        if type(reduced) != type(self.inner) or reduced != self.inner:
+            return Multiplicand(reduced).reduce()
+
+        return self
+
+    def __str__(self):
+        if isinstance(self.inner, Pattern):
+            return "(" + str(self.inner) + ")"
+        if isinstance(self.inner, Charclass):
+            return str(self.inner)
+        raise Exception(f"Unknown type {str(type(self.inner))}")
+
+    def reversed(self):
+        return Multiplicand(self.inner.reversed())
+
+
+@dataclass(frozen=True)
+class Mult():
+    '''
+        A `Mult` is a combination of a multiplicand with a multiplier (a min
+        and a max). The vast majority of characters in regular expressions
+        occur without a specific multiplier, which is implicitly equivalent to
+        a min of 1 and a max of 1, but many more have explicit multipliers like
+        "*" (min = 0, max = INF) and so on.
+
+        e.g. a, b{2}, c?, d*, [efg]{2,5}, f{2,}, (anysubpattern)+, .*, ...
+    '''
+    multiplicand: Multiplicand
+    multiplier: Multiplier
+
+    def __eq__(self, other):
+        return self.multiplicand == other.multiplicand \
+               and self.multiplier == other.multiplier
+
+    def __hash__(self):
+        return hash((self.multiplicand, self.multiplier))
+
+    def __repr__(self):
+        return f"Mult({repr(self.multiplicand)}, {repr(self.multiplier)})"
+
+    def dock(self, other):
+        '''
+            "Dock" another `Mult` from this one (i.e. remove part of the tail)
+            and return the result. The reverse of concatenation. This is a lot
+            trickier.
+            e.g. a{4,5} - a{3} = a{1,2}
+        '''
+        if other.multiplicand != self.multiplicand:
+            raise Exception(
+                f"Can't subtract {repr(other)} from {repr(self)}"
+            )
+        return Mult(self.multiplicand, self.multiplier - other.multiplier)
+
+    def common(self, other):
+        '''
+            Return the common part of these two mults. This is the largest
+            `Mult` which can be safely subtracted from both the originals. The
+            multiplier on this `Mult` could be `ZERO`: this is the case if, for
+            example, the multiplicands disagree.
+        '''
+        if self.multiplicand == other.multiplicand:
+            return Mult(
+                self.multiplicand,
+                self.multiplier.common(other.multiplier)
+            )
+
+        # Multiplicands disagree, no common part at all.
+        return Mult(NULLMULTIPLICAND, ZERO)
+
+    def alphabet(self):
+        return {ANYTHING_ELSE} | self.multiplicand.alphabet()
+
+    def empty(self):
+        return self.multiplicand.empty() and self.multiplier.min > Bound(0)
+
+    def reduce(self):
+        if self == NULLMULT:
+            return self
+
+        # Can't match anything: reduce to empty `Mult`
+        if self.empty():
+            return NULLMULT
+
+        # Try recursively reducing our multiplicand
+        reduced = self.multiplicand.reduce()
+        if reduced != self.multiplicand:
+            return Mult(reduced, self.multiplier).reduce()
+
+        # If our multiplicand is a `Pattern` containing an empty `Conc`
+        # we can pull that "optional" bit out into our own multiplier
+        # instead.
+        # e.g. (A|B|C|) -> (A|B|C)?
+        # e.g. (A|B|C|){2} -> (A|B|C){0,2}
+        if isinstance(self.multiplicand.inner, Pattern) \
+           and EMPTYSTRING in self.multiplicand.inner.concs \
+           and self.multiplier.canmultiplyby(QM):
+            return Mult(
+                Multiplicand(
+                    Pattern(
+                        *filter(
+                            lambda conc: len(conc.mults) != 0,
+                            self.multiplicand.inner.concs
+                        )
+                    )
+                ),
+                self.multiplier * QM,
+            ).reduce()
+
+        # If our multiplicand is a `Pattern` containing a single `Conc`
+        # containing a single `Mult`, we can scrap the `Pattern` in favour of
+        # that `Mult`'s multiplicand
+        # e.g. ([ab])* -> [ab]*
+        # e.g. ((a))* -> (a)* -> a*
+        # NOTE: this logic lives here at the `Mult` level, NOT in
+        # `Pattern.reduce` because we want to return another `Mult` (same type)
+        if isinstance(self.multiplicand.inner, Pattern) \
+           and len(self.multiplicand.inner.concs) == 1:
+            (conc,) = self.multiplicand.inner.concs
+            if len(conc.mults) == 1 \
+               and conc.mults[0].multiplier.canmultiplyby(self.multiplier):
+                return Mult(
+                    conc.mults[0].multiplicand,
+                    conc.mults[0].multiplier * self.multiplier
+                ).reduce()
+
+        # no reduction possible
+        return self
+
+    def __str__(self):
+        return str(self.multiplicand) + str(self.multiplier)
+
+    def to_fsm(self, alphabet=None):
+        if alphabet is None:
+            alphabet = self.alphabet()
+
+        # worked example: (min, max) = (5, 7) or (5, INF)
+        # (mandatory, optional) = (5, 2) or (5, INF)
+
+        unit = self.multiplicand.to_fsm(alphabet)
+        # accepts e.g. "ab"
+
+        # accepts "ababababab"
+        mandatory = unit * self.multiplier.mandatory.v
+
+        # unlimited additional copies
+        if self.multiplier.optional == INF:
+            optional = unit.star()
+            # accepts "(ab)*"
+
+        else:
+            optional = epsilon(alphabet) | unit
+            # accepts "(ab)?"
+
+            optional *= self.multiplier.optional.v
+            # accepts "(ab)?(ab)?"
+
+        return mandatory + optional
+
+    def reversed(self):
+        return Mult(self.multiplicand.reversed(), self.multiplier)
 
 
 NULLMULTIPLICAND = Multiplicand(NULLCHARCLASS)

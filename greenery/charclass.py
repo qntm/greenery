@@ -49,9 +49,15 @@ class Charclass():
     d = "0123456789"
     s = "\t\n\v\f\r "
     shorthand = {
-        w : "\\w",
-        d : "\\d",
-        s : "\\s",
+        w: "\\w",
+        d: "\\d",
+        s: "\\s",
+    }
+
+    negated_shorthand = {
+        w: "\\W",
+        d: "\\D",
+        s: "\\S",
     }
 
     def __str__(self):

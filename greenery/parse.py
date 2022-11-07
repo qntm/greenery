@@ -97,7 +97,14 @@ def match_class_interior_1(string, i):
     # Attempt 1: shorthand e.g. "\w"
     for key in Charclass.shorthand:
         try:
-            return key, static(string, i, Charclass.shorthand[key])
+            return key, False, static(string, i, Charclass.shorthand[key])
+        except NoMatch:
+            pass
+
+    # Attempt 1B: shorthand e.g. "\W"
+    for key in Charclass.negated_shorthand:
+        try:
+            return key, True, static(string, i, Charclass.negated_shorthand[key])
         except NoMatch:
             pass
 
@@ -112,34 +119,47 @@ def match_class_interior_1(string, i):
 
         # Be strict here, "d-d" is not allowed
         if firstIndex >= lastIndex:
-            raise NoMatch(
-                "Range '" +
-                first +
-                "' to '" +
-                last +
-                "' not allowed"
-            )
+            raise NoMatch(f"Range '{first}' to '{last}' not allowed")
 
         chars = "".join([
             chr(i) for i in range(firstIndex, lastIndex + 1)
         ])
-        return chars, k
+        return chars, False, k
     except NoMatch:
         pass
 
     # Attempt 3: just a character on its own
-    return match_internal_char(string, i)
+    (char, j) = match_internal_char(string, i)
+    return char, False, j
 
 
 def match_class_interior(string, i):
     internals = ""
+    internals_negated = False
     try:
         while True:
-            internal, i = match_class_interior_1(string, i)
-            internals += internal
+            internal, internal_negated, i = match_class_interior_1(string, i)
+            if internal_negated:
+                if internals_negated:
+                    # E.g. [a1\D\W]
+                    internals += internal
+                else:
+                    # E.g. [a1\D]: `internals` is "a1", `internal` is "0123456789"
+                    # Result should be "023456789"
+                    internals_negated = True
+                    internals = "".join(char for char in internal if char not in internals)
+            else:
+                if internals_negated:
+                    # E.g. [\D1]: `internals` is "0123456789" negated, `internal` is "1"
+                    # Result should be "023456789"
+                    # E.g. [\D1a]: `internals` is "023456789" negated, `internal` is "a"
+                    # Result should be "023456789"
+                    internals = "".join(char for char in internals if char not in internal)
+                else:
+                    internals += internal
     except NoMatch:
         pass
-    return internals, i
+    return internals, internals_negated, i
 
 
 def match_charclass(string: str, i):
@@ -156,18 +176,18 @@ def match_charclass(string: str, i):
     # "[^dsgsdg]"
     try:
         j = static(string, i, "[^")
-        chars, j = match_class_interior(string, j)
+        chars, negated, j = match_class_interior(string, j)
         j = static(string, j, "]")
-        return ~Charclass(chars), j
+        return Charclass(chars, not negated), j
     except NoMatch:
         pass
 
     # "[sdfsf]"
     try:
         j = static(string, i, "[")
-        chars, j = match_class_interior(string, j)
+        chars, negated, j = match_class_interior(string, j)
         j = static(string, j, "]")
-        return Charclass(chars), j
+        return Charclass(chars, negated), j
     except NoMatch:
         pass
 

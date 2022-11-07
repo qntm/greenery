@@ -6,7 +6,7 @@ if __name__ == "__main__":
     )
 
 from .bound import Bound, INF
-from .charclass import Charclass, DOT
+from .charclass import Charclass, DOT, NULLCHARCLASS, DIGIT
 from .multiplier import Multiplier, ONE, STAR, PLUS
 from .rxelems import Mult, Conc, Pattern, Multiplicand
 from .parse import NoMatch, match_charclass, parse, match_mult
@@ -27,6 +27,35 @@ def test_charclass_matching():
         assert False
     except NoMatch:
         pass
+    assert match_charclass("[\\d]", 0) == (DIGIT, 4)
+
+def test_negatives_inside_charclasses():
+    assert match_charclass("[\\D]", 0) == (~DIGIT, 4)
+    assert match_charclass("[a\\D]", 0) == (~DIGIT, 5)
+    assert match_charclass("[a1\\D]", 0) == (~Charclass("023456789"), 6)
+    assert match_charclass("[1a\\D]", 0) == (~Charclass("023456789"), 6)
+    assert match_charclass("[1\\D]", 0) == (~Charclass("023456789"), 5)
+    assert match_charclass("[\\Da]", 0) == (~DIGIT, 5)
+    assert match_charclass("[\\D1]", 0) == (~Charclass("023456789"), 5)
+    assert match_charclass("[\\D1a]", 0) == (~Charclass("023456789"), 6)
+    assert match_charclass("[\\D\\d]", 0) == (DOT, 6)
+    assert match_charclass("[\\D\\D]", 0) == (~DIGIT, 6)
+    assert match_charclass("[\\S\\D]", 0) == (~Charclass("\t\n\v\f\r 0123456789"), 6)
+    assert match_charclass("[\\S \\D]", 0) == (~Charclass("\t\n\v\f\r0123456789"), 7)
+
+def test_negated_negatives_inside_charclasses():
+    assert match_charclass("[^\\D]", 0) == (DIGIT, 5)
+    assert match_charclass("[^a\\D]", 0) == (DIGIT, 6)
+    assert match_charclass("[^a1\\D]", 0) == (Charclass("023456789"), 7)
+    assert match_charclass("[^1a\\D]", 0) == (Charclass("023456789"), 7)
+    assert match_charclass("[^1\\D]", 0) == (Charclass("023456789"), 6)
+    assert match_charclass("[^\\Da]", 0) == (DIGIT, 6)
+    assert match_charclass("[^\\D1]", 0) == (Charclass("023456789"), 6)
+    assert match_charclass("[^\\D1a]", 0) == (Charclass("023456789"), 7)
+    assert match_charclass("[^\\D\\d]", 0) == (NULLCHARCLASS, 7)
+    assert match_charclass("[^\\D\\D]", 0) == (DIGIT, 7)
+    assert match_charclass("[^\\S\\D]", 0) == (Charclass("\t\n\v\f\r 0123456789"), 7)
+    assert match_charclass("[^\\S \\D]", 0) == (Charclass("\t\n\v\f\r0123456789"), 8)
 
 
 def test_mult_matching():
@@ -135,11 +164,11 @@ def test_conc_parsing():
     )
     assert parse("\\d{4}-\\d{2}-\\d{2}") == Pattern(
         Conc(
-            Mult(Multiplicand(Charclass("0123456789")), Multiplier(Bound(4), Bound(4))),
+            Mult(Multiplicand(DIGIT), Multiplier(Bound(4), Bound(4))),
             Mult(Multiplicand(Charclass("-")), ONE),
-            Mult(Multiplicand(Charclass("0123456789")), Multiplier(Bound(2), Bound(2))),
+            Mult(Multiplicand(DIGIT), Multiplier(Bound(2), Bound(2))),
             Mult(Multiplicand(Charclass("-")), ONE),
-            Mult(Multiplicand(Charclass("0123456789")), Multiplier(Bound(2), Bound(2))),
+            Mult(Multiplicand(DIGIT), Multiplier(Bound(2), Bound(2))),
         )
     )
 
