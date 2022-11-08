@@ -147,6 +147,7 @@ Special `Bound` representing no limit. Can be used as an upper bound only.
 ### Running tests
 
 ```sh
+pycodestyle **/*.py
 pytest
 ```
 

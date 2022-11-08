@@ -2,59 +2,57 @@
 
 from .charclass import Charclass
 from .multiplier import ONE, ZERO
-from .rxelems import Pattern, Conc, Mult, Multiplicand
+from .rxelems import Pattern, Conc, Mult
 from .parse import parse
 
 
 def test_pattern_equality():
     assert Pattern(
-        Conc(Mult(Multiplicand(Charclass("a")), ONE)),
-        Conc(Mult(Multiplicand(Charclass("b")), ONE)),
+        Conc(Mult(Charclass("a"), ONE)),
+        Conc(Mult(Charclass("b"), ONE)),
     ) == Pattern(
-        Conc(Mult(Multiplicand(Charclass("b")), ONE)),
-        Conc(Mult(Multiplicand(Charclass("a")), ONE)),
+        Conc(Mult(Charclass("b"), ONE)),
+        Conc(Mult(Charclass("a"), ONE)),
     )
     assert Pattern(
-        Conc(Mult(Multiplicand(Charclass("a")), ONE)),
-        Conc(Mult(Multiplicand(Charclass("a")), ONE)),
+        Conc(Mult(Charclass("a"), ONE)),
+        Conc(Mult(Charclass("a"), ONE)),
     ) == Pattern(
-        Conc(Mult(Multiplicand(Charclass("a")), ONE)),
+        Conc(Mult(Charclass("a"), ONE)),
     )
 
 
 def test_pattern_str():
     assert str(Pattern(
-        Conc(Mult(Multiplicand(Charclass("a")), ONE)),
-        Conc(Mult(Multiplicand(Charclass("b")), ONE)),
+        Conc(Mult(Charclass("a"), ONE)),
+        Conc(Mult(Charclass("b"), ONE)),
     )) == "a|b"
     assert str(Pattern(
-        Conc(Mult(Multiplicand(Charclass("a")), ONE)),
-        Conc(Mult(Multiplicand(Charclass("a")), ONE)),
+        Conc(Mult(Charclass("a"), ONE)),
+        Conc(Mult(Charclass("a"), ONE)),
     )) == "a"
     assert str(Pattern(
         Conc(
-            Mult(Multiplicand(Charclass("a")), ONE),
-            Mult(Multiplicand(Charclass("b")), ONE),
-            Mult(Multiplicand(Charclass("c")), ONE),
+            Mult(Charclass("a"), ONE),
+            Mult(Charclass("b"), ONE),
+            Mult(Charclass("c"), ONE),
         ),
         Conc(
-            Mult(Multiplicand(Charclass("d")), ONE),
-            Mult(Multiplicand(Charclass("e")), ONE),
-            Mult(Multiplicand(Charclass("f")), ONE),
+            Mult(Charclass("d"), ONE),
+            Mult(Charclass("e"), ONE),
+            Mult(Charclass("f"), ONE),
             Mult(
-                Multiplicand(
-                    Pattern(
-                        Conc(
-                            Mult(Multiplicand(Charclass("g")), ONE),
-                            Mult(Multiplicand(Charclass("h")), ONE),
-                            Mult(Multiplicand(Charclass("i")), ONE),
-                        ),
-                        Conc(
-                            Mult(Multiplicand(Charclass("j")), ONE),
-                            Mult(Multiplicand(Charclass("k")), ONE),
-                            Mult(Multiplicand(Charclass("l")), ONE),
-                        ),
-                    )
+                Pattern(
+                    Conc(
+                        Mult(Charclass("g"), ONE),
+                        Mult(Charclass("h"), ONE),
+                        Mult(Charclass("i"), ONE),
+                    ),
+                    Conc(
+                        Mult(Charclass("j"), ONE),
+                        Mult(Charclass("k"), ONE),
+                        Mult(Charclass("l"), ONE),
+                    ),
                 ),
                 ONE,
             ),
@@ -71,9 +69,7 @@ def test_mult_reduction_easy():
     assert Pattern(
         Conc(
             Mult(
-                Multiplicand(
-                    Charclass("a")
-                ),
+                Charclass("a"),
                 ZERO,
             )
         )
@@ -84,9 +80,7 @@ def test_mult_reduction_easy():
         Pattern(
             Conc(
                 Mult(
-                    Multiplicand(
-                        Charclass("a")
-                    ),
+                    Charclass("a"),
                     ZERO,
                 )
             )
@@ -102,17 +96,17 @@ def test_empty_conc_suppression():
     assert str(Pattern(
         Conc(
             # this `Mult` can never actually match anything
-            Mult(Multiplicand(Pattern()), ONE),
-            Mult(Multiplicand(Charclass("0")), ONE),
-            Mult(Multiplicand(Charclass("0123456789")), ONE),
+            Mult(Pattern(), ONE),
+            Mult(Charclass("0"), ONE),
+            Mult(Charclass("0123456789"), ONE),
         )  # so neither can this `Conc`
     ).reduce()) == "[]"
 
 
 def test_pattern_dock():
-    a = Mult(Multiplicand(Charclass("a")), ONE)
-    c = Mult(Multiplicand(Charclass("c")), ONE)
-    f = Mult(Multiplicand(Charclass("f")), ONE)
+    a = Mult(Charclass("a"), ONE)
+    c = Mult(Charclass("c"), ONE)
+    f = Mult(Charclass("f"), ONE)
 
     assert parse("a|bc").dock(Conc()) == parse("a|bc")
     assert parse("aa|bca").dock(Conc(a)) == parse("a|bc")
@@ -122,10 +116,10 @@ def test_pattern_dock():
 
 
 def test_pattern_beheading():
-    a = Mult(Multiplicand(Charclass("a")), ONE)
-    c = Mult(Multiplicand(Charclass("c")), ONE)
-    f = Mult(Multiplicand(Charclass("f")), ONE)
-    z = Mult(Multiplicand(Charclass("Z")), ONE)
+    a = Mult(Charclass("a"), ONE)
+    c = Mult(Charclass("c"), ONE)
+    f = Mult(Charclass("f"), ONE)
+    z = Mult(Charclass("Z"), ONE)
 
     assert parse("aa").behead(Conc(a)) == parse("a")
     assert parse("abc|aa").behead(Conc(a)) == parse("a|bc")

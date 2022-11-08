@@ -5,7 +5,7 @@ from typing import Tuple
 from .bound import Bound, INF
 from .charclass import Charclass, shorthand, escapes
 from .multiplier import Multiplier, symbolic
-from .rxelems import Pattern, Conc, Mult, Multiplicand
+from .rxelems import Pattern, Conc, Mult
 
 
 class NoMatch(Exception):
@@ -96,7 +96,6 @@ def match_internal_char(string, i):
 def match_class_interior_1(string, i):
     # Attempt 1: shorthand e.g. "\w"
     for frozenset, shorthand in Charclass.shorthand.items():
-        print(frozenset, shorthand)
         try:
             return frozenset, False, static(string, i, shorthand)
         except NoMatch:
@@ -224,7 +223,7 @@ def match_multiplicand(string, i):
             j, group_name = read_until(string, j, '>')
         pattern, j = match_pattern(string, j)
         j = static(string, j, ")")
-        return Multiplicand(pattern), j
+        return pattern, j
     except NoMatch:
         pass
 
@@ -233,13 +232,13 @@ def match_multiplicand(string, i):
         j = static(string, i, "(")
         pattern, j = match_pattern(string, j)
         j = static(string, j, ")")
-        return Multiplicand(pattern), j
+        return pattern, j
     except NoMatch:
         pass
 
     # Just a `Charclass` on its own
     charclass, j = match_charclass(string, i)
-    return Multiplicand(charclass), j
+    return charclass, j
 
 
 def match_any_of(string, i, collection):

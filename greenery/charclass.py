@@ -7,7 +7,7 @@ from .fsm import Fsm, ANYTHING_ELSE
 
 
 @dataclass(frozen=True)
-class Charclass():
+class Charclass:
     '''
         A `Charclass` is basically a `frozenset` of symbols.
         A `Charclass` with the `negated` flag set is assumed
@@ -28,7 +28,9 @@ class Charclass():
             )
 
     def __eq__(self, other):
-        return self.chars == other.chars and self.negated == other.negated
+        return isinstance(other, Charclass) \
+               and self.chars == other.chars \
+               and self.negated == other.negated
 
     def __hash__(self):
         return hash((self.chars, self.negated))

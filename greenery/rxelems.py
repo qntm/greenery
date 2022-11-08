@@ -53,13 +53,15 @@ class Conc():
                 # Conc contains "()" (i.e. a `Mult` containing only a `Pattern`
                 # containing the empty string)? That can be removed
                 # e.g. "a()b" -> "ab"
-                mult.multiplicand == Multiplicand(Pattern(EMPTYSTRING)) \
+                (
+                    mult.multiplicand == Pattern(EMPTYSTRING)
+                ) \
 
                 # If a `Mult` has an empty multiplicand, we can only match it
                 # zero times => empty string => remove it entirely
                 # e.g. "a[]{0,3}b" -> "ab"
                 or (
-                    mult.multiplicand.empty() \
+                    mult.multiplicand.empty()
                     and mult.multiplier.min == Bound(0)
                 ) \
 
@@ -80,8 +82,8 @@ class Conc():
                 s = self.mults[i + 1]
 
                 def to_pattern(multiplicand):
-                    if isinstance(multiplicand.inner, Pattern):
-                        return multiplicand.inner  # technically a demotion
+                    if isinstance(multiplicand, Pattern):
+                        return multiplicand
                     return Pattern(Conc(Mult(multiplicand, ONE)))
 
                 # so we can do intersection
@@ -93,7 +95,7 @@ class Conc():
                 # e.g. ab?b?c -> ab{0,2}c
                 if rm_pattern == sm_pattern:
                     squished = Mult(
-                        Multiplicand(rm_pattern),
+                        rm_pattern,
                         r.multiplier + s.multiplier
                     )
                     new = self.mults[:i] + (squished,) + self.mults[i + 2:]
@@ -108,7 +110,7 @@ class Conc():
                     rm_sm_intersection = rm_pattern & sm_pattern
                     if rm_sm_intersection.equivalent(rm_pattern):
                         trimmed = Mult(
-                            Multiplicand(rm_pattern),
+                            rm_pattern,
                             Multiplier(r.multiplier.min, r.multiplier.min)
                         )
                         new = self.mults[:i] + \
@@ -126,7 +128,7 @@ class Conc():
                         rm_sm_intersection = rm_pattern & sm_pattern
                     if rm_sm_intersection.equivalent(sm_pattern):
                         trimmed = Mult(
-                            Multiplicand(sm_pattern),
+                            sm_pattern,
                             Multiplier(s.multiplier.min, s.multiplier.min)
                         )
                         new = self.mults[:i] + \
@@ -141,9 +143,9 @@ class Conc():
         # AND NOT "a(d(ab|a*c)|y)"
         for i, mult in enumerate(self.mults):
             if mult.multiplier == ONE \
-               and isinstance(mult.multiplicand.inner, Pattern) \
-               and len(mult.multiplicand.inner.concs) == 1:
-                (conc,) = mult.multiplicand.inner.concs
+               and isinstance(mult.multiplicand, Pattern) \
+               and len(mult.multiplicand.concs) == 1:
+                (conc,) = mult.multiplicand.concs
                 new = self.mults[:i] + conc.mults + self.mults[i + 1:]
                 return Conc(*new).reduce()
 
@@ -320,13 +322,13 @@ def from_fsm(f: Fsm):
         for symbol in f.map[a]:
             b = f.map[a][symbol]
             if symbol == ANYTHING_ELSE:
-                linkcharclass = ~Charclass(f.alphabet - {ANYTHING_ELSE})
+                charclass = ~Charclass(f.alphabet - {ANYTHING_ELSE})
             else:
-                linkcharclass = Charclass({symbol})
+                charclass = Charclass({symbol})
 
             brz[a][b] = Pattern(
                 *brz[a][b].concs,
-                Conc(Mult(Multiplicand(linkcharclass), ONE))
+                Conc(Mult(charclass, ONE))
             ).reduce()
 
     # Now perform our back-substitution
@@ -337,14 +339,14 @@ def from_fsm(f: Fsm):
         # equations, we need to resolve the self-transition (if any).
         # e.g.    R_a = 0 R_a |   1 R_b |   2 R_c
         # becomes R_a =         0*1 R_b | 0*2 R_c
-        loopmult = Mult(Multiplicand(brz[a][a]), STAR)  # i.e. "0*"
+        loop = Mult(brz[a][a], STAR)  # i.e. "0*"
         del brz[a][a]
 
         for right in brz[a]:
             brz[a][right] = Pattern(
                 Conc(
-                    loopmult,
-                    Mult(Multiplicand(brz[a][right]), ONE)
+                    loop,
+                    Mult(brz[a][right], ONE)
                 )
             ).reduce()
 
@@ -365,8 +367,8 @@ def from_fsm(f: Fsm):
                 brz[b][right] = Pattern(
                     *brz[b][right].concs,
                     Conc(
-                        Mult(Multiplicand(univ), ONE),
-                        Mult(Multiplicand(brz[a][right]), ONE)
+                        Mult(univ, ONE),
+                        Mult(brz[a][right], ONE)
                     )
                 ).reduce()
 
@@ -409,7 +411,7 @@ class Pattern:
         object.__setattr__(self, "concs", frozenset(concs))
 
     def __eq__(self, other):
-        return self.concs == other.concs
+        return isinstance(other, Pattern) and self.concs == other.concs
 
     def __hash__(self):
         return hash(self.concs)
@@ -482,8 +484,8 @@ class Pattern:
             (conc,) = self.concs
             if len(conc.mults) == 1 \
                and conc.mults[0].multiplier == ONE \
-               and isinstance(conc.mults[0].multiplicand.inner, Pattern):
-                return conc.mults[0].multiplicand.inner.reduce()
+               and isinstance(conc.mults[0].multiplicand, Pattern):
+                return conc.mults[0].multiplicand.reduce()
 
         # If this `Pattern` contains several `Conc`s each containing just 1
         # `Mult` and their multiplicands agree, we may be able to merge the
@@ -525,13 +527,13 @@ class Pattern:
         for conc in self.concs:
             if len(conc.mults) == 1 \
                and conc.mults[0].multiplier == ONE \
-               and isinstance(conc.mults[0].multiplicand.inner, Charclass):
-                merged_charclass |= conc.mults[0].multiplicand.inner
+               and isinstance(conc.mults[0].multiplicand, Charclass):
+                merged_charclass |= conc.mults[0].multiplicand
                 num_merged += 1
             else:
                 rest.append(conc)
         if num_merged >= 2:
-            rest.append(Conc(Mult(Multiplicand(merged_charclass), ONE)))
+            rest.append(Conc(Mult(merged_charclass, ONE)))
             return Pattern(*rest).reduce()
 
         # If one of the present `Pattern`'s `Conc`s is the empty string...
@@ -570,7 +572,7 @@ class Pattern:
             prefix = self._commonconc()
             if prefix != EMPTYSTRING:
                 leftovers = self.behead(prefix)
-                mults = prefix.mults + (Mult(Multiplicand(leftovers), ONE),)
+                mults = prefix.mults + (Mult(leftovers, ONE),)
                 return Pattern(Conc(*mults)).reduce()
 
             # Same but for suffixes.
@@ -578,7 +580,7 @@ class Pattern:
             suffix = self._commonconc(suffix=True)
             if suffix != EMPTYSTRING:
                 leftovers = self.dock(suffix)
-                mults = (Mult(Multiplicand(leftovers), ONE),) + suffix.mults
+                mults = (Mult(leftovers, ONE),) + suffix.mults
                 return Pattern(Conc(*mults)).reduce()
 
         return self
@@ -667,7 +669,7 @@ class Pattern:
             minimum and a maximum; maximum may be infinite (for Kleene star
             closure). Call using "a = b * qm"
         '''
-        return Pattern(Conc(Mult(Multiplicand(self), multiplier)))
+        return Pattern(Conc(Mult(self, multiplier)))
 
     def __mul__(self, multiplier):
         return self.times(multiplier)
@@ -755,61 +757,7 @@ class Pattern:
 
 
 @dataclass(frozen=True)
-class Multiplicand:
-    inner: Union[Charclass, Pattern]
-
-    def __init__(self, inner):
-        self.__dict__["inner"] = inner
-
-    def __eq__(self, other):
-        return isinstance(other.inner, type(self.inner)) \
-               and self.inner == other.inner
-
-    def __hash__(self):
-        return hash(self.inner)
-
-    def alphabet(self):
-        return self.inner.alphabet()
-
-    def to_fsm(self, alphabet=None):
-        if alphabet is None:
-            alphabet = self.alphabet()
-        return self.inner.to_fsm()
-
-    def __repr__(self):
-        return f"Multiplicand({repr(self.inner)})"
-
-    def empty(self):
-        return self.inner.empty()
-
-    def reduce(self):
-        if self == NULLMULTIPLICAND:
-            return self
-
-        # Can't match anything: reduce to empty `Multiplicand`
-        if self.empty():
-            return NULLMULTIPLICAND
-
-        # Try recursively reducing `self.inner`
-        reduced = self.inner.reduce()
-        if not isinstance(reduced, type(self.inner)) or reduced != self.inner:
-            return Multiplicand(reduced).reduce()
-
-        return self
-
-    def __str__(self):
-        if isinstance(self.inner, Pattern):
-            return "(" + str(self.inner) + ")"
-        if isinstance(self.inner, Charclass):
-            return str(self.inner)
-        raise Exception(f"Unknown type {str(type(self.inner))}")
-
-    def reversed(self):
-        return Multiplicand(self.inner.reversed())
-
-
-@dataclass(frozen=True)
-class Mult():
+class Mult:
     '''
         A `Mult` is a combination of a multiplicand with a multiplier (a min
         and a max). The vast majority of characters in regular expressions
@@ -819,11 +767,12 @@ class Mult():
 
         e.g. a, b{2}, c?, d*, [efg]{2,5}, f{2,}, (anysubpattern)+, .*, ...
     '''
-    multiplicand: Multiplicand
+    multiplicand: Union[Charclass, Pattern]
     multiplier: Multiplier
 
     def __eq__(self, other):
-        return self.multiplicand == other.multiplicand \
+        return isinstance(other.multiplicand, type(self.multiplicand)) \
+               and self.multiplicand == other.multiplicand \
                and self.multiplier == other.multiplier
 
     def __hash__(self):
@@ -859,7 +808,7 @@ class Mult():
             )
 
         # Multiplicands disagree, no common part at all.
-        return Mult(NULLMULTIPLICAND, ZERO)
+        return Mult(NULLCHARCLASS, ZERO)
 
     def alphabet(self):
         return {ANYTHING_ELSE} | self.multiplicand.alphabet()
@@ -885,16 +834,14 @@ class Mult():
         # instead.
         # e.g. (A|B|C|) -> (A|B|C)?
         # e.g. (A|B|C|){2} -> (A|B|C){0,2}
-        if isinstance(self.multiplicand.inner, Pattern) \
-           and EMPTYSTRING in self.multiplicand.inner.concs \
+        if isinstance(self.multiplicand, Pattern) \
+           and EMPTYSTRING in self.multiplicand.concs \
            and self.multiplier.canmultiplyby(QM):
             return Mult(
-                Multiplicand(
-                    Pattern(
-                        *filter(
-                            lambda conc: len(conc.mults) != 0,
-                            self.multiplicand.inner.concs
-                        )
+                Pattern(
+                    *filter(
+                        lambda conc: len(conc.mults) != 0,
+                        self.multiplicand.concs
                     )
                 ),
                 self.multiplier * QM,
@@ -907,9 +854,9 @@ class Mult():
         # e.g. ((a))* -> (a)* -> a*
         # NOTE: this logic lives here at the `Mult` level, NOT in
         # `Pattern.reduce` because we want to return another `Mult` (same type)
-        if isinstance(self.multiplicand.inner, Pattern) \
-           and len(self.multiplicand.inner.concs) == 1:
-            (conc,) = self.multiplicand.inner.concs
+        if isinstance(self.multiplicand, Pattern) \
+           and len(self.multiplicand.concs) == 1:
+            (conc,) = self.multiplicand.concs
             if len(conc.mults) == 1 \
                and conc.mults[0].multiplier.canmultiplyby(self.multiplier):
                 return Mult(
@@ -921,7 +868,11 @@ class Mult():
         return self
 
     def __str__(self):
-        return str(self.multiplicand) + str(self.multiplier)
+        if isinstance(self.multiplicand, Pattern):
+            return f"({str(self.multiplicand)}){str(self.multiplier)}"
+        if isinstance(self.multiplicand, Charclass):
+            return f"{str(self.multiplicand)}{str(self.multiplier)}"
+        raise Exception(f"Unknown type {str(type(self.inner))}")
 
     def to_fsm(self, alphabet=None):
         if alphabet is None:
@@ -954,8 +905,7 @@ class Mult():
         return Mult(self.multiplicand.reversed(), self.multiplier)
 
 
-NULLMULTIPLICAND = Multiplicand(NULLCHARCLASS)
-NULLMULT = Mult(NULLMULTIPLICAND, ONE)
+NULLMULT = Mult(NULLCHARCLASS, ONE)
 NULLCONC = Conc(NULLMULT)
 EMPTYSTRING = Conc()
 NULLPATTERN = Pattern(NULLCONC)
