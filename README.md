@@ -64,10 +64,10 @@ An empty charclass `[]` is legal and matches no characters: when used in a regul
 
 * Parentheses are used to alternate between multiple possibilities e.g. `(a|bc)` only, not for capture grouping. Here's why:
 
-        ```python
-        print(parse("(ab)c") & parse("a(bc)"))
-        # "abc"
-        ```
+  ```python
+  print(parse("(ab)c") & parse("a(bc)"))
+  # "abc"
+  ```
 
 * The `(?:...)` syntax for non-capturing groups is permitted, but does nothing.
 
