@@ -109,6 +109,7 @@ Call this method to try to simplify the regular expression object. The follow si
 * `(ab|cd|ef|)g` to `(ab|cd|ef)?g`
 * `([ab])*` to `[ab]*`
 * `ab?b?c` to `ab{0,2}c`
+* `aa` to `a{2}`
 * `a(d(ab|a*c))` to `ad(ab|a*c)`
 * `0|[2-9]` to `[02-9]`
 * `abc|ade` to `a(bc|de)`
@@ -120,7 +121,7 @@ The value returned is a new `Pattern` object.
 
 Note that in a few cases this did *not* result in a shorter regular expression.
 
-### Multiplier(Bound, Bound)
+### Multiplier
 
 A combination of a finite lower `Bound` (see below) and a possibly-infinite upper `Bound`.
 
@@ -142,7 +143,7 @@ Special `Multiplier`, equal to `Multiplier(Bound(0), Bound(1))`. When it appears
 
 Special `Multiplier`, equal to `Multiplier(Bound(1), INF)`. When it appears in a regular expression, this is `{1,}` or `+`.
 
-### Bound(number)
+### Bound
 
 Represents a non-negative integer or infinity.
 
