@@ -28,15 +28,15 @@ abcdef
 []
 ```
 
-In the penultimate example, the empty string is returned, because only the empty string is in both of the regular languages `a*` and `b*`. In the final example, an empty character class has been returned. An empty character class can never match anything, which means that this is the smallest representation of a regular expression which matches no strings at all. Note that this is different from only matching the empty string.
+In the penultimate example, the empty string is returned, because only the empty string is in both of the regular languages `a*` and `b*`. In the final example, an empty character class has been returned. An empty character class can never match anything, which means `greenery` can use this to represent a regular expression which matches no strings at all. Note that this is different from only matching the empty string.
 
-`greenery` works by converting regular expressions to finite state machines, computing the intersection of the two FSMs as a third FSM, and using the Brzozowski algebraic method (*q.v.*) to convert the third FSM back to a regular expression.
+Internally, `greenery` works by converting regular expressions to finite state machines, computing the intersection of the two FSMs as a third FSM, and using the Brzozowski algebraic method (*q.v.*) to convert the third FSM back to a regular expression.
 
 ## API
 
 ### parse(string)
 
-This function takes a regular expression (_i.e._ a string) as input and returns a `Pattern` object representing that regular expression.
+This function takes a regular expression (_i.e._ a string) as input and returns a `Pattern` object (see below) representing that regular expression.
 
 Note that this is an entirely different concept from that of simply creating and using those regular expressions, functionality which is present in basically every programming language in the world, [Python included](http://docs.python.org/library/re.html).
 
@@ -71,7 +71,9 @@ An empty charclass `[]` is legal and matches no characters: when used in a regul
 
 ### Pattern
 
-A regular language is a possibly-infinite set of strings. With this in mind, `Pattern` implements numerous [methods like those on `frozenset`](https://docs.python.org/3/library/stdtypes.html#frozenset), as well as many regular expression-specific methods. `Pattern`s are immutable.
+A `Pattern` is represents a regular expression. A regular language is a possibly-infinite set of strings. With this in mind, `Pattern` implements numerous [methods like those on `frozenset`](https://docs.python.org/3/library/stdtypes.html#frozenset), as well as many regular expression-specific methods. `Pattern`s are immutable.
+
+It's not intended that you construct new `Pattern` instances directly; use `parse(string)`, above.
 
 Method | Behaviour
 ---|---
@@ -81,9 +83,9 @@ Method | Behaviour
 `pattern.cardinality()` <br/> `len(pattern)` | Returns the number of strings which the regular expression matches. Throws an `OverflowError` if this number is infinite.
 `pattern1.equivalent(pattern2)` | Returns `True` if the two regular expressions match exactly the same strings, otherwise `False`.
 `pattern.copy()` | Returns a shallow copy of `pattern`.
-`pattern.everythingbut()` | Returns a regular expression which matches every string not matched by the original. `pattern.everythingbut().everythingbut()` matches the same strings as `pattern`, but is not necessarily identical.
+`pattern.everythingbut()` | Returns a regular expression which matches every string not matched by the original. `pattern.everythingbut().everythingbut()` matches the same strings as `pattern`, but is not necessarily identical in structure.
 `pattern.reversed()` <br/> `reversed(pattern)` | Returns a reversed regular expression. For each string that `pattern` matched, `reversed(pattern)` will match the reversed string. `reversed(reversed(pattern))` matches the same strings as `pattern`, but is not necessarily identical.
-`pattern.times(star)` <br/> `pattern * star` | Returns the input regular expression multiplied  by any `Multiplier` (see below).
+`pattern.times(star)` <br/> `pattern * star` | Returns the input regular expression multiplied by any `Multiplier` (see below).
 `pattern1.concatenate(pattern2, ...)` <br/> `pattern1 + pattern2 + ...` | Returns a regular expression which matches any string of the form *a·b·...* where *a* is a string matched by `pattern1`, *b* is a string matched by `pattern2` and so on.
 `pattern1.union(pattern2, ...)` <br/> `pattern1 \| pattern2 \| ...` | Returns a regular expression matching any string matched by any of the input regular expressions. This is also called *alternation*.
 `pattern1.intersection(pattern2, ...)` <br/> `pattern1 & pattern2 & ...` | Returns a regular expression matching any string matched by all input regular expressions. The successful implementation of this method was the ultimate goal of this entire project.
@@ -92,7 +94,7 @@ Method | Behaviour
 `pattern.derive("a")` | Return the [Brzozowski derivative](https://en.wikipedia.org/wiki/Brzozowski_derivative) of the input regular expression with respect to "a".
 `pattern.reduce()` | Returns a regular expression which is equivalent to `pattern` (*i.e.* matches exactly the same strings) but is simplified as far as possible. See dedicated section below.
 
-#### Pattern.reduce()
+#### pattern.reduce()
 
 Call this method to try to simplify the regular expression object. The follow simplification heuristics are supported:
 
@@ -115,24 +117,30 @@ Note that in a few cases this did *not* result in a shorter regular expression.
 A combination of a finite lower `Bound` (see below) and a possibly-infinite upper `Bound`.
 
 ```python
-from greenery import Bound, INF, Multiplier
+from greenery import parse, Bound, INF, Multiplier
 
-multiplier = Multiplier(Bound(3), INF)  # equivalent to {3,}
+print(parse("a") * Multiplier(Bound(3), INF)) # "a{3,}"
 ```
 
-#### Special multipliers
+### STAR
 
-* `QM` (`Multiplier(Bound(0), Bound(1))`)
-* `STAR` (`Multiplier(Bound(0), INF)`)
-* `PLUS` (`Multiplier(Bound(1), INF)`)
+Special `Multiplier`, equal to `Multiplier(Bound(0), INF)`. As a regular expression, this is `{0,}`, the [Kleene star](https://en.wikipedia.org/wiki/Kleene_star) `*`.
 
-### Bound
+### QM
+
+Special `Multiplier`, equal to `Multiplier(Bound(0), Bound(1))`. As a regular expression, this is `{0,1}` or `?`.
+
+### PLUS
+
+Special `Multiplier`, equal to `Multiplier(Bound(1), INF)`. As a regular expression, this is `{1,}` or `+`.
+
+### Bound(number)
 
 Represents a non-negative integer or infinity.
 
-#### Special bounds
+### INF
 
-* `INF`
+Special `Bound` representing no limit. Can be used as an upper bound only.
 
 ## Development
 

@@ -647,8 +647,8 @@ class Pattern():
             alphabet = self.alphabet()
 
         fsm1 = null(alphabet)
-        for c in self.concs:
-            fsm1 |= c.to_fsm(alphabet)
+        for conc in self.concs:
+            fsm1 |= conc.to_fsm(alphabet)
         return fsm1
 
     def reversed(self):
@@ -669,14 +669,13 @@ class Pattern():
         '''
         return self.to_fsm().equivalent(other.to_fsm())
 
-    @call_fsm
     def times(self, multiplier):
         '''
             Equivalent to repeated concatenation. Multiplier consists of a
             minimum and a maximum; maximum may be infinite (for Kleene star
             closure). Call using "a = b * qm"
         '''
-        return from_fsm(self.to_fsm().times(multiplier))
+        return Pattern(Conc(Mult(Multiplicand(self), multiplier)))
 
     def __mul__(self, multiplier):
         return self.times(multiplier)

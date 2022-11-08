@@ -73,7 +73,7 @@ class Multiplier:
             The proof isn't simple but suffice it to say that {p,p+q} * {r,r+s}
             is equal to {pr, (p+q)(r+s)} only if s=0 or qr+1 >= p. If not, then
             at least one gap appears in the range. The first inaccessible
-            number is (p+q)r+1.
+            number is (p+q)r+1. And no, multiplication is not commutative
         '''
         return other.optional == Bound(0) or \
             self.optional * other.mandatory + Bound(1) >= self.mandatory

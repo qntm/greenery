@@ -78,7 +78,7 @@ class Fsm:
                     raise Exception(
                         f"Transition for state {repr(state)} "
                         f"and symbol {repr(symbol)} "
-                        f"leads to {repr(self.map[state][symbol])},
+                        f"leads to {repr(self.map[state][symbol])}, "
                         "which is not a state"
                     )
 
