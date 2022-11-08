@@ -182,7 +182,7 @@ class Fsm:
 
         return "".join("".join(row) + "\n" for row in rows)
 
-    def concatenate(*fsms: 'fsm'):
+    def concatenate(*fsms):
         '''
             Concatenate arbitrarily many finite state machines together.
         '''

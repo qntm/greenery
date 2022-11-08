@@ -1,6 +1,6 @@
 # greenery
 
-Tools for parsing and manipulating regular expressions.
+Tools for parsing and manipulating regular expressions. Note that this is a very different concept from that of simply *creating and using* those regular expressions, functionality which is present in basically every programming language in the world, [Python included](http://docs.python.org/library/re.html).
 
 This project was undertaken because I wanted to be able to **compute the intersection between two regular expressions**. The "intersection" is the set of strings which both regular expressions will accept, represented as a third regular expression.
 
@@ -12,20 +12,26 @@ pip install greenery
 
 ## Example
 
-```
->>> from greenery import parse
->>> print(parse("abc...") & parse("...def"))
-abcdef
->>> print(parse("\d{4}-\d{2}-\d{2}") & parse("19.*"))
-19\d{2}-\d{2}-\d{2}
->>> print(parse("\W*") & parse("[a-g0-8$%\^]+") & parse("[^d]{2,8}"))
-[$%\^]{2,8}
->>> print(parse("[bc]*[ab]*") & parse("[ab]*[bc]*"))
-([ab]*a|[bc]*c)?b*
->>> print(parse("a*") & parse("b*"))
+```python
+from greenery import parse
 
->>> print(parse("a") & parse("b"))
-[]
+print(parse("abc...") & parse("...def"))
+# "abcdef"
+
+print(parse("\d{4}-\d{2}-\d{2}") & parse("19.*"))
+# "19\d{2}-\d{2}-\d{2}"
+
+print(parse("\W*") & parse("[a-g0-8$%\^]+") & parse("[^d]{2,8}"))
+# "[$%\^]{2,8}"
+
+print(parse("[bc]*[ab]*") & parse("[ab]*[bc]*"))
+# "([ab]*a|[bc]*c)?b*"
+
+print(parse("a*") & parse("b*"))
+# ""
+
+print(parse("a") & parse("b"))
+# "[]"
 ```
 
 In the penultimate example, the empty string is returned, because only the empty string is in both of the regular languages `a*` and `b*`. In the final example, an empty character class has been returned. An empty character class can never match anything, which means `greenery` can use this to represent a regular expression which matches no strings at all. Note that this is different from only matching the empty string.
@@ -37,8 +43,6 @@ Internally, `greenery` works by converting regular expressions to finite state m
 ### parse(string)
 
 This function takes a regular expression (_i.e._ a string) as input and returns a `Pattern` object (see below) representing that regular expression.
-
-Note that this is an entirely different concept from that of simply creating and using those regular expressions, functionality which is present in basically every programming language in the world, [Python included](http://docs.python.org/library/re.html).
 
 The following metacharacters and formations have their usual meanings: `.`, `*`, `+`, `?`, `{m}`, `{m,}`, `{m,n}`, `()`, `|`, `[]`, `^` within `[]` character ranges only, `-` within `[]` character ranges only, and `\` to escape any of the preceding characters or itself.
 
@@ -54,14 +58,16 @@ An empty charclass `[]` is legal and matches no characters: when used in a regul
 
 * The `^` and `$` metacharacters are not supported. By default, `greenery` assumes that all regexes are anchored at the start and end of any input string. Carets and dollar signs will be parsed as themselves. If you want to *not* anchor at the start or end of the string, put `.*` at the start or end of your regex respectively.
 
- This is because computing the intersection between `.*a.*` and `.*b.*` (1) is largely pointless and (2) usually results in gibberish coming out of the program.
+  This is because computing the intersection between `.*a.*` and `.*b.*` (1) is largely pointless and (2) usually results in gibberish coming out of the program.
 
 * The greedy operators `*?`, `+?`, `??` and `{m,n}?` are not supported, since they do not alter the regular language.
 
 * Parentheses are used to alternate between multiple possibilities e.g. `(a|bc)` only, not for capture grouping. Here's why:
 
-        >>> print(parse("(ab)c") & parse("a(bc)"))
-        abc
+        ```python
+        print(parse("(ab)c") & parse("a(bc)"))
+        # "abc"
+        ```
 
 * The `(?:...)` syntax for non-capturing groups is permitted, but does nothing.
 
@@ -71,7 +77,9 @@ An empty charclass `[]` is legal and matches no characters: when used in a regul
 
 ### Pattern
 
-A `Pattern` is represents a regular expression. A regular language is a possibly-infinite set of strings. With this in mind, `Pattern` implements numerous [methods like those on `frozenset`](https://docs.python.org/3/library/stdtypes.html#frozenset), as well as many regular expression-specific methods. `Pattern`s are immutable.
+A `Pattern` represents a regular expression and exposes various methods for manipulating it and combining it with other regular expressions. `Pattern`s are immutable.
+
+A regular language is a possibly-infinite set of strings. With this in mind, `Pattern` implements numerous [methods like those on `frozenset`](https://docs.python.org/3/library/stdtypes.html#frozenset), as well as many regular expression-specific methods.
 
 It's not intended that you construct new `Pattern` instances directly; use `parse(string)`, above.
 
@@ -124,15 +132,15 @@ print(parse("a") * Multiplier(Bound(3), INF)) # "a{3,}"
 
 ### STAR
 
-Special `Multiplier`, equal to `Multiplier(Bound(0), INF)`. As a regular expression, this is `{0,}`, the [Kleene star](https://en.wikipedia.org/wiki/Kleene_star) `*`.
+Special `Multiplier`, equal to `Multiplier(Bound(0), INF)`. When it appears in a regular expression, this is `{0,}` or the [Kleene star](https://en.wikipedia.org/wiki/Kleene_star) `*`.
 
 ### QM
 
-Special `Multiplier`, equal to `Multiplier(Bound(0), Bound(1))`. As a regular expression, this is `{0,1}` or `?`.
+Special `Multiplier`, equal to `Multiplier(Bound(0), Bound(1))`. When it appears in a regular expression, this is `{0,1}` or `?`.
 
 ### PLUS
 
-Special `Multiplier`, equal to `Multiplier(Bound(1), INF)`. As a regular expression, this is `{1,}` or `+`.
+Special `Multiplier`, equal to `Multiplier(Bound(1), INF)`. When it appears in a regular expression, this is `{1,}` or `+`.
 
 ### Bound(number)
 
@@ -147,7 +155,8 @@ Special `Bound` representing no limit. Can be used as an upper bound only.
 ### Running tests
 
 ```sh
-pycodestyle **/*.py
+flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+flake8 . --count --exit-zero --max-complexity=10 --max-line-length=80 --statistics
 pytest
 ```
 

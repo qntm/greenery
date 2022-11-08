@@ -9,9 +9,7 @@ import pickle
 
 from .fsm import Fsm, ANYTHING_ELSE
 from .rxelems import from_fsm
-from .bound import Bound, INF
-from .charclass import Charclass, DIGIT, WORDCHAR, SPACECHAR
-from .multiplier import Multiplier, ONE, STAR, PLUS, QM, ZERO
+from .charclass import DIGIT, WORDCHAR
 from .parse import parse
 
 
@@ -345,7 +343,7 @@ def test_rxelems_recursion_error():
     ))) == "0[01]"
 
 
-def test_even_star_bug():
+def test_even_star_bug1():
     # Bug fix. This is a(a{2})* (i.e. accepts an odd number of "a" chars in a
     # row), but when from_fsm() is called, the result is "a+". Turned out to be
     # a fault in the rxelems.multiplier.__mul__() routine
@@ -364,7 +362,7 @@ def test_even_star_bug():
     assert not elesscomplex.accepts("aa")
     assert elesscomplex.accepts("aaa")
     elesscomplex = from_fsm(elesscomplex)
-    assert str(elesscomplex) in {"a(aa)*", "(aa)*a"}
+    assert str(elesscomplex) in {"a(a{2})*", "(a{2})*a"}
     elesscomplex = elesscomplex.to_fsm()
     assert not elesscomplex.accepts("")
     assert elesscomplex.accepts("a")
@@ -477,9 +475,9 @@ def test_bad_alphabet():
         try:
             from_fsm(f)
             assert False
-        except AssertionError as e:
+        except AssertionError:
             raise Exception(f"Accepted bad symbol: {repr(bad_symbol)}")
-        except Exception as e:
+        except Exception:
             pass
 
 
@@ -496,6 +494,7 @@ def test_dead_default():
                 3: {"/": 4, ANYTHING_ELSE: 2, "*": 3},
         }
     ))
+    assert str(blockquote) == "/\\*([^*]|\\*+[^*/])*\\*+/"
 
 
 ###############################################################################
@@ -554,11 +553,13 @@ def test_isinstance_bug():
     # Problem relating to isinstance(). The class `Mult` was occurring as both
     # rxelems.Mult and as __main__.Mult and apparently these count as different
     # classes for some reason, so isinstance(m, Mult) was returning false.
-    starfree = parse(
-        str(parse("").everythingbut()) +
-        "aa" +
-        str(parse("").everythingbut())
-    ).everythingbut()
+    var = str(parse("").everythingbut()) \
+        + "aa" \
+        + str(parse("").everythingbut())
+    assert var == ".+aa.+"
+
+    starfree = parse(var).everythingbut()
+    assert str(starfree) == "(.(a?[^a])*a{0,2})?"
 
 
 ###############################################################################
@@ -656,7 +657,7 @@ def test_mult_multiplication():
         parse("a{4,}").reduce()
 
 
-def test_even_star_bug():
+def test_even_star_bug2():
     # Defect: (a{2})* should NOT reduce to a*
     assert parse("(a{2})*").reduce() != parse("a*").reduce()
 

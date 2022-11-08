@@ -466,7 +466,7 @@ def test_invalid_fsms():
 
 def test_bad_multiplier(a):
     try:
-        x = a * -1
+        a * -1
         assert False
     except AssertionError:
         assert False

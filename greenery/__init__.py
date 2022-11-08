@@ -3,9 +3,10 @@
 # In theory this should just pull in the `parse` function, but it turns out
 # that the act of performing any relative import suddenly makes EVERY MODULE
 # AVAILABLE IN SCOPE?
-from .parse import parse
-from .bound import Bound, INF
-from .multiplier import Multiplier, QM, STAR, PLUS
+# Ignore errors because we are in fact importing these values to re-export them
+from .parse import parse  # noqa: F401
+from .bound import Bound, INF  # noqa: F401
+from .multiplier import Multiplier, QM, STAR, PLUS  # noqa: F401
 
 # WHY ARE THESE MODULE OBJECTS IN SCOPE SUDDENLY? I DIDN'T ASK FOR THEM
 # print(bound, fsm, charclass, rxelems)

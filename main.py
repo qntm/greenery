@@ -1,10 +1,10 @@
 from greenery import Bound, INF, Multiplier, PLUS, QM, STAR, parse
 
-a = parse("a")
-print(a)  # "a"
+pattern = parse("a")
+print(pattern)  # "a"
 
-a = a * PLUS * QM * STAR * Multiplier(Bound(3), INF)
-print(a)  # "((((a)+)?)*){3,}"
+pattern = pattern * PLUS * QM * STAR * Multiplier(Bound(3), INF)
+print(pattern)  # "((((a)+)?)*){3,}"
 
-a = a.reduce()
-print(a)  # "a*"
+pattern = pattern.reduce()
+print(pattern)  # "a*"
