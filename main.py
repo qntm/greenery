@@ -1,17 +1,10 @@
-import sys
-from greenery.lego import lego, parse
+from greenery import Bound, INF, Multiplier, PLUS, QM, STAR, parse
 
-regexes = sys.argv[1:]
+pattern = parse("a")
+print(pattern)  # "a"
 
-if len(regexes) < 2:
-    print(
-        "Please supply several regexes to compute their intersection, " \
-        "union and concatenation."
-    )
-    print("E.g. \"19.*\" \"\\d{4}-\\d{2}-\\d{2}\"")
+pattern = pattern * PLUS * QM * STAR * Multiplier(Bound(3), INF)
+print(pattern)  # "((((a)+)?)*){3,}"
 
-else:
-    regexes = [parse(regex) for regex in regexes]
-    print("Intersection:  %s" % (lego.intersection(*regexes).reduce()))
-    print("Union:         %s" % (lego.union(*regexes).reduce()))
-    print("Concatenation: %s" % (lego.concatenate(*regexes).reduce()))
+pattern = pattern.reduce()
+print(pattern)  # "a*"

@@ -1,36 +1,41 @@
 # -*- coding: utf-8 -*-
 
 '''
-    Finite state machine library.
+    Finite state machine library, intended to be used by `greenery` only
 '''
 
 from typing import Optional, Union, Set, Dict
 from dataclasses import dataclass
 
-anything_else = '9bd74361-04f9-4742-9d3a-1d14a6f0044c'
+ANYTHING_ELSE = '9bd74361-04f9-4742-9d3a-1d14a6f0044c'
 
-def key(symbol):
-    '''Ensure `fsm.anything_else` always sorts last'''
-    return (symbol is anything_else, symbol)
+
+def alphabet_key(symbol):
+    '''Ensure `ANYTHING_ELSE` always sorts last'''
+    return (symbol is ANYTHING_ELSE, symbol)
+
 
 class OblivionError(Exception):
     '''
-        This exception is thrown while `crawl()`ing an FSM if we transition to the
-        oblivion state. For example while crawling two FSMs in parallel we may
-        transition to the oblivion state of both FSMs at once. This warrants an
-        out-of-bound signal which will reduce the complexity of the new FSM's map.
+        This exception is thrown while `crawl()`ing an FSM if we transition to
+        the oblivion state. For example while crawling two FSMs in parallel we
+        may transition to the oblivion state of both FSMs at once. This
+        warrants an out-of-band signal which will reduce the complexity of the
+        new FSM's map.
     '''
     pass
 
+
 state_type = Optional[Union[int, str]]
 
+
 @dataclass(frozen=True)
-class fsm:
+class Fsm:
     '''
-        A Finite State Machine or FSM has an alphabet and a set of states. At any
-        given moment, the FSM is in one state. When passed a symbol from the
-        alphabet, the FSM jumps to another state (or possibly the same state).
-        A map (Python dictionary) indicates where to jump.
+        A Finite State Machine or FSM has an alphabet and a set of states. At
+        any given moment, the FSM is in one state. When passed a symbol from
+        the alphabet, the FSM jumps to another state (or possibly the same
+        state). A map (Python dictionary) indicates where to jump.
         One state is nominated as a starting state. Zero or more states are
         nominated as final states. If, after consuming a string of symbols,
         the FSM is in a final state, then it is said to "accept" the string.
@@ -51,19 +56,31 @@ class fsm:
             `states` is the set of states for the FSM
             `initial` is the initial state
             `finals` is the set of accepting states
-            `map` may be sparse (i.e. it may omit transitions). In the case of omitted
-            transitions, a non-final "oblivion" state is simulated.
+            `map` may be sparse (i.e. it may omit transitions). In the case of
+            omitted transitions, a non-final "oblivion" state is simulated.
         '''
 
-        # Validation. Thanks to immutability, this only needs to be carried out once.
-        if not self.initial in self.states:
-            raise Exception("Initial state " + repr(self.initial) + " must be one of " + repr(self.states))
+        # Validation. Thanks to immutability, this only needs to be carried out
+        # once.
+        if self.initial not in self.states:
+            raise Exception(
+                f"Initial state {repr(self.initial)} "
+                f"must be one of {repr(self.states)}"
+            )
         if not self.finals.issubset(self.states):
-            raise Exception("Final states " + repr(self.finals) + " must be a subset of " + repr(self.states))
+            raise Exception(
+                f"Final states {repr(self.finals)} "
+                f"must be a subset of {repr(self.states)}"
+            )
         for state, symbol in self.map.items():
             for symbol in self.map[state]:
                 if not self.map[state][symbol] in self.states:
-                    raise Exception("Transition for state " + repr(state) + " and symbol " + repr(symbol) + " leads to " + repr(self.map[state][symbol]) + ", which is not a state")
+                    raise Exception(
+                        f"Transition for state {repr(state)} "
+                        f"and symbol {repr(symbol)} "
+                        f"leads to {repr(self.map[state][symbol])}, "
+                        "which is not a state"
+                    )
 
         # Initialise the hard way due to immutability.
         object.__setattr__(self, "alphabet", set(self.alphabet))
@@ -72,17 +89,17 @@ class fsm:
 
     def accepts(self, input):
         '''
-            Test whether the present FSM accepts the supplied string (iterable of
-            symbols). Equivalently, consider `self` as a possibly-infinite set of
-            strings and test whether `string` is a member of it.
-            This is actually mainly used for unit testing purposes.
-            If `fsm.anything_else` is in your alphabet, then any symbol not in your
-            alphabet will be converted to `fsm.anything_else`.
+            Test whether the present FSM accepts the supplied string (iterable
+            of symbols). Equivalently, consider `self` as a possibly-infinite
+            set of strings and test whether `string` is a member of it. This is
+            actually mainly used for unit testing purposes. If `ANYTHING_ELSE`
+            is in your alphabet, then any symbol not in your alphabet will be
+            converted to `ANYTHING_ELSE`.
         '''
         state = self.initial
         for symbol in input:
-            if anything_else in self.alphabet and not symbol in self.alphabet:
-                symbol = anything_else
+            if ANYTHING_ELSE in self.alphabet and symbol not in self.alphabet:
+                symbol = ANYTHING_ELSE
 
             # Missing transition = transition to dead state
             if not (state in self.map and symbol in self.map[state]):
@@ -93,38 +110,38 @@ class fsm:
 
     def __contains__(self, string):
         '''
-            This lets you use the syntax `"a" in fsm1` to see whether the string "a"
-            is in the set of strings accepted by `fsm1`.
+            This lets you use the syntax `"a" in fsm1` to see whether the
+            string "a" is in the set of strings accepted by `fsm1`.
         '''
         return self.accepts(string)
 
     def reduce(self):
         '''
-            A result by Brzozowski (1963) shows that a minimal finite state machine
-            equivalent to the original can be obtained by reversing the original
-            twice.
+            A result by Brzozowski (1963) shows that a minimal finite state
+            machine equivalent to the original can be obtained by reversing the
+            original twice.
         '''
         return reversed(reversed(self))
 
     def __repr__(self):
-        string = "fsm("
-        string += "alphabet = " + repr(self.alphabet)
-        string += ", states = " + repr(self.states)
-        string += ", initial = " + repr(self.initial)
-        string += ", finals = " + repr(self.finals)
-        string += ", map = " + repr(self.map)
-        string += ")"
-        return string
+        args = ", ".join([
+            f"alphabet={repr(self.alphabet)}",
+            f"states={repr(self.states)}",
+            f"initial={repr(self.initial)}",
+            f"finals={repr(self.finals)}",
+            f"map={repr(self.map)}",
+        ])
+        return f"Fsm({args})"
 
     def __str__(self):
         rows = []
 
-        sorted_alphabet = sorted(self.alphabet, key=key)
+        sorted_alphabet = sorted(self.alphabet, key=alphabet_key)
 
         # top row
         row = ["", "name", "final?"]
         row.extend(
-          'anything_else' if symbol is anything_else else str(symbol)
+          'ANYTHING_ELSE' if symbol is ANYTHING_ELSE else str(symbol)
           for symbol in sorted_alphabet
         )
         rows.append(row)
@@ -151,7 +168,9 @@ class fsm:
         # column widths
         colwidths = []
         for x in range(len(rows[0])):
-            colwidths.append(max(len(str(rows[y][x])) for y in range(len(rows))) + 1)
+            colwidths.append(max(
+                len(str(rows[y][x])) for y in range(len(rows))
+            ) + 1)
 
         # apply padding
         for y in range(len(rows)):
@@ -163,7 +182,7 @@ class fsm:
 
         return "".join("".join(row) + "\n" for row in rows)
 
-    def concatenate(*fsms: 'fsm'):
+    def concatenate(*fsms):
         '''
             Concatenate arbitrarily many finite state machines together.
         '''
@@ -171,9 +190,10 @@ class fsm:
 
         def connect_all(i, substate):
             '''
-                Take a state in the numbered FSM and return a set containing it, plus
-                (if it's final) the first state from the next FSM, plus (if that's
-                final) the first state from the next but one FSM, plus...
+                Take a state in the numbered FSM and return a set containing
+                it, plus (if it's final) the first state from the next FSM,
+                plus (if that's final) the first state from the next but one
+                FSM, plus...
             '''
             result = {(i, substate)}
             while i < len(fsms) - 1 and substate in fsms[i].finals:
@@ -184,7 +204,8 @@ class fsm:
 
         # Use a superset containing states from all FSMs at once.
         # We start at the start of the first FSM. If this state is final in the
-        # first FSM, then we are also at the start of the second FSM. And so on.
+        # first FSM, then we are also at the start of the second FSM. And so
+        # on.
         initial = set()
         if len(fsms) > 0:
             initial.update(connect_all(0, fsms[0].initial))
@@ -199,9 +220,10 @@ class fsm:
 
         def follow(current, symbol):
             '''
-                Follow the collection of states through all FSMs at once, jumping to the
-                next FSM if we reach the end of the current one
-                TODO: improve all follow() implementations to allow for dead metastates?
+                Follow the collection of states through all FSMs at once,
+                jumping to the next FSM if we reach the end of the current one
+                TODO: improve all follow() implementations to allow for dead
+                metastates?
             '''
             next = set()
             for (i, substate) in current:
@@ -209,8 +231,14 @@ class fsm:
                 if substate in fsm.map:
                     if symbol in fsm.map[substate]:
                         next.update(connect_all(i, fsm.map[substate][symbol]))
-                    elif anything_else in fsm.map[substate] and symbol not in fsm.alphabet:
-                        next.update(connect_all(i, fsm.map[substate][anything_else]))
+                    elif (
+                        ANYTHING_ELSE in fsm.map[substate]
+                        and symbol not in fsm.alphabet
+                    ):
+                        next.update(connect_all(
+                            i,
+                            fsm.map[substate][ANYTHING_ELSE]
+                        ))
             if len(next) == 0:
                 raise OblivionError
             return frozenset(next)
@@ -229,9 +257,9 @@ class fsm:
 
     def star(self):
         '''
-            If the present FSM accepts X, returns an FSM accepting X* (i.e. 0 or
-            more Xes). This is NOT as simple as naively connecting the final states
-            back to the initial state: see (b*ab)* for example.
+            If the present FSM accepts X, returns an FSM accepting X* (i.e. 0
+            or more Xes). This is NOT as simple as naively connecting the final
+            states back to the initial state: see (b*ab)* for example.
         '''
         alphabet = self.alphabet
 
@@ -246,8 +274,8 @@ class fsm:
                 # If one of our substates is final, then we can also consider
                 # transitions from the initial state of the original FSM.
                 if substate in self.finals \
-                and self.initial in self.map \
-                and symbol in self.map[self.initial]:
+                   and self.initial in self.map \
+                   and symbol in self.map[self.initial]:
                     next.add(self.map[self.initial][symbol])
 
             if len(next) == 0:
@@ -265,7 +293,7 @@ class fsm:
             Given an FSM and a multiplier, return the multiplied FSM.
         '''
         if multiplier < 0:
-            raise Exception("Can't multiply an FSM by " + repr(multiplier))
+            raise Exception(f"Can't multiply an FSM by {repr(multiplier)}")
 
         alphabet = self.alphabet
 
@@ -273,10 +301,16 @@ class fsm:
         initial = {(self.initial, 0)}
 
         def final(state):
-            '''If the initial state is final then multiplying doesn't alter that'''
+            '''
+                If the initial state is final then multiplying doesn't alter
+                that
+            '''
             for (substate, iteration) in state:
                 if substate == self.initial \
-                and (self.initial in self.finals or iteration == multiplier):
+                  and (
+                    self.initial in self.finals or
+                    iteration == multiplier
+                  ):
                     return True
             return False
 
@@ -284,8 +318,8 @@ class fsm:
             next = []
             for (substate, iteration) in current:
                 if iteration < multiplier \
-                and substate in self.map \
-                and symbol in self.map[substate]:
+                   and substate in self.map \
+                   and symbol in self.map[substate]:
                     next.append((self.map[substate][symbol], iteration))
                     # final of self? merge with initial on next iteration
                     if self.map[substate][symbol] in self.finals:
@@ -304,9 +338,9 @@ class fsm:
 
     def union(*fsms):
         '''
-            Treat `fsms` as a collection of arbitrary FSMs and return the union FSM.
-            Can be used as `fsm1.union(fsm2, ...)` or `fsm.union(fsm1, ...)`. `fsms`
-            may be empty.
+            Treat `fsms` as a collection of arbitrary FSMs and return the union
+            FSM. Can be used as `fsm1.union(fsm2, ...)` or
+            `fsm.union(fsm1, ...)`. `fsms` may be empty.
         '''
         return parallel(fsms, any)
 
@@ -314,8 +348,8 @@ class fsm:
         '''
             Alternation.
             Return a finite state machine which accepts any sequence of symbols
-            that is accepted by either self or other. Note that the set of strings
-            recognised by the two FSMs undergoes a set union.
+            that is accepted by either self or other. Note that the set of
+            strings recognised by the two FSMs undergoes a set union.
             Call using "fsm3 = fsm1 | fsm2"
         '''
         return self.union(other)
@@ -324,33 +358,33 @@ class fsm:
         '''
             Intersection.
             Take FSMs and AND them together. That is, return an FSM which
-            accepts any sequence of symbols that is accepted by both of the original
-            FSMs. Note that the set of strings recognised by the two FSMs undergoes
-            a set intersection operation.
+            accepts any sequence of symbols that is accepted by both of the
+            original FSMs. Note that the set of strings recognised by the two
+            FSMs undergoes a set intersection operation.
             Call using "fsm3 = fsm1 & fsm2"
         '''
         return parallel(fsms, all)
 
     def __and__(self, other):
         '''
-            Treat the FSMs as sets of strings and return the intersection of those
-            sets in the form of a new FSM. `fsm1.intersection(fsm2, ...)` or
-            `fsm.intersection(fsm1, ...)` are acceptable.
+            Treat the FSMs as sets of strings and return the intersection of
+            those sets in the form of a new FSM.
         '''
         return self.intersection(other)
 
     def symmetric_difference(*fsms):
         '''
-            Treat `fsms` as a collection of sets of strings and compute the symmetric
-            difference of them all. The python set method only allows two sets to be
-            operated on at once, but we go the extra mile since it's not too hard.
+            Treat `fsms` as a collection of sets of strings and compute the
+            symmetric difference of them all. The python set method only allows
+            two sets to be operated on at once, but we go the extra mile since
+            it's not too hard.
         '''
         return parallel(fsms, lambda accepts: (accepts.count(True) % 2) == 1)
 
     def __xor__(self, other):
         '''
-            Symmetric difference. Returns an FSM which recognises only the strings
-            recognised by `self` or `other` but not both.
+            Symmetric difference. Returns an FSM which recognises only the
+            strings recognised by `self` or `other` but not both.
         '''
         return self.symmetric_difference(other)
 
@@ -358,16 +392,18 @@ class fsm:
         '''
             Return a finite state machine which will accept any string NOT
             accepted by self, and will not accept any string accepted by self.
-            This is more complicated if there are missing transitions, because the
-            missing "dead" state must now be reified.
+            This is more complicated if there are missing transitions, because
+            the missing "dead" state must now be reified.
         '''
         alphabet = self.alphabet
 
-        initial = {0 : self.initial}
+        initial = {0: self.initial}
 
         def follow(current, symbol):
             next = {}
-            if 0 in current and current[0] in self.map and symbol in self.map[current[0]]:
+            if 0 in current \
+               and current[0] in self.map \
+               and symbol in self.map[current[0]]:
                 next[0] = self.map[current[0]][symbol]
             return next
 
@@ -435,22 +471,24 @@ class fsm:
 
     def empty(self):
         '''
-            An FSM is empty if it recognises no strings. An FSM may be arbitrarily
-            complicated and have arbitrarily many final states while still recognising
-            no strings because those final states may all be inaccessible from the
-            initial state. Equally, an FSM may be non-empty despite having an empty
-            alphabet if the initial state is final.
+            An FSM is empty if it recognises no strings. An FSM may be
+            arbitrarily complicated and have arbitrarily many final states
+            while still recognising no strings because those final states may
+            all be inaccessible from the initial state. Equally, an FSM may be
+            non-empty despite having an empty alphabet if the initial state is
+            final.
         '''
         return not self.islive(self.initial)
 
     def strings(self):
         '''
-            Generate strings (lists of symbols) that this FSM accepts. Since there may
-            be infinitely many of these we use a generator instead of constructing a
-            static list. Strings will be sorted in order of length and then lexically.
-            This procedure uses arbitrary amounts of memory but is very fast. There
-            may be more efficient ways to do this, that I haven't investigated yet.
-            You can use this in list comprehensions.
+            Generate strings (lists of symbols) that this FSM accepts. Since
+            there may be infinitely many of these we use a generator instead of
+            constructing a static list. Strings will be sorted in order of
+            length and then lexically. This procedure uses arbitrary amounts of
+            memory but is very fast. There may be more efficient ways to do
+            this, that I haven't investigated yet. You can use this in list
+            comprehensions.
         '''
 
         # Many FSMs have "dead states". Once you reach a dead state, you can no
@@ -458,10 +496,10 @@ class fsm:
         # advantageous to constrain our search to live states only.
         livestates = set(state for state in self.states if self.islive(state))
 
-        # We store a list of tuples. Each tuple consists of an input string and the
-        # state that this input string leads to. This means we don't have to run the
-        # state machine from the very beginning every time we want to check a new
-        # string.
+        # We store a list of tuples. Each tuple consists of an input string and
+        # the state that this input string leads to. This means we don't have
+        # to run the state machine from the very beginning every time we want
+        # to check a new string.
         strings = []
 
         # Initial entry (or possibly not, in which case this is a short one)
@@ -477,7 +515,7 @@ class fsm:
         while i < len(strings):
             (cstring, cstate) = strings[i]
             if cstate in self.map:
-                for symbol in sorted(self.map[cstate], key=key):
+                for symbol in sorted(self.map[cstate], key=alphabet_key):
                     nstate = self.map[cstate][symbol]
                     nstring = cstring + [symbol]
                     if nstate in livestates:
@@ -494,30 +532,30 @@ class fsm:
 
     def equivalent(self, other):
         '''
-            Two FSMs are considered equivalent if they recognise the same strings.
-            Or, to put it another way, if their symmetric difference recognises no
-            strings.
+            Two FSMs are considered equivalent if they recognise the same
+            strings. Or, to put it another way, if their symmetric difference
+            recognises no strings.
         '''
         return (self ^ other).empty()
 
     def __eq__(self, other):
         '''
-            You can use `fsm1 == fsm2` to determine whether two FSMs recognise the
-            same strings.
+            You can use `fsm1 == fsm2` to determine whether two FSMs recognise
+            the same strings.
         '''
         return self.equivalent(other)
 
     def different(self, other):
         '''
-            Two FSMs are considered different if they have a non-empty symmetric
-            difference.
+            Two FSMs are considered different if they have a non-empty
+            symmetric difference.
         '''
         return not (self ^ other).empty()
 
     def __ne__(self, other):
         '''
-            Use `fsm1 != fsm2` to determine whether two FSMs recognise different
-            strings.
+            Use `fsm1 != fsm2` to determine whether two FSMs recognise
+            different strings.
         '''
         return self.different(other)
 
@@ -526,26 +564,31 @@ class fsm:
             Difference. Returns an FSM which recognises only the strings
             recognised by the first FSM in the list, but none of the others.
         '''
-        return parallel(fsms, lambda accepts: accepts[0] and not any(accepts[1:]))
+        return parallel(
+            fsms,
+            lambda accepts: accepts[0] and not any(accepts[1:])
+        )
 
     def __sub__(self, other):
         return self.difference(other)
 
     def cardinality(self):
         '''
-            Consider the FSM as a set of strings and return the cardinality of that
-            set, or raise an OverflowError if there are infinitely many
+            Consider the FSM as a set of strings and return the cardinality of
+            that set, or raise an OverflowError if there are infinitely many
         '''
         num_strings = {}
+
         def get_num_strings(state):
             # Many FSMs have at least one oblivion state
             if self.islive(state):
                 if state in num_strings:
-                    if num_strings[state] is None: # "computing..."
-                        # Recursion! There are infinitely many strings recognised
+                    if num_strings[state] is None:  # "computing..."
+                        # Recursion! There are infinitely many strings
+                        # recognised
                         raise OverflowError(state)
                     return num_strings[state]
-                num_strings[state] = None # i.e. "computing..."
+                num_strings[state] = None  # i.e. "computing..."
 
                 n = 0
                 if state in self.finals:
@@ -565,42 +608,45 @@ class fsm:
 
     def __len__(self):
         '''
-            Consider the FSM as a set of strings and return the cardinality of that
-            set, or raise an OverflowError if there are infinitely many
+            Consider the FSM as a set of strings and return the cardinality of
+            that set, or raise an OverflowError if there are infinitely many
         '''
         return self.cardinality()
 
     def isdisjoint(self, other):
         '''
-            Treat `self` and `other` as sets of strings and see if they are disjoint
+            Treat `self` and `other` as sets of strings and see if they are
+            disjoint
         '''
         return (self & other).empty()
 
     def issubset(self, other):
         '''
-            Treat `self` and `other` as sets of strings and see if `self` is a subset
-            of `other`... `self` recognises no strings which `other` doesn't.
+            Treat `self` and `other` as sets of strings and see if `self` is a
+            subset of `other`... `self` recognises no strings which `other`
+            doesn't.
         '''
         return (self - other).empty()
 
     def __le__(self, other):
         '''
-            Treat `self` and `other` as sets of strings and see if `self` is a subset
-            of `other`... `self` recognises no strings which `other` doesn't.
+            Treat `self` and `other` as sets of strings and see if `self` is a
+            subset of `other`... `self` recognises no strings which `other`
+            doesn't.
         '''
         return self.issubset(other)
 
     def ispropersubset(self, other):
         '''
-            Treat `self` and `other` as sets of strings and see if `self` is a proper
-            subset of `other`.
+            Treat `self` and `other` as sets of strings and see if `self` is a
+            proper subset of `other`.
         '''
         return self <= other and self != other
 
     def __lt__(self, other):
         '''
-            Treat `self` and `other` as sets of strings and see if `self` is a strict
-            subset of `other`.
+            Treat `self` and `other` as sets of strings and see if `self` is a
+            strict subset of `other`.
         '''
         return self.ispropersubset(other)
 
@@ -620,8 +666,8 @@ class fsm:
 
     def ispropersuperset(self, other):
         '''
-            Treat `self` and `other` as sets of strings and see if `self` is a proper
-            superset of `other`.
+            Treat `self` and `other` as sets of strings and see if `self` is a
+            proper superset of `other`.
         '''
         return self >= other and self != other
 
@@ -634,33 +680,34 @@ class fsm:
 
     def copy(self):
         '''
-            For completeness only, since `set.copy()` also exists. FSM objects are
-            immutable, so I can see only very odd reasons to need this.
+            For completeness only, since `set.copy()` also exists. FSM objects
+            are immutable, so I can see only very odd reasons to need this.
         '''
-        return fsm(
-            alphabet = self.alphabet,
-            states   = self.states,
-            initial  = self.initial,
-            finals   = self.finals,
-            map      = self.map,
+        return Fsm(
+            alphabet=self.alphabet,
+            states=self.states,
+            initial=self.initial,
+            finals=self.finals,
+            map=self.map,
         )
 
     def derive(self, input):
         '''
-            Compute the Brzozowski derivative of this FSM with respect to the input
-            string of symbols. <https://en.wikipedia.org/wiki/Brzozowski_derivative>
-            If any of the symbols are not members of the alphabet, that's a KeyError.
-            If you fall into oblivion, then the derivative is an FSM accepting no
-            strings.
+            Compute the Brzozowski derivative of this FSM with respect to the
+            input string of symbols.
+            <https://en.wikipedia.org/wiki/Brzozowski_derivative>
+            If any of the symbols are not members of the alphabet, that's a
+            `KeyError`. If you fall into oblivion, then the derivative is an
+            FSM accepting no strings.
         '''
         try:
             # Consume the input string.
             state = self.initial
             for symbol in input:
-                if not symbol in self.alphabet:
-                    if not anything_else in self.alphabet:
+                if symbol not in self.alphabet:
+                    if ANYTHING_ELSE not in self.alphabet:
                         raise KeyError(symbol)
-                    symbol = anything_else
+                    symbol = ANYTHING_ELSE
 
                 # Missing transition = transition to dead state
                 if not (state in self.map and symbol in self.map[state]):
@@ -668,19 +715,20 @@ class fsm:
 
                 state = self.map[state][symbol]
 
-            # OK so now we have consumed that string, use the new location as the
-            # starting point.
-            return fsm(
-                alphabet = self.alphabet,
-                states   = self.states,
-                initial  = state,
-                finals   = self.finals,
-                map      = self.map,
+            # OK so now we have consumed that string, use the new location as
+            # the starting point.
+            return Fsm(
+                alphabet=self.alphabet,
+                states=self.states,
+                initial=state,
+                finals=self.finals,
+                map=self.map,
             )
 
         except OblivionError:
             # Fell out of the FSM. The derivative of this FSM is the empty FSM.
             return null(self.alphabet)
+
 
 def null(alphabet):
     '''
@@ -688,34 +736,36 @@ def null(alphabet):
         demonstrates that this is possible, and is also extremely useful
         in some situations
     '''
-    return fsm(
-        alphabet = alphabet,
-        states   = {0},
-        initial  = 0,
-        finals   = set(),
-        map      = {
+    return Fsm(
+        alphabet=alphabet,
+        states={0},
+        initial=0,
+        finals=set(),
+        map={
             0: dict([(symbol, 0) for symbol in alphabet]),
         },
     )
+
 
 def epsilon(alphabet):
     '''
         Return an FSM matching an empty string, "", only.
         This is very useful in many situations
     '''
-    return fsm(
-        alphabet = alphabet,
-        states   = {0},
-        initial  = 0,
-        finals   = {0},
-        map      = {},
+    return Fsm(
+        alphabet=alphabet,
+        states={0},
+        initial=0,
+        finals={0},
+        map={},
     )
+
 
 def parallel(fsms, test):
     '''
-        Crawl several FSMs in parallel, mapping the states of a larger meta-FSM.
-        To determine whether a state in the larger FSM is final, pass all of the
-        finality statuses (e.g. [True, False, False] to `test`.
+        Crawl several FSMs in parallel, mapping the states of a larger
+        meta-FSM. To determine whether a state in the larger FSM is final, pass
+        all of the finality statuses (e.g. [True, False, False] to `test`.
     '''
     alphabet = set().union(*[fsm.alphabet for fsm in fsms])
 
@@ -726,13 +776,14 @@ def parallel(fsms, test):
     def follow(current, symbol):
         next = {}
         for i in range(len(fsms)):
-            if symbol not in fsms[i].alphabet and anything_else in fsms[i].alphabet:
-                actual_symbol = anything_else
+            if symbol not in fsms[i].alphabet \
+               and ANYTHING_ELSE in fsms[i].alphabet:
+                actual_symbol = ANYTHING_ELSE
             else:
                 actual_symbol = symbol
             if i in current \
-            and current[i] in fsms[i].map \
-            and actual_symbol in fsms[i].map[current[i]]:
+               and current[i] in fsms[i].map \
+               and actual_symbol in fsms[i].map[current[i]]:
                 next[i] = fsms[i].map[current[i]][actual_symbol]
         if len(next.keys()) == 0:
             raise OblivionError
@@ -741,10 +792,14 @@ def parallel(fsms, test):
     # Determine the "is final?" condition of each substate, then pass it to the
     # test to determine finality of the overall FSM.
     def final(state):
-        accepts = [i in state and state[i] in fsm.finals for (i, fsm) in enumerate(fsms)]
+        accepts = [
+            i in state and state[i] in fsm.finals
+            for (i, fsm) in enumerate(fsms)
+        ]
         return test(accepts)
 
     return crawl(alphabet, initial, final, follow).reduce()
+
 
 def crawl(alphabet, initial, final, follow):
     '''
@@ -769,7 +824,7 @@ def crawl(alphabet, initial, final, follow):
 
         # compute map for this state
         map[i] = {}
-        for symbol in sorted(alphabet, key=key):
+        for symbol in sorted(alphabet, key=alphabet_key):
             try:
                 next = follow(state, symbol)
 
@@ -787,10 +842,10 @@ def crawl(alphabet, initial, final, follow):
 
         i += 1
 
-    return fsm(
-        alphabet = alphabet,
-        states   = set(range(len(states))),
-        initial  = 0,
-        finals   = finals,
-        map      = map,
+    return Fsm(
+        alphabet=alphabet,
+        states=set(range(len(states))),
+        initial=0,
+        finals=finals,
+        map=map,
     )
