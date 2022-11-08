@@ -389,7 +389,7 @@ def call_fsm(method):
 
 
 @dataclass(frozen=True)
-class Pattern():
+class Pattern:
     '''
         A `Pattern` (also known as an "alt", short for "alternation") is a
         set of `Conc`s. A `Pattern` expresses multiple alternate possibilities.
@@ -415,17 +415,14 @@ class Pattern():
         return hash(self.concs)
 
     def __repr__(self):
-        args = ", ".join(repr(c) for c in self.concs)
+        args = ", ".join(repr(conc) for conc in self.concs)
         return f"Pattern({args})"
 
     def alphabet(self):
         return {ANYTHING_ELSE}.union(*[c.alphabet() for c in self.concs])
 
     def empty(self):
-        for c in self.concs:
-            if not c.empty():
-                return False
-        return True
+        return all(conc.empty() for conc in self.concs)
 
     def intersection(self, other):
         # A deceptively simple method for an astoundingly difficult operation
@@ -459,12 +456,7 @@ class Pattern():
     def __str__(self):
         if len(self.concs) == 0:
             raise Exception(f"Can't serialise {repr(self)}")
-
-        # take the alternation of the input collection of regular expressions.
-        # i.e. jam "|" between each element
-
-        # 1+ elements.
-        return "|".join(sorted(str(c) for c in self.concs))
+        return "|".join(sorted(str(conc) for conc in self.concs))
 
     def reduce(self):
         if self == NULLPATTERN:
@@ -479,9 +471,9 @@ class Pattern():
             return Pattern(*reduced).reduce()
 
         # If one of our internal concs is empty, remove it
-        for c in self.concs:
-            if c.empty():
-                new = self.concs - {c}
+        for conc in self.concs:
+            if conc.empty():
+                new = self.concs - {conc}
                 return Pattern(*new).reduce()
 
         # If we have just one `Conc` with just one `Mult` with a multiplier of
@@ -609,7 +601,7 @@ class Pattern():
 
             AYZ|BYZ|CYZ - YZ -> A|B|C.
         '''
-        return Pattern(*[c.dock(other) for c in self.concs])
+        return Pattern(*[conc.dock(other) for conc in self.concs])
 
     def behead(self, other):
         '''
@@ -618,7 +610,7 @@ class Pattern():
 
             ZA|ZB|ZC.behead(Z) -> A|B|C
         '''
-        return Pattern(*[c.behead(other) for c in self.concs])
+        return Pattern(*[conc.behead(other) for conc in self.concs])
 
     def _commonconc(self, suffix=False):
         '''
