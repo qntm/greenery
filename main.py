@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from greenery import Bound, INF, Multiplier, PLUS, QM, STAR, parse
 
 pattern = parse("a")

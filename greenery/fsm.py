@@ -2,6 +2,8 @@
     Finite state machine library, intended to be used by `greenery` only
 '''
 
+from __future__ import annotations
+
 from typing import Optional, Union, Set, Dict
 from dataclasses import dataclass
 

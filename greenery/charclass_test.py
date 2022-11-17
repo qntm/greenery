@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from .charclass import Charclass, WORDCHAR, DIGIT, SPACECHAR, NONWORDCHAR, \
     NONDIGITCHAR, NONSPACECHAR, DOT, NULLCHARCLASS
 from .fsm import ANYTHING_ELSE

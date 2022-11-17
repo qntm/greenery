@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 if __name__ == "__main__":
     raise Exception(
         "Test files can't be run directly. Use `python -m pytest greenery`"

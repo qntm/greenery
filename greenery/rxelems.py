@@ -3,6 +3,8 @@
     need to be in the same source file?
 '''
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Union
 

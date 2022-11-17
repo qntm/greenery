@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from .charclass import Charclass
 from .multiplier import ONE, ZERO
 from .rxelems import Pattern, Conc, Mult
