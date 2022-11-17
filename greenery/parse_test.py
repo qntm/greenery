@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import pytest
 
-from .bound import Bound, INF
-from .charclass import Charclass, DOT, NULLCHARCLASS, DIGIT
-from .multiplier import Multiplier, ONE, STAR, PLUS
-from .rxelems import Mult, Conc, Pattern
-from .parse import NoMatch, match_charclass, parse, match_mult
+from .bound import INF, Bound
+from .charclass import DIGIT, DOT, NULLCHARCLASS, Charclass
+from .multiplier import ONE, PLUS, STAR, Multiplier
+from .parse import NoMatch, match_charclass, match_mult, parse
+from .rxelems import Conc, Mult, Pattern
 
 if __name__ == "__main__":
     raise Exception(

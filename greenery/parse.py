@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from typing import Tuple
 
-from .bound import Bound, INF
-from .charclass import Charclass, shorthand, escapes
+from .bound import INF, Bound
+from .charclass import Charclass, escapes, shorthand
 from .multiplier import Multiplier, symbolic
-from .rxelems import Pattern, Conc, Mult
+from .rxelems import Conc, Mult, Pattern
 
 
 class NoMatch(Exception):

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from .bound import Bound, INF
+from .bound import INF, Bound
 
 
 @dataclass(frozen=True)

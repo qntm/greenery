@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from .bound import Bound, INF
-from .multiplier import Multiplier, ZERO, ONE, QM, STAR, PLUS
+from .bound import INF, Bound
+from .multiplier import ONE, PLUS, QM, STAR, ZERO, Multiplier
 
 
 def test_multiplier_str():

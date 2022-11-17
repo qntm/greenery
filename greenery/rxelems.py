@@ -9,10 +9,10 @@ from dataclasses import dataclass
 from functools import reduce
 from typing import Union
 
-from .fsm import Fsm, ANYTHING_ELSE, null, epsilon, alphabet_key
-from .multiplier import Multiplier, ZERO, QM, ONE, STAR
-from .charclass import Charclass, NULLCHARCLASS
-from .bound import Bound, INF
+from .bound import INF, Bound
+from .charclass import NULLCHARCLASS, Charclass
+from .fsm import ANYTHING_ELSE, Fsm, alphabet_key, epsilon, null
+from .multiplier import ONE, QM, STAR, ZERO, Multiplier
 
 
 @dataclass(frozen=True)

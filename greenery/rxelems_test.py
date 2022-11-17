@@ -5,10 +5,10 @@ import time
 
 import pytest
 
-from .fsm import Fsm, ANYTHING_ELSE
-from .rxelems import from_fsm
 from .charclass import DIGIT, WORDCHAR
+from .fsm import ANYTHING_ELSE, Fsm
 from .parse import parse
+from .rxelems import from_fsm
 
 if __name__ == "__main__":
     raise Exception(

@@ -4,8 +4,8 @@
 
 from __future__ import annotations
 
-from typing import Optional, Union, Set, Dict
 from dataclasses import dataclass
+from typing import Dict, Optional, Set, Union
 
 ANYTHING_ELSE = '9bd74361-04f9-4742-9d3a-1d14a6f0044c'
 
