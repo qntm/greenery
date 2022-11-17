@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from .fsm import ANYTHING_ELSE
 from .charclass import Charclass, DIGIT
 from .bound import Bound, INF

@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from .charclass import Charclass, WORDCHAR, DIGIT, SPACECHAR, NONWORDCHAR, \
     NONDIGITCHAR, NONSPACECHAR, DOT, NULLCHARCLASS
 from .fsm import ANYTHING_ELSE

@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # In theory this should just pull in the `parse` function, but it turns out
 # that the act of performing any relative import suddenly makes EVERY MODULE
 # AVAILABLE IN SCOPE?

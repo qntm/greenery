@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 '''
     Finite state machine library, intended to be used by `greenery` only
 '''

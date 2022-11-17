@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import pytest
 
 from .fsm import Fsm, null, epsilon, ANYTHING_ELSE

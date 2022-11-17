@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 '''
     Because of the circularity between `Pattern`, `Conc` and `Mult`, all three
     need to be in the same source file?

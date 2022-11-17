@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 if __name__ == "__main__":
     raise Exception(
         "Test files can't be run directly. Use `python -m pytest greenery`"
