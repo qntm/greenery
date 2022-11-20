@@ -163,7 +163,7 @@ class Fsm:
         object.__setattr__(self, "finals", finals)
         object.__setattr__(self, "map", map)
 
-    def accepts(self, input: Iterable[alpha_type], /) -> bool:
+    def accepts(self, symbols: Iterable[alpha_type], /) -> bool:
         """
         Test whether the present FSM accepts the supplied string (iterable
         of symbols). Equivalently, consider `self` as a possibly-infinite
@@ -173,7 +173,7 @@ class Fsm:
         converted to `ANYTHING_ELSE`.
         """
         state = self.initial
-        for symbol in input:
+        for symbol in symbols:
             if ANYTHING_ELSE in self.alphabet and symbol not in self.alphabet:
                 symbol = ANYTHING_ELSE
 
@@ -781,7 +781,7 @@ class Fsm:
 
     __copy__ = copy
 
-    def derive(self, input: Iterable[alpha_type], /) -> Fsm:
+    def derive(self, symbols: Iterable[alpha_type], /) -> Fsm:
         """
         Compute the Brzozowski derivative of this FSM with respect to the
         input string of symbols.
@@ -793,7 +793,7 @@ class Fsm:
         try:
             # Consume the input string.
             state = self.initial
-            for symbol in input:
+            for symbol in symbols:
                 if symbol not in self.alphabet:
                     if ANYTHING_ELSE not in self.alphabet:
                         raise KeyError(symbol)
