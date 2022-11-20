@@ -256,7 +256,7 @@ class Conc():
             else:
                 if i != 0:
                     raise Exception(
-                        f"Can't subtract {repr(other)} from {repr(self)}"
+                        f"Can't subtract {other!r} from {self!r}"
                     )
 
         return Conc(*new)
@@ -293,7 +293,7 @@ def from_fsm(f: Fsm) -> Pattern:
         if isinstance(symbol, str) and len(symbol) == 1:
             continue
         raise Exception(
-            f"Symbol {repr(symbol)} cannot be used in a regular expression"
+            f"Symbol {symbol!r} cannot be used in a regular expression"
         )
 
     outside = _Outside.TOKEN
@@ -483,7 +483,7 @@ class Pattern:
 
     def __str__(self):
         if len(self.concs) == 0:
-            raise Exception(f"Can't serialise {repr(self)}")
+            raise Exception(f"Can't serialise {self!r}")
         return "|".join(sorted(str(conc) for conc in self.concs))
 
     def reduce(self) -> Pattern:
@@ -654,7 +654,7 @@ class Pattern:
         If "suffix" is True, the same result but for suffixes.
         """
         if len(self.concs) == 0:
-            raise Exception(f"Can't call _commonconc on {repr(self)}")
+            raise Exception(f"Can't call _commonconc on {self!r}")
 
         return reduce(
             lambda x, y: x.common(y, suffix=suffix),
@@ -804,7 +804,7 @@ class Mult:
         return hash((self.multiplicand, self.multiplier))
 
     def __repr__(self):
-        return f"Mult({repr(self.multiplicand)}, {repr(self.multiplier)})"
+        return f"Mult({self.multiplicand!r}, {self.multiplier!r})"
 
     def dock(self, other):
         """
@@ -815,7 +815,7 @@ class Mult:
         """
         if other.multiplicand != self.multiplicand:
             raise Exception(
-                f"Can't subtract {repr(other)} from {repr(self)}"
+                f"Can't subtract {other!r} from {self!r}"
             )
         return Mult(self.multiplicand, self.multiplier - other.multiplier)
 

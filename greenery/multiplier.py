@@ -37,12 +37,12 @@ class Multiplier:
     def __post_init__(self):
         if self.min == INF:
             raise Exception(
-                f"Minimum bound of a multiplier can't be {repr(INF)}"
+                f"Minimum bound of a multiplier can't be {INF!r}"
             )
         if self.min > self.max:
             raise Exception(
                 "Invalid multiplier bounds:"
-                f" {repr(self.min)} and {repr(self.max)}"
+                f" {self.min!r} and {self.max!r}"
             )
 
         # More useful than "min" and "max" in many situations
@@ -57,12 +57,12 @@ class Multiplier:
         return hash((self.min, self.max))
 
     def __repr__(self):
-        return f"Multiplier({repr(self.min)}, {repr(self.max)})"
+        return f"Multiplier({self.min!r}, {self.max!r})"
 
     def __str__(self):
         if self.max == Bound(0):
             raise Exception(
-                f"Can't serialise a multiplier with bound {repr(self.max)}"
+                f"Can't serialise a multiplier with bound {self.max!r}"
             )
         if self in symbolic.keys():
             return symbolic[self]
@@ -93,7 +93,7 @@ class Multiplier:
         """Multiply this multiplier by another"""
         if not self.canmultiplyby(other):
             raise Exception(
-                f"Can't multiply {repr(self)} by {repr(other)}"
+                f"Can't multiply {self!r} by {other!r}"
             )
         return Multiplier(self.min * other.min, self.max * other.max)
 
@@ -129,7 +129,7 @@ class Multiplier:
         """
         if not self.canintersect(other):
             raise Exception(
-                f"Can't compute intersection of {repr(self)} and {repr(other)}"
+                f"Can't compute intersection of {self!r} and {other!r}"
             )
         a = max(self.min, other.min)
         b = min(self.max, other.max)
@@ -153,7 +153,7 @@ class Multiplier:
         """
         if not self.canunion(other):
             raise Exception(
-                f"Can't compute the union of {repr(self)} and {repr(other)}"
+                f"Can't compute the union of {self!r} and {other!r}"
             )
         a = min(self.min, other.min)
         b = max(self.max, other.max)

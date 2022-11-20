@@ -110,29 +110,29 @@ class Fsm:
         # once.
         if self.initial not in self.states:
             raise Exception(
-                f"Initial state {repr(self.initial)}"
-                f" must be one of {repr(self.states)}"
+                f"Initial state {self.initial!r}"
+                f" must be one of {self.states!r}"
             )
         if not self.finals.issubset(self.states):
             raise Exception(
-                f"Final states {repr(self.finals)}"
-                f" must be a subset of {repr(self.states)}"
+                f"Final states {self.finals!r}"
+                f" must be a subset of {self.states!r}"
             )
         for state, _state_trans in self.map.items():
             if state not in self.states:
-                raise Exception(f"Transition from unknown state {repr(state)}")
+                raise Exception(f"Transition from unknown state {state!r}")
             for symbol in self.map[state]:
                 if symbol not in self.alphabet:
                     raise Exception(
-                        f"Invalid symbol {repr(symbol)}"
-                        f" in transition from {repr(state)}"
-                        f" to {repr(self.map[state][symbol])}"
+                        f"Invalid symbol {symbol!r}"
+                        f" in transition from {state!r}"
+                        f" to {self.map[state][symbol]!r}"
                     )
                 if not self.map[state][symbol] in self.states:
                     raise Exception(
-                        f"Transition for state {repr(state)}"
-                        f" and symbol {repr(symbol)}"
-                        f" leads to {repr(self.map[state][symbol])},"
+                        f"Transition for state {state!r}"
+                        f" and symbol {symbol!r}"
+                        f" leads to {self.map[state][symbol]!r},"
                         " which is not a state"
                     )
 
@@ -179,11 +179,11 @@ class Fsm:
 
     def __repr__(self):
         args = ", ".join([
-            f"alphabet={repr(self.alphabet)}",
-            f"states={repr(self.states)}",
-            f"initial={repr(self.initial)}",
-            f"finals={repr(self.finals)}",
-            f"map={repr(self.map)}",
+            f"alphabet={self.alphabet!r}",
+            f"states={self.states!r}",
+            f"initial={self.initial!r}",
+            f"finals={self.finals!r}",
+            f"map={self.map!r}",
         ])
         return f"Fsm({args})"
 
@@ -344,7 +344,7 @@ class Fsm:
         Given an FSM and a multiplier, return the multiplied FSM.
         """
         if multiplier < 0:
-            raise Exception(f"Can't multiply an FSM by {repr(multiplier)}")
+            raise Exception(f"Can't multiply an FSM by {multiplier!r}")
 
         alphabet = self.alphabet
 

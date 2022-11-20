@@ -38,7 +38,7 @@ class Charclass:
         # chars should consist only of chars
         if ANYTHING_ELSE in self.chars:
             raise Exception(
-                f"Can't put {repr(ANYTHING_ELSE)} in a `Charclass`"
+                f"Can't put {ANYTHING_ELSE!r} in a `Charclass`"
             )
 
     def __eq__(self, other):

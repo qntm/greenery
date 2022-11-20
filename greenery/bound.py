@@ -16,10 +16,10 @@ class Bound:
 
     def __post_init__(self):
         if self.v is not None and self.v < 0:
-            raise Exception(f"Invalid bound: {repr(self.v)}")
+            raise Exception(f"Invalid bound: {self.v!r}")
 
     def __repr__(self):
-        return f"Bound({repr(self.v)})"
+        return f"Bound({self.v!r})"
 
     def __str__(self):
         if self == INF:
@@ -65,7 +65,7 @@ class Bound:
         if other == INF:
             if self != INF:
                 raise Exception(
-                    f"Can't subtract {repr(other)} from {repr(self)}"
+                    f"Can't subtract {other!r} from {self!r}"
                 )
 
             # Infinity minus infinity is zero. This has to be true so that

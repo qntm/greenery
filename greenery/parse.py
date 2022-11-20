@@ -123,7 +123,7 @@ def match_class_interior_1(string, i):
 
         # Be strict here, "d-d" is not allowed
         if firstIndex >= lastIndex:
-            raise NoMatch(f"Range '{first}' to '{last}' not allowed")
+            raise NoMatch(f"Range {first!r} to {last!r} not allowed")
 
         chars = frozenset(chr(i) for i in range(firstIndex, lastIndex + 1))
         return chars, False, k
@@ -350,7 +350,5 @@ def parse(string: str):
     """
     obj, i = match_pattern(string, 0)
     if i != len(string):
-        raise Exception(
-            f"Could not parse '{string}' beyond index {str(i)}"
-        )
+        raise Exception(f"Could not parse {string!r} beyond index {str(i)}")
     return obj
