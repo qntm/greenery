@@ -79,7 +79,7 @@ class Conc:
                 # e.g. "a[XYZ]{0}b" -> "ab"
                 or mult.multiplier == ZERO
             ):
-                new = self.mults[:i] + self.mults[i + 1:]
+                new = self.mults[:i] + self.mults[i + 1 :]
                 return Conc(*new).reduce()
 
         # We might be able to combine some mults together or at least simplify
@@ -103,7 +103,7 @@ class Conc:
                 # e.g. ab?b?c -> ab{0,2}c
                 if rm_pattern == sm_pattern:
                     squished = Mult(rm_pattern, r.multiplier + s.multiplier)
-                    new = self.mults[:i] + (squished,) + self.mults[i + 2:]
+                    new = self.mults[:i] + (squished,) + self.mults[i + 2 :]
                     return Conc(*new).reduce()
 
                 # If R's language is a subset of S's, then R{a,b}S{c,} reduces
@@ -117,7 +117,7 @@ class Conc:
                             rm_pattern,
                             Multiplier(r.multiplier.min, r.multiplier.min),
                         )
-                        new = self.mults[:i] + (trimmed, s) + self.mults[i + 2:]
+                        new = self.mults[:i] + (trimmed, s) + self.mults[i + 2 :]
                         return Conc(*new).reduce()
 
                 # Conversely, if R is superset of S, then R{c,}S{a,b} reduces
@@ -132,7 +132,7 @@ class Conc:
                             sm_pattern,
                             Multiplier(s.multiplier.min, s.multiplier.min),
                         )
-                        new = self.mults[:i] + (r, trimmed) + self.mults[i + 2:]
+                        new = self.mults[:i] + (r, trimmed) + self.mults[i + 2 :]
                         return Conc(*new).reduce()
 
         # Conc contains (among other things) a *singleton* `Mult` containing
@@ -147,7 +147,7 @@ class Conc:
                 and len(mult.multiplicand.concs) == 1
             ):
                 (conc,) = mult.multiplicand.concs
-                new = self.mults[:i] + conc.mults + self.mults[i + 1:]
+                new = self.mults[:i] + conc.mults + self.mults[i + 1 :]
                 return Conc(*new).reduce()
 
         return self
@@ -513,8 +513,8 @@ class Pattern:
                 multiplier = multiplier1 | multiplier2
                 newconcs = (
                     oldconcs[:i]
-                    + oldconcs[i + 1:j]
-                    + oldconcs[j + 1:]
+                    + oldconcs[i + 1 : j]
+                    + oldconcs[j + 1 :]
                     + [Conc(Mult(multiplicand, multiplier))]
                 )
                 return Pattern(*newconcs).reduce()
