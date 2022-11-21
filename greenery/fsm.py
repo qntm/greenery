@@ -110,41 +110,48 @@ class Fsm:
         `map` may be sparse (i.e. it may omit transitions). In the case of
         omitted transitions, a non-final "oblivion" state is simulated.
         """
+        alphabet = set(self.alphabet)
+        states = set(self.states)
+        initial = self.initial
+        finals = set(self.finals)
+        map = self.map  # pylint: disable=redefined-builtin
 
         # Validation. Thanks to immutability, this only needs to be carried out
         # once.
-        if self.initial not in self.states:
+        if initial not in states:
             raise Exception(
-                f"Initial state {self.initial!r}"
-                f" must be one of {self.states!r}"
+                f"Initial state {initial!r}"
+                f" must be one of {states!r}"
             )
-        if not self.finals.issubset(self.states):
+        if not finals.issubset(states):
             raise Exception(
-                f"Final states {self.finals!r}"
-                f" must be a subset of {self.states!r}"
+                f"Final states {finals!r}"
+                f" must be a subset of {states!r}"
             )
-        for state, _state_trans in self.map.items():
-            if state not in self.states:
+        for state, _state_trans in map.items():
+            if state not in states:
                 raise Exception(f"Transition from unknown state {state!r}")
-            for symbol in self.map[state]:
-                if symbol not in self.alphabet:
+            for symbol in map[state]:
+                if symbol not in alphabet:
                     raise Exception(
                         f"Invalid symbol {symbol!r}"
                         f" in transition from {state!r}"
-                        f" to {self.map[state][symbol]!r}"
+                        f" to {map[state][symbol]!r}"
                     )
-                if not self.map[state][symbol] in self.states:
+                if not map[state][symbol] in states:
                     raise Exception(
                         f"Transition for state {state!r}"
                         f" and symbol {symbol!r}"
-                        f" leads to {self.map[state][symbol]!r},"
+                        f" leads to {map[state][symbol]!r},"
                         " which is not a state"
                     )
 
         # Initialise the hard way due to immutability.
-        object.__setattr__(self, "alphabet", set(self.alphabet))
-        object.__setattr__(self, "states", set(self.states))
-        object.__setattr__(self, "finals", set(self.finals))
+        object.__setattr__(self, "alphabet", alphabet)
+        object.__setattr__(self, "states", states)
+        object.__setattr__(self, "initial", initial)
+        object.__setattr__(self, "finals", finals)
+        object.__setattr__(self, "map", map)
 
     def accepts(self, input):
         """
