@@ -16,7 +16,7 @@ __all__ = (
 from dataclasses import dataclass
 from enum import Enum, auto
 from functools import total_ordering
-from typing import Any, Mapping, Union
+from typing import Any, Iterable, Mapping, Union
 
 # mypy: allow-incomplete-defs
 # mypy: allow-untyped-calls
@@ -105,12 +105,12 @@ class Fsm:
     # pylint: disable-next=too-many-arguments
     def __init__(
         self,
-        alphabet: set[alpha_type],
-        states: set[state_type],
+        alphabet: Iterable[alpha_type],
+        states: Iterable[state_type],
         initial: state_type,
-        finals: set[state_type],
+        finals: Iterable[state_type],
         # pylint: disable=redefined-builtin
-        map: dict[state_type, dict[alpha_type, state_type]],
+        map: Mapping[state_type, Mapping[alpha_type, state_type]],
     ) -> None:
         """
         `alphabet` is an iterable of symbols the FSM can be fed.
@@ -120,9 +120,9 @@ class Fsm:
         `map` may be sparse (i.e. it may omit transitions). In the case of
         omitted transitions, a non-final "oblivion" state is simulated.
         """
-        alphabet = set(alphabet)
-        states = set(states)
-        finals = set(finals)
+        alphabet = frozenset(alphabet)
+        states = frozenset(states)
+        finals = frozenset(finals)
 
         # Validation. Thanks to immutability, this only needs to be carried out
         # once.
@@ -155,10 +155,10 @@ class Fsm:
                     )
 
         # Initialise the hard way due to immutability.
-        object.__setattr__(self, "alphabet", frozenset(alphabet))
-        object.__setattr__(self, "states", frozenset(states))
+        object.__setattr__(self, "alphabet", alphabet)
+        object.__setattr__(self, "states", states)
         object.__setattr__(self, "initial", initial)
-        object.__setattr__(self, "finals", frozenset(finals))
+        object.__setattr__(self, "finals", finals)
         object.__setattr__(self, "map", map)
 
     def accepts(self, input):
@@ -811,7 +811,7 @@ def null(alphabet):
         alphabet=alphabet,
         states={0},
         initial=0,
-        finals=set(),
+        finals=(),
         map={
             0: dict([(symbol, 0) for symbol in alphabet]),
         },

@@ -413,7 +413,7 @@ def test_base_N():
     N = 3
     assert base <= 10
     divN = from_fsm(Fsm(
-        alphabet=set(str(i) for i in range(base)),
+        alphabet={str(i) for i in range(base)},
         states=set(range(N)) | {"initial", "zero", None},
         initial="initial",
         finals={"zero", 0},
@@ -467,7 +467,7 @@ def test_bad_alphabet():
             alphabet={bad_symbol},
             states={0},
             initial=0,
-            finals=set(),
+            finals=(),
             map={
                 0: {bad_symbol: 0}
             },

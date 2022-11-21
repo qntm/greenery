@@ -428,7 +428,7 @@ def test_invalid_fsms():
             alphabet={},
             states={},
             initial=1,
-            finals=set(),
+            finals=(),
             map={}
         )
 
@@ -448,7 +448,7 @@ def test_invalid_fsms():
             alphabet={"a"},
             states={1},
             initial=1,
-            finals=set(),
+            finals=(),
             map={
                 1: {"a": 2}
             }
@@ -460,7 +460,7 @@ def test_invalid_fsms():
             alphabet={"a"},
             states={1, 2},
             initial=1,
-            finals=set(),
+            finals=(),
             map={
                 3: {"a": 2}
             }
@@ -472,7 +472,7 @@ def test_invalid_fsms():
             alphabet={"a"},
             states={1, 2},
             initial=1,
-            finals=set(),
+            finals=(),
             map={1: {"a": 2, "b": 2}},
         )
 
