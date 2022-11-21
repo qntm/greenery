@@ -79,7 +79,7 @@ alpha_type = Union[str, AnythingElse]
 state_type = Union[int, str, None]
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, init=False)
 class Fsm:
     """
     A Finite State Machine or FSM has an alphabet and a set of states. At
@@ -101,7 +101,17 @@ class Fsm:
     states: set[state_type]
     map: dict[state_type, dict[alpha_type, state_type]]
 
-    def __post_init__(self):
+    # noinspection PyShadowingBuiltins
+    # pylint: disable-next=too-many-arguments
+    def __init__(
+        self,
+        alphabet: set[alpha_type],
+        states: set[state_type],
+        initial: state_type,
+        finals: set[state_type],
+        # pylint: disable=redefined-builtin
+        map: dict[state_type, dict[alpha_type, state_type]],
+    ) -> None:
         """
         `alphabet` is an iterable of symbols the FSM can be fed.
         `states` is the set of states for the FSM
@@ -110,11 +120,9 @@ class Fsm:
         `map` may be sparse (i.e. it may omit transitions). In the case of
         omitted transitions, a non-final "oblivion" state is simulated.
         """
-        alphabet = set(self.alphabet)
-        states = set(self.states)
-        initial = self.initial
-        finals = set(self.finals)
-        map = self.map  # pylint: disable=redefined-builtin
+        alphabet = set(alphabet)
+        states = set(states)
+        finals = set(finals)
 
         # Validation. Thanks to immutability, this only needs to be carried out
         # once.
