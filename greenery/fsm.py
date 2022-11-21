@@ -16,7 +16,7 @@ __all__ = (
 from dataclasses import dataclass
 from enum import Enum, auto
 from functools import total_ordering
-from typing import Any, Union
+from typing import Any, Mapping, Union
 
 # mypy: allow-incomplete-defs
 # mypy: allow-untyped-calls
@@ -95,11 +95,11 @@ class Fsm:
     The majority of these methods are available using operator overloads.
     """
 
-    alphabet: set[alpha_type]
-    states: set[state_type]
+    alphabet: frozenset[alpha_type]
+    states: frozenset[state_type]
     initial: state_type
-    finals: set[state_type]
-    map: dict[state_type, dict[alpha_type, state_type]]
+    finals: frozenset[state_type]
+    map: Mapping[state_type, Mapping[alpha_type, state_type]]
 
     # noinspection PyShadowingBuiltins
     # pylint: disable-next=too-many-arguments
@@ -155,10 +155,10 @@ class Fsm:
                     )
 
         # Initialise the hard way due to immutability.
-        object.__setattr__(self, "alphabet", alphabet)
-        object.__setattr__(self, "states", states)
+        object.__setattr__(self, "alphabet", frozenset(alphabet))
+        object.__setattr__(self, "states", frozenset(states))
         object.__setattr__(self, "initial", initial)
-        object.__setattr__(self, "finals", finals)
+        object.__setattr__(self, "finals", frozenset(finals))
         object.__setattr__(self, "map", map)
 
     def accepts(self, input):
