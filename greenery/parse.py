@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Tuple
-
 from .bound import Bound, INF
 from .charclass import Charclass, shorthand, escapes
 from .multiplier import Multiplier, symbolic
@@ -16,7 +14,7 @@ class NoMatch(Exception):
     pass
 
 
-def read_until(string: str, i: int, stop_char: str) -> Tuple[int, str]:
+def read_until(string: str, i: int, stop_char: str) -> tuple[int, str]:
     start = i
     while True:
         if i >= len(string):

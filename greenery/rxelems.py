@@ -6,7 +6,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Union
 
 from .fsm import Fsm, ANYTHING_ELSE, null, epsilon, alphabet_key
 from .multiplier import Multiplier, ZERO, QM, ONE, STAR
@@ -766,7 +765,7 @@ class Mult:
 
         e.g. a, b{2}, c?, d*, [efg]{2,5}, f{2,}, (anysubpattern)+, .*, ...
     '''
-    multiplicand: Union[Charclass, Pattern]
+    multiplicand: Charclass | Pattern
     multiplier: Multiplier
 
     def __eq__(self, other):

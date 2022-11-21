@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass(frozen=True)
 class Bound:
     '''An integer but sometimes also possibly infinite (None)'''
-    v: Optional[int]
+    v: int | None
 
     def __post_init__(self):
         if self.v is not None and self.v < 0:

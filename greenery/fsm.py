@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import Optional, Union, Set, Dict
+from typing import Union
 from dataclasses import dataclass
 
 ANYTHING_ELSE = '9bd74361-04f9-4742-9d3a-1d14a6f0044c'
@@ -26,7 +26,7 @@ class OblivionError(Exception):
     pass
 
 
-state_type = Optional[Union[int, str]]
+state_type = Union[int, str, None]
 
 
 @dataclass(frozen=True)
@@ -45,10 +45,10 @@ class Fsm:
         The majority of these methods are available using operator overloads.
     '''
     initial: state_type
-    finals: Set[state_type]
-    alphabet: Set[str]
-    states: Set[state_type]
-    map: Dict[state_type, Dict[str, state_type]]
+    finals: set[state_type]
+    alphabet: set[str]
+    states: set[state_type]
+    map: dict[state_type, dict[str, state_type]]
 
     def __post_init__(self):
         '''
