@@ -152,7 +152,6 @@ disable=
         too-complex,
         too-few-public-methods,
         too-many-try-statements,
-        unnecessary-comprehension,
         unnecessary-dict-index-lookup,
         unnecessary-lambda,
         unused-argument,

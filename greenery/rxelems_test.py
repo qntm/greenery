@@ -257,7 +257,7 @@ def test_wildcard_generator() -> None:
 
 
 def test_forin() -> None:
-    assert [s for s in parse("abc|def(ghi|jkl)")] == ["abc", "defghi", "defjkl"]
+    assert tuple(parse("abc|def(ghi|jkl)")) == ("abc", "defghi", "defjkl")
 
 
 ###############################################################################

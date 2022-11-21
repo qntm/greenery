@@ -658,7 +658,7 @@ def test_new_set_methods(a: FixtureA, b: FixtureB) -> None:
     for string in four:
         assert string == ["a", "a"]
         break
-    assert [s for s in four] == [["a", "a"], ["a", "b"], ["b", "a"], ["b", "b"]]
+    assert tuple(four) == (["a", "a"], ["a", "b"], ["b", "a"], ["b", "b"])
 
     # set.union() imitation
     assert Fsm.union(a, b) == a.union(b)
