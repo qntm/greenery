@@ -95,10 +95,10 @@ class Fsm:
     The majority of these methods are available using operator overloads.
     """
 
-    initial: state_type
-    finals: set[state_type]
     alphabet: set[alpha_type]
     states: set[state_type]
+    initial: state_type
+    finals: set[state_type]
     map: dict[state_type, dict[alpha_type, state_type]]
 
     # noinspection PyShadowingBuiltins
