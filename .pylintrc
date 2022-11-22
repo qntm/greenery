@@ -146,7 +146,6 @@ disable=
         too-complex,
         too-few-public-methods,
         too-many-try-statements,
-        unnecessary-dict-index-lookup,
         useless-suppression,
         while-used,
 

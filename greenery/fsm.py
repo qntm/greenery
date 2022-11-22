@@ -138,21 +138,21 @@ class Fsm:
             raise Exception(f"Initial state {initial!r} must be one of {states!r}")
         if not finals.issubset(states):
             raise Exception(f"Final states {finals!r} must be a subset of {states!r}")
-        for state, _state_trans in map.items():
+        for state, state_trans in map.items():
             if state not in states:
                 raise Exception(f"Transition from unknown state {state!r}")
-            for symbol in map[state]:
+            for symbol, dest in state_trans.items():
                 if symbol not in alphabet:
                     raise Exception(
                         f"Invalid symbol {symbol!r}"
                         f" in transition from {state!r}"
-                        f" to {map[state][symbol]!r}"
+                        f" to {dest!r}"
                     )
-                if map[state][symbol] not in states:
+                if dest not in states:
                     raise Exception(
                         f"Transition for state {state!r}"
                         f" and symbol {symbol!r}"
-                        f" leads to {map[state][symbol]!r},"
+                        f" leads to {dest!r},"
                         " which is not a state"
                     )
 
