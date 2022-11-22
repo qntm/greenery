@@ -28,7 +28,6 @@ def test_eq_neq():
     assert Bound(None) == INF
 
 
-@pytest.mark.xfail(raises=AttributeError, reason="BUG: __eq__does not check type")
 def test_eq_neq_heterogeneous():
     assert Bound(1) != "blah"
 

@@ -30,6 +30,8 @@ class Bound:
         return str(self.v)
 
     def __eq__(self, other):
+        if not isinstance(other, type(self)):
+            return NotImplemented
         return self.v == other.v
 
     def __hash__(self):
