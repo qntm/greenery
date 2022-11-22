@@ -51,12 +51,12 @@ class Charclass:
         object.__setattr__(self, "chars", chars)
         object.__setattr__(self, "negated", negated)
 
-    def __eq__(self, other):
+    def __eq__(self, other, /):
         return isinstance(other, Charclass) \
             and self.chars == other.chars \
             and self.negated == other.negated
 
-    def __hash__(self):
+    def __hash__(self, /):
         return hash((self.chars, self.negated))
 
     # These are the characters carrying special meanings when they appear
@@ -90,7 +90,7 @@ class Charclass:
         s: "\\S",
     }
 
-    def __str__(self):
+    def __str__(self, /):
         # e.g. \w
         if self in shorthand.keys():
             return shorthand[self]
@@ -122,8 +122,8 @@ class Charclass:
         # multiple characters (or possibly 0 characters)
         return "[" + self.escape() + "]"
 
-    def escape(self):
-        def escapeChar(char):
+    def escape(self, /):
+        def escapeChar(char, /):
             if char in Charclass.classSpecial:
                 return "\\" + char
             if char in escapes.keys():
@@ -180,7 +180,7 @@ class Charclass:
 
         return output
 
-    def to_fsm(self, alphabet=None):
+    def to_fsm(self, /, alphabet=None):
         alphabet = self.alphabet() if alphabet is None else frozenset(alphabet)
 
         # 0 is initial, 1 is final
@@ -205,7 +205,7 @@ class Charclass:
             map=map,
         )
 
-    def __repr__(self):
+    def __repr__(self, /):
         string = ""
         if self.negated is True:
             string += "~"
@@ -216,31 +216,31 @@ class Charclass:
         string += ")"
         return string
 
-    def reduce(self):
+    def reduce(self, /):
         # `Charclass`es cannot be reduced.
         return self
 
-    def alphabet(self):
+    def alphabet(self, /):
         return self.chars | {ANYTHING_ELSE}
 
-    def empty(self):
+    def empty(self, /):
         return len(self.chars) == 0 and not self.negated
 
     # set operations
-    def negate(self):
+    def negate(self, /):
         """
         Negate the current `Charclass`. e.g. [ab] becomes [^ab]. Call
         using "charclass2 = ~charclass1"
         """
         return Charclass(self.chars, negated=not self.negated)
 
-    def __invert__(self):
+    def __invert__(self, /):
         return self.negate()
 
-    def reversed(self):
+    def reversed(self, /):
         return self
 
-    def __or__(self, other):
+    def __or__(self, other, /):
         # ¬A OR ¬B = ¬(A AND B)
         # ¬A OR B = ¬(A - B)
         # A OR ¬B = ¬(B - A)
