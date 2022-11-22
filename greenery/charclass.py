@@ -15,6 +15,7 @@ __all__ = (
 )
 
 from dataclasses import dataclass
+from typing import Iterable
 
 from .fsm import ANYTHING_ELSE, Fsm
 
@@ -35,10 +36,10 @@ class Charclass:
     combination functions.
     """
 
-    chars: frozenset[str] | str
+    chars: frozenset[str]
     negated: bool
 
-    def __init__(self, chars: frozenset[str] | str, negated=False):
+    def __init__(self, chars: Iterable[str], negated: bool = False):
         chars = frozenset(chars)
         # chars should consist only of chars
         for c in chars:
