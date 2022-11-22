@@ -24,7 +24,7 @@ from .fsm import ANYTHING_ELSE, Fsm
 # mypy: no-check-untyped-defs
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, init=False)
 class Charclass:
     """
     A `Charclass` is basically a `frozenset` of symbols.
@@ -36,16 +36,19 @@ class Charclass:
     """
 
     chars: frozenset[str] | str
-    negated: bool = False
+    negated: bool
 
-    def __post_init__(self):
-        object.__setattr__(self, "chars", frozenset(self.chars))
+    def __init__(self, chars: frozenset[str] | str, negated=False):
+        chars = frozenset(chars)
         # chars should consist only of chars
-        for c in self.chars:
+        for c in chars:
             if not isinstance(c, str):
                 raise TypeError(f"Can't put {c!r} in a `Charclass`", c)
             if len(c) != 1:
                 raise ValueError("`Charclass` can only contain single chars", c)
+
+        object.__setattr__(self, "chars", chars)
+        object.__setattr__(self, "negated", negated)
 
     def __eq__(self, other):
         return isinstance(other, Charclass) \
