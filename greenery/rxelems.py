@@ -268,7 +268,7 @@ def from_fsm(f: Fsm):
     # Make sure the supplied alphabet is kosher. It must contain only single-
     # character strings or `ANYTHING_ELSE`.
     for symbol in f.alphabet:
-        if symbol == ANYTHING_ELSE:
+        if symbol is ANYTHING_ELSE:
             continue
         if isinstance(symbol, str) and len(symbol) == 1:
             continue
@@ -321,7 +321,7 @@ def from_fsm(f: Fsm):
     for a in f.map:
         for symbol in f.map[a]:
             b = f.map[a][symbol]
-            if symbol == ANYTHING_ELSE:
+            if symbol is ANYTHING_ELSE:
                 charclass = ~Charclass(f.alphabet - {ANYTHING_ELSE})
             else:
                 charclass = Charclass({symbol})
@@ -741,7 +741,7 @@ class Pattern:
                 if otherchar is None:
                     raise Exception("Please choose an `otherchar`")
                 string = [
-                    otherchar if char == ANYTHING_ELSE else char
+                    otherchar if char is ANYTHING_ELSE else char
                     for char in string
                 ]
 
