@@ -28,7 +28,6 @@ def test_eq():
     assert STAR != QM
 
 
-@pytest.mark.xfail(reason="BUG: __eq__ does not check type")
 def test_eq_het():
     assert ZERO != "goldfish"
 

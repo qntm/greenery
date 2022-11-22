@@ -49,6 +49,8 @@ class Multiplier:
         object.__setattr__(self, "optional", self.max - self.min)
 
     def __eq__(self, other):
+        if not isinstance(other, type(self)):
+            return NotImplemented
         return self.min == other.min and self.max == other.max
 
     def __hash__(self):
