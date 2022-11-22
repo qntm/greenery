@@ -16,38 +16,38 @@ class Bound:
 
     v: int | None
 
-    def __post_init__(self):
+    def __post_init__(self, /):
         if self.v is not None and self.v < 0:
             raise Exception(f"Invalid bound: {self.v!r}")
 
-    def __repr__(self):
+    def __repr__(self, /):
         return f"Bound({self.v!r})"
 
-    def __str__(self):
+    def __str__(self, /):
         if self.v is None:
             # This only happens for an unlimited upper bound
             return ""
         return str(self.v)
 
-    def __eq__(self, other):
+    def __eq__(self, other, /):
         if not isinstance(other, type(self)):
             return NotImplemented
         return self.v == other.v
 
-    def __hash__(self):
+    def __hash__(self, /):
         return hash(self.v)
 
-    def __lt__(self, other):
+    def __lt__(self, other, /):
         if self.v is None:
             return False
         if other.v is None:
             return True
         return self.v < other.v
 
-    def __ge__(self, other):
+    def __ge__(self, other, /):
         return not self < other
 
-    def __mul__(self, other):
+    def __mul__(self, other, /):
         """Multiply this bound by another"""
         if self == Bound(0) or other == Bound(0):
             return Bound(0)
@@ -55,13 +55,13 @@ class Bound:
             return INF
         return Bound(self.v * other.v)
 
-    def __add__(self, other):
+    def __add__(self, other, /):
         """Add this bound to another"""
         if self.v is None or other.v is None:
             return INF
         return Bound(self.v + other.v)
 
-    def __sub__(self, other):
+    def __sub__(self, other, /):
         """
         Subtract another bound from this one.
         Caution: this operation is not meaningful for all bounds.
@@ -80,7 +80,7 @@ class Bound:
             return INF
         return Bound(self.v - other.v)
 
-    def copy(self):
+    def copy(self, /):
         return Bound(self.v)
 
 
