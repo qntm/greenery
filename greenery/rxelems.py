@@ -41,6 +41,8 @@ class Conc:
         object.__setattr__(self, "mults", tuple(mults))
 
     def __eq__(self, other, /):
+        if not isinstance(other, type(self)):
+            return NotImplemented
         return self.mults == other.mults
 
     def __hash__(self, /):
@@ -395,7 +397,9 @@ class Pattern:
         object.__setattr__(self, "concs", frozenset(concs))
 
     def __eq__(self, other, /):
-        return isinstance(other, Pattern) and self.concs == other.concs
+        if not isinstance(other, type(self)):
+            return NotImplemented
+        return self.concs == other.concs
 
     def __hash__(self, /):
         return hash(self.concs)
@@ -751,9 +755,10 @@ class Mult:
     multiplier: Multiplier
 
     def __eq__(self, other, /):
+        if not isinstance(other, type(self)):
+            return NotImplemented
         return (
-            isinstance(other.multiplicand, type(self.multiplicand))
-            and self.multiplicand == other.multiplicand
+            self.multiplicand == other.multiplicand
             and self.multiplier == other.multiplier
         )
 
