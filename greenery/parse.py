@@ -95,16 +95,16 @@ def match_internal_char(string, i):
 
 def match_class_interior_1(string, i):
     # Attempt 1: shorthand e.g. "\w"
-    for frozenset, cc_shorthand in Charclass.shorthand.items():
+    for chars, cc_shorthand in Charclass.shorthand.items():
         try:
-            return frozenset, False, static(string, i, cc_shorthand)
+            return chars, False, static(string, i, cc_shorthand)
         except NoMatch:
             pass
 
     # Attempt 1B: shorthand e.g. "\W"
-    for frozenset, cc_shorthand in Charclass.negated_shorthand.items():
+    for chars, cc_shorthand in Charclass.negated_shorthand.items():
         try:
-            return frozenset, True, static(string, i, cc_shorthand)
+            return chars, True, static(string, i, cc_shorthand)
         except NoMatch:
             pass
 
@@ -121,39 +121,36 @@ def match_class_interior_1(string, i):
         if firstIndex >= lastIndex:
             raise NoMatch(f"Range '{first}' to '{last}' not allowed")
 
-        chars = set([
-            chr(i) for i in range(firstIndex, lastIndex + 1)
-        ])
+        chars = frozenset(chr(i) for i in range(firstIndex, lastIndex + 1))
         return chars, False, k
     except NoMatch:
         pass
 
     # Attempt 3: just a character on its own
     (char, j) = match_internal_char(string, i)
-    return set(char), False, j
+    return frozenset(char), False, j
 
 
 def match_class_interior(string, i):
-    internals = set()
-    internals_negated = False
+    predicates = []
     try:
         while True:
+            # Match an internal character, range, or other charclass predicate.
             internal, internal_negated, i = match_class_interior_1(string, i)
-            if internal_negated:
-                if internals_negated:
-                    # E.g. [a1\D\W]
-                    internals |= internal
-                else:
-                    internals_negated = True
-                    internals = internal - internals
-            else:
-                if internals_negated:
-                    internals = internals - internal
-                else:
-                    internals |= internal
+            predicates.append((internal, internal_negated))
     except NoMatch:
         pass
-    return internals, internals_negated, i
+
+    closed_sets = [chars for chars, negated in predicates if not negated]
+    include = frozenset.union(*closed_sets) if closed_sets else frozenset()
+
+    open_sets = [chars for chars, negated in predicates if negated]
+    exclude = frozenset.intersection(*open_sets) if open_sets else frozenset()
+
+    is_open = bool(open_sets)
+    chars = (exclude - include) if is_open else (include - exclude)
+
+    return chars, is_open, i
 
 
 def match_charclass(string: str, i):

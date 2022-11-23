@@ -41,10 +41,10 @@ def test_negatives_inside_charclasses():
     assert match_charclass("[\\D1a]", 0) == (~Charclass("023456789"), 6)
     assert match_charclass("[\\D\\d]", 0) == (DOT, 6)
     assert match_charclass("[\\D\\D]", 0) == (~DIGIT, 6)
-    assert match_charclass("[\\S\\D]", 0) == \
-        (~Charclass("\t\n\v\f\r 0123456789"), 6)
-    assert match_charclass("[\\S \\D]", 0) == \
-        (~Charclass("\t\n\v\f\r0123456789"), 7)
+
+    # "Either non-whitespace or a non-digit" matches _anything_.
+    assert match_charclass("[\\S\\D]", 0) == (DOT, 6)
+    assert match_charclass("[\\S \\D]", 0) == (DOT, 7)
 
 
 def test_negated_negatives_inside_charclasses():
@@ -58,10 +58,10 @@ def test_negated_negatives_inside_charclasses():
     assert match_charclass("[^\\D1a]", 0) == (Charclass("023456789"), 7)
     assert match_charclass("[^\\D\\d]", 0) == (NULLCHARCLASS, 7)
     assert match_charclass("[^\\D\\D]", 0) == (DIGIT, 7)
-    assert match_charclass("[^\\S\\D]", 0) == \
-        (Charclass("\t\n\v\f\r 0123456789"), 7)
-    assert match_charclass("[^\\S \\D]", 0) == \
-        (Charclass("\t\n\v\f\r0123456789"), 8)
+
+    # "Anything but non-whitespace and non-digit" matches _nothing_.
+    assert match_charclass("[^\\S\\D]", 0) == (NULLCHARCLASS, 7)
+    assert match_charclass("[^\\S \\D]", 0) == (NULLCHARCLASS, 8)
 
 
 def test_mult_matching():
