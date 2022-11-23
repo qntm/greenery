@@ -121,20 +121,18 @@ def match_class_interior_1(string, i):
         if firstIndex >= lastIndex:
             raise NoMatch(f"Range '{first}' to '{last}' not allowed")
 
-        chars = set([
-            chr(i) for i in range(firstIndex, lastIndex + 1)
-        ])
+        chars = frozenset(chr(i) for i in range(firstIndex, lastIndex + 1))
         return chars, False, k
     except NoMatch:
         pass
 
     # Attempt 3: just a character on its own
     (char, j) = match_internal_char(string, i)
-    return set(char), False, j
+    return frozenset(char), False, j
 
 
 def match_class_interior(string, i):
-    internals = set()
+    internals = frozenset()
     internals_negated = False
     try:
         while True:
