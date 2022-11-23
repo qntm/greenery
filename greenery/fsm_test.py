@@ -417,7 +417,7 @@ def test_binary_3():
 
 def test_invalid_fsms():
     # initial state 1 is not a state
-    try:
+    with pytest.raises(Exception, match="Initial state"):
         Fsm(
             alphabet={},
             states={},
@@ -425,14 +425,9 @@ def test_invalid_fsms():
             finals=set(),
             map={}
         )
-        assert False
-    except AssertionError:
-        assert False
-    except Exception:
-        pass
 
     # final state 2 not a state
-    try:
+    with pytest.raises(Exception, match="Final states"):
         Fsm(
             alphabet={},
             states={1},
@@ -440,14 +435,9 @@ def test_invalid_fsms():
             finals={2},
             map={}
         )
-        assert False
-    except AssertionError:
-        assert False
-    except Exception:
-        pass
 
     # invalid transition for state 1, symbol "a"
-    try:
+    with pytest.raises(Exception, match="Transition.+leads to.+not a state"):
         Fsm(
             alphabet={"a"},
             states={1},
@@ -457,21 +447,11 @@ def test_invalid_fsms():
                 1: {"a": 2}
             }
         )
-        assert False
-    except AssertionError:
-        assert False
-    except Exception:
-        pass
 
 
 def test_bad_multiplier(a):
-    try:
+    with pytest.raises(Exception, match="Can't multiply"):
         a * -1
-        assert False
-    except AssertionError:
-        assert False
-    except Exception:
-        pass
 
 
 def test_anything_else_acceptance():
@@ -627,11 +607,9 @@ def test_new_set_methods(a, b):
     # But do they work?
     assert len(a) == 1
     assert len((a | b) * 4) == 16
-    try:
+
+    with pytest.raises(OverflowError):
         len(a.star())
-        assert False
-    except OverflowError:
-        pass
 
     # "in"
     assert "a" in a
@@ -720,11 +698,10 @@ def test_derive(a, b):
     # Just some basic tests because this is mainly a regex thing.
     assert a.derive("a") == epsilon({"a", "b"})
     assert a.derive("b") == null({"a", "b"})
-    try:
+
+    with pytest.raises(KeyError):
         a.derive("c")
-        assert False
-    except KeyError:
-        assert True
+
     assert (a * 3).derive("a") == a * 2
     assert (a.star() - epsilon({"a", "b"})).derive("a") == a.star()
 
