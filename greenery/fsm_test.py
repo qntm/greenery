@@ -309,7 +309,7 @@ def test_reverse_abc():
             None: {"a": None, "b": None, "c": None},
         },
     )
-    cba = reversed(abc)
+    cba = abc.reversed()
     assert cba.accepts("cba")
 
 
@@ -341,7 +341,7 @@ def test_reverse_brzozowski():
     assert not brzozowski.accepts("bbbbbbbbbbbb")
 
     # So this is (a|b)a(a|b)*
-    b2 = reversed(brzozowski)
+    b2 = brzozowski.reversed()
     assert b2.accepts("aa")
     assert b2.accepts("ba")
     assert b2.accepts("baa")
@@ -367,7 +367,7 @@ def test_reverse_brzozowski():
 
 def test_reverse_epsilon():
     # epsilon reversed is epsilon
-    assert reversed(epsilon("a")).accepts("")
+    assert epsilon("a").reversed().accepts("")
 
 
 def test_binary_3():
@@ -681,7 +681,7 @@ def test_oblivion_crawl(a):
     assert len((abc + abc).states) == 7
     assert len(abc.star().states) == 3
     assert len((abc * 3).states) == 10
-    assert len(reversed(abc).states) == 4
+    assert len(abc.reversed().states) == 4
     assert len((abc | abc).states) == 4
     assert len((abc & abc).states) == 4
     assert len((abc ^ abc).states) == 1

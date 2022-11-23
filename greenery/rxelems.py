@@ -257,7 +257,7 @@ class Conc():
         return self.reversed().dock(other.reversed()).reversed()
 
     def reversed(self):
-        return Conc(*reversed([mult.reversed() for mult in self.mults]))
+        return Conc(*[mult.reversed() for mult in reversed(self.mults)])
 
 
 def from_fsm(f: Fsm):
