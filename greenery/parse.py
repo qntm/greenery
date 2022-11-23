@@ -105,14 +105,14 @@ def match_class_interior_1(string, i):
     # Attempt 1: shorthand e.g. "\w"
     for chars, cc_shorthand in Charclass.shorthand.items():
         try:
-            return chars, False, static(string, i, cc_shorthand)
+            return (chars, False), static(string, i, cc_shorthand)
         except NoMatch:
             pass
 
     # Attempt 1B: shorthand e.g. "\W"
     for chars, cc_shorthand in Charclass.negated_shorthand.items():
         try:
-            return chars, True, static(string, i, cc_shorthand)
+            return (chars, True), static(string, i, cc_shorthand)
         except NoMatch:
             pass
 
@@ -130,13 +130,13 @@ def match_class_interior_1(string, i):
             raise NoMatch(f"Range {first!r} to {last!r} not allowed")
 
         chars = frozenset(chr(i) for i in range(firstIndex, lastIndex + 1))
-        return chars, False, k
+        return (chars, False), k
     except NoMatch:
         pass
 
     # Attempt 3: just a character on its own
     char, j = match_internal_char(string, i)
-    return frozenset(char), False, j
+    return (frozenset(char), False), j
 
 
 def match_class_interior(string, i):
@@ -144,7 +144,7 @@ def match_class_interior(string, i):
     try:
         while True:
             # Match an internal character, range, or other charclass predicate.
-            internal, internal_negated, i = match_class_interior_1(string, i)
+            (internal, internal_negated), i = match_class_interior_1(string, i)
             predicates.append(Charclass(internal, negated=internal_negated))
     except NoMatch:
         pass
