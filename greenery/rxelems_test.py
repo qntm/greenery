@@ -937,6 +937,14 @@ def test_bug_36_2():
     assert not etc2.isdisjoint(etc1)
 
 
+def test_isdisjoint():
+    xyzzy = parse("xyz(zy)?")
+    xyz = parse("xyz")
+    blippy = parse("blippy")
+    assert xyzzy.isdisjoint(blippy)
+    assert not xyzzy.isdisjoint(xyz)
+
+
 def test_bug_slow():
     # issue #43
     import time
