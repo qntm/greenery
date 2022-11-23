@@ -132,27 +132,25 @@ def match_class_interior_1(string, i):
 
 
 def match_class_interior(string, i):
-    chars = frozenset()
-    has_negated = False
+    predicates = []
     try:
         while True:
             # Match an internal character, range, or other charclass predicate.
             internal, internal_negated, i = match_class_interior_1(string, i)
-            if internal_negated:
-                if has_negated:
-                    # E.g. [a1\D\W]
-                    chars |= internal
-                else:
-                    has_negated = True
-                    chars = internal - chars
-            else:
-                if has_negated:
-                    chars = chars - internal
-                else:
-                    chars |= internal
+            predicates.append((internal, internal_negated))
     except NoMatch:
         pass
-    return chars, has_negated, i
+
+    closed_sets = [chars for chars, negated in predicates if not negated]
+    include = frozenset.union(*closed_sets) if closed_sets else frozenset()
+
+    open_sets = [chars for chars, negated in predicates if negated]
+    exclude = frozenset.intersection(*open_sets) if open_sets else frozenset()
+
+    is_open = bool(open_sets)
+    chars = (exclude - include) if is_open else (include - exclude)
+
+    return chars, is_open, i
 
 
 def match_charclass(string: str, i):
