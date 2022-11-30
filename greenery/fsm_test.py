@@ -7,12 +7,12 @@ import pytest
 
 from .fsm import ANYTHING_ELSE, AnythingElse, Fsm, epsilon, null
 
-# mypy: allow-untyped-calls
-# mypy: allow-untyped-defs
-# mypy: no-check-untyped-defs
+FixtureA = Fsm
+
+FixtureB = Fsm
 
 
-def test_addbug():
+def test_addbug() -> None:
     # Odd bug with Fsm.__add__(), exposed by "[bc]*c"
     int5A = Fsm(
         alphabet={"a", "b", "c", ANYTHING_ELSE},
@@ -44,14 +44,14 @@ def test_addbug():
     # assert int5C.initial == 0
 
 
-def test_builtins():
+def test_builtins() -> None:
     assert not null("a").accepts("a")
     assert epsilon("a").accepts("")
     assert not epsilon("a").accepts("a")
 
 
 @pytest.fixture
-def a():
+def a() -> FixtureA:
     a = Fsm(
         alphabet={"a", "b"},
         states={0, 1, "ob"},
@@ -66,14 +66,14 @@ def a():
     return a
 
 
-def test_a(a):
+def test_a(a: FixtureA) -> None:
     assert not a.accepts("")
     assert a.accepts("a")
     assert not a.accepts("b")
 
 
 @pytest.fixture
-def b():
+def b() -> FixtureB:
     b = Fsm(
         alphabet={"a", "b"},
         states={0, 1, "ob"},
@@ -88,13 +88,13 @@ def b():
     return b
 
 
-def test_b(b):
+def test_b(b: FixtureB) -> None:
     assert not b.accepts("")
     assert not b.accepts("a")
     assert b.accepts("b")
 
 
-def test_concatenation_aa(a):
+def test_concatenation_aa(a: FixtureA) -> None:
     concAA = a + a
     assert not concAA.accepts("")
     assert not concAA.accepts("a")
@@ -108,7 +108,7 @@ def test_concatenation_aa(a):
     assert not concAA.accepts("aaa")
 
 
-def test_concatenation_ab(a, b):
+def test_concatenation_ab(a: FixtureA, b: FixtureB) -> None:
     concAB = a + b
     assert not concAB.accepts("")
     assert not concAB.accepts("a")
@@ -119,13 +119,13 @@ def test_concatenation_ab(a, b):
     assert not concAB.accepts("bb")
 
 
-def test_alternation_a(a):
+def test_alternation_a(a: FixtureA) -> None:
     altA = a | null({"a", "b"})
     assert not altA.accepts("")
     assert altA.accepts("a")
 
 
-def test_alternation_ab(a, b):
+def test_alternation_ab(a: FixtureA, b: FixtureB) -> None:
     altAB = a | b
     assert not altAB.accepts("")
     assert altAB.accepts("a")
@@ -136,7 +136,7 @@ def test_alternation_ab(a, b):
     assert not altAB.accepts("bb")
 
 
-def test_star(a):
+def test_star(a: FixtureA) -> None:
     starA = a.star()
     assert starA.accepts("")
     assert starA.accepts("a")
@@ -144,20 +144,20 @@ def test_star(a):
     assert starA.accepts("aaaaaaaaa")
 
 
-def test_multiply_0(a):
+def test_multiply_0(a: FixtureA) -> None:
     zeroA = a * 0
     assert zeroA.accepts("")
     assert not zeroA.accepts("a")
 
 
-def test_multiply_1(a):
+def test_multiply_1(a: FixtureA) -> None:
     oneA = a * 1
     assert not oneA.accepts("")
     assert oneA.accepts("a")
     assert not oneA.accepts("aa")
 
 
-def test_multiply_2(a):
+def test_multiply_2(a: FixtureA) -> None:
     twoA = a * 2
     assert not twoA.accepts("")
     assert not twoA.accepts("a")
@@ -165,14 +165,14 @@ def test_multiply_2(a):
     assert not twoA.accepts("aaa")
 
 
-def test_multiply_7(a):
+def test_multiply_7(a: FixtureA) -> None:
     sevenA = a * 7
     assert not sevenA.accepts("aaaaaa")
     assert sevenA.accepts("aaaaaaa")
     assert not sevenA.accepts("aaaaaaaa")
 
 
-def test_optional_mul(a, b):
+def test_optional_mul(a: FixtureA, b: FixtureB) -> None:
     unit = a + b
     # accepts "ab"
 
@@ -197,14 +197,14 @@ def test_optional_mul(a, b):
     assert optional.accepts(["a", "b", "a", "b"])
 
 
-def test_intersection_ab(a, b):
+def test_intersection_ab(a: FixtureA, b: FixtureB) -> None:
     intAB = a & b
     assert not intAB.accepts("")
     assert not intAB.accepts("a")
     assert not intAB.accepts("b")
 
 
-def test_negation(a):
+def test_negation(a: FixtureA) -> None:
     everythingbutA = a.everythingbut()
     assert everythingbutA.accepts("")
     assert not everythingbutA.accepts("a")
@@ -213,7 +213,7 @@ def test_negation(a):
     assert everythingbutA.accepts("ab")
 
 
-def test_crawl_reduction():
+def test_crawl_reduction() -> None:
     # this is "0*1" in heavy disguise. crawl should resolve this duplication
     # Notice how states 2 and 3 behave identically. When resolved together,
     # states 1 and 2&3 also behave identically, so they, too should be resolved
@@ -235,7 +235,7 @@ def test_crawl_reduction():
     assert len(merged.states) == 2
 
 
-def test_bug_28():
+def test_bug_28() -> None:
     # This is (ab*)* and it caused some defects.
     abstar = Fsm(
         alphabet={"a", "b"},
@@ -258,7 +258,7 @@ def test_bug_28():
     assert not abstar.star().accepts("bb")
 
 
-def test_star_advanced():
+def test_star_advanced() -> None:
     # This is (a*ba)*. Naively connecting the final states to the initial state
     # gives the incorrect result here.
     starred = Fsm(
@@ -285,9 +285,9 @@ def test_star_advanced():
     assert starred.accepts("abababa")
 
 
-def test_reduce():
+def test_reduce() -> None:
     # FSM accepts no strings but has 3 states, needs only 1
-    symbol = ()
+    symbol = "x"
     asdf = Fsm(
         alphabet={symbol},
         states={0, 1, 2},
@@ -303,7 +303,7 @@ def test_reduce():
     assert len(asdf.states) == 1
 
 
-def test_reverse_abc():
+def test_reverse_abc() -> None:
     abc = Fsm(
         alphabet={"a", "b", "c"},
         states={0, 1, 2, 3, None},
@@ -321,7 +321,7 @@ def test_reverse_abc():
     assert cba.accepts("cba")
 
 
-def test_reverse_brzozowski():
+def test_reverse_brzozowski() -> None:
     # This is (a|b)*a(a|b)
     brzozowski = Fsm(
         alphabet={"a", "b"},
@@ -373,12 +373,12 @@ def test_reverse_brzozowski():
     assert next(gen) == ["a", "a", "a", "a"]
 
 
-def test_reverse_epsilon():
+def test_reverse_epsilon() -> None:
     # epsilon reversed is epsilon
     assert epsilon("a").reversed().accepts("")
 
 
-def test_binary_3():
+def test_binary_3() -> None:
     # Binary numbers divisible by 3.
     # Disallows the empty string
     # Allows "0" on its own, but not leading zeroes.
@@ -423,7 +423,7 @@ def test_binary_3():
     assert div3.accepts("1001")
 
 
-def test_invalid_fsms():
+def test_invalid_fsms() -> None:
     # initial state 1 is not a state
     with pytest.raises(Exception, match="Initial state"):
         Fsm(
@@ -479,12 +479,12 @@ def test_invalid_fsms():
         )
 
 
-def test_bad_multiplier(a):
+def test_bad_multiplier(a: FixtureA) -> None:
     with pytest.raises(Exception, match="Can't multiply"):
         a * -1
 
 
-def test_anything_else_acceptance():
+def test_anything_else_acceptance() -> None:
     a = Fsm(
         alphabet={"a", "b", "c", ANYTHING_ELSE},
         states={1},
@@ -497,7 +497,7 @@ def test_anything_else_acceptance():
     assert a.accepts("d")
 
 
-def test_difference(a, b):
+def test_difference(a: FixtureA, b: FixtureB) -> None:
     aorb = Fsm(
         alphabet={"a", "b"},
         states={0, 1, None},
@@ -516,7 +516,7 @@ def test_difference(a, b):
     assert list((aorb ^ a).strings()) == [["b"]]
 
 
-def test_empty(a, b):
+def test_empty(a: FixtureA, b: FixtureB) -> None:
     assert not a.empty()
     assert not b.empty()
 
@@ -550,11 +550,11 @@ def test_empty(a, b):
     ).empty()
 
 
-def test_equivalent(a, b):
+def test_equivalent(a: FixtureA, b: FixtureB) -> None:
     assert (a | b).equivalent(b | a)
 
 
-def test_eq_ne(a, b):
+def test_eq_ne(a: FixtureA, b: FixtureB) -> None:
     # pylint: disable=comparison-with-itself
 
     assert a == a
@@ -574,7 +574,7 @@ def test_eq_ne(a, b):
         ("a",),
     ),
 )
-def test_eq_ne_het(a, other):
+def test_eq_ne_het(a: FixtureA, other: object) -> None:
     # pylint: disable=comparison-with-itself
 
     # eq
@@ -588,7 +588,7 @@ def test_eq_ne_het(a, other):
     assert other != a
 
 
-def test_dead_default():
+def test_dead_default() -> None:
     """
     You may now omit a transition, or even an entire state, from the map.
     This affects every usage of `Fsm.map`.
@@ -639,7 +639,7 @@ def test_dead_default():
     assert next(gen) == ["/", "*", "*", "/"]
 
 
-def test_alphabet_unions():
+def test_alphabet_unions() -> None:
     # Thanks to sparse maps it should now be possible to compute the union of
     # FSMs with disagreeing alphabets!
     a = Fsm(
@@ -670,7 +670,7 @@ def test_alphabet_unions():
     assert (a ^ b).accepts(["b"])
 
 
-def test_new_set_methods(a, b):
+def test_new_set_methods(a: FixtureA, b: FixtureB) -> None:
     # A whole bunch of new methods were added to the FSM module to enable FSMs
     # to function exactly as if they were sets of strings (symbol lists), see:
     # https://docs.python.org/3/library/stdtypes.html#set-types-set-frozenset
@@ -733,10 +733,10 @@ def test_new_set_methods(a, b):
     assert list(Fsm.concatenate().strings()) == []
 
 
-def test_copy(a):
+def test_copy(a: FixtureA) -> None:
     # fsm.copy() and frozenset().copy() both preserve identity, because they
     # are immutable. This is just showing that we give the same behaviour.
-    copyables = (a, frozenset("abc"))
+    copyables: tuple[Fsm | frozenset[str], ...] = (a, frozenset("abc"))
     for x in copyables:
         assert x.copy() is x
 
@@ -745,7 +745,7 @@ def test_copy(a):
         assert copy(x) is x
 
 
-def test_oblivion_crawl(a):
+def test_oblivion_crawl(a: FixtureA) -> None:
     # When crawling a new FSM, we should avoid generating an oblivion state.
     # `abc` has no oblivion state... all the results should not as well!
     abc = Fsm(
@@ -769,13 +769,13 @@ def test_oblivion_crawl(a):
     assert len((abc - abc).states) == 1
 
 
-def test_concatenate_bug(a):
+def test_concatenate_bug(a: FixtureA) -> None:
     # This exposes a defect in Fsm.concatenate.
     assert Fsm.concatenate(a, epsilon({"a"}), a).accepts("aa")
     assert Fsm.concatenate(a, epsilon({"a"}), epsilon({"a"}), a).accepts("aa")
 
 
-def test_derive(a, b):
+def test_derive(a: FixtureA, b: FixtureB) -> None:
     # Just some basic tests because this is mainly a regex thing.
     assert a.derive("a") == epsilon({"a", "b"})
     assert a.derive("b") == null({"a", "b"})
@@ -787,7 +787,7 @@ def test_derive(a, b):
     assert (a.star() - epsilon({"a", "b"})).derive("a") == a.star()
 
 
-def test_bug_36():
+def test_bug_36() -> None:
     etc1 = Fsm(
         alphabet={ANYTHING_ELSE},
         states={0},
@@ -821,7 +821,7 @@ def test_bug_36():
     assert both.accepts(["s"])
 
 
-def test_add_anything_else():
+def test_add_anything_else() -> None:
     # [^a]
     fsm1 = Fsm(
         alphabet={"a", ANYTHING_ELSE},
@@ -842,11 +842,11 @@ def test_add_anything_else():
     assert (fsm1 + fsm2).accepts("ba")
 
 
-def test_anything_else_singleton():
+def test_anything_else_singleton() -> None:
     assert AnythingElse.TOKEN is ANYTHING_ELSE
 
 
-def test_anything_else_self():
+def test_anything_else_self() -> None:
     """ANYTHING_ELSE is consistently equal to itself."""
 
     # pylint: disable=comparison-with-itself
@@ -871,7 +871,7 @@ def test_anything_else_self():
         str(ANYTHING_ELSE),
     ),
 )
-def test_anything_else_sorts_after(val):
+def test_anything_else_sorts_after(val: object) -> None:
     """ANYTHING_ELSE sorts strictly after anything."""
 
     # pylint: disable=unneeded-not
@@ -890,7 +890,7 @@ def test_anything_else_sorts_after(val):
     assert not val >= ANYTHING_ELSE
 
 
-def test_anything_else_pickle():
+def test_anything_else_pickle() -> None:
     # [^z]
     fsm1 = Fsm(
         alphabet={"z", ANYTHING_ELSE},
