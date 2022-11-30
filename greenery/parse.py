@@ -5,6 +5,8 @@ __all__ = (
     "NoMatch",
 )
 
+from typing import Tuple, TypeVar
+
 from .bound import INF, Bound
 from .charclass import Charclass, escapes, shorthand
 from .multiplier import Multiplier, symbolic
@@ -14,6 +16,8 @@ from .rxelems import Conc, Mult, Pattern
 # mypy: allow-untyped-defs
 # mypy: allow-incomplete-defs
 
+T_co = TypeVar("T_co", covariant=True)
+
 
 class NoMatch(Exception):
     """
@@ -22,6 +26,9 @@ class NoMatch(Exception):
     """
 
     pass
+
+
+MatchResult = Tuple[T_co, int]
 
 
 def read_until(string: str, i: int, stop_char: str) -> tuple[str, int]:
