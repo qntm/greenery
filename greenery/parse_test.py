@@ -10,14 +10,11 @@ from .multiplier import ONE, PLUS, STAR, Multiplier
 from .parse import NoMatch, match_charclass, match_mult, parse
 from .rxelems import Conc, Mult, Pattern
 
-# mypy: allow-untyped-calls
-# mypy: allow-untyped-defs
-
 if __name__ == "__main__":
     raise Exception("Test files can't be run directly. Use `python -m pytest greenery`")
 
 
-def test_charclass_matching():
+def test_charclass_matching() -> None:
     assert match_charclass("a", 0) == (Charclass("a"), 1)
     assert match_charclass("aa", 1) == (Charclass("a"), 2)
     assert match_charclass("a$", 1) == (Charclass("$"), 2)
@@ -32,7 +29,7 @@ def test_charclass_matching():
     assert match_charclass("[\\d]", 0) == (DIGIT, 4)
 
 
-def test_negatives_inside_charclasses():
+def test_negatives_inside_charclasses() -> None:
     assert match_charclass("[\\D]", 0) == (~DIGIT, 4)
     assert match_charclass("[a\\D]", 0) == (~DIGIT, 5)
     assert match_charclass("[a1\\D]", 0) == (~Charclass("023456789"), 6)
@@ -49,7 +46,7 @@ def test_negatives_inside_charclasses():
     assert match_charclass("[\\S \\D]", 0) == (DOT, 7)
 
 
-def test_negated_negatives_inside_charclasses():
+def test_negated_negatives_inside_charclasses() -> None:
     assert match_charclass("[^\\D]", 0) == (DIGIT, 5)
     assert match_charclass("[^a\\D]", 0) == (DIGIT, 6)
     assert match_charclass("[^a1\\D]", 0) == (Charclass("023456789"), 7)
@@ -66,7 +63,7 @@ def test_negated_negatives_inside_charclasses():
     assert match_charclass("[^\\S \\D]", 0) == (NULLCHARCLASS, 8)
 
 
-def test_mult_matching():
+def test_mult_matching() -> None:
     assert match_mult("abcde[^fg]*", 5) == (Mult(~Charclass("fg"), STAR), 11)
     assert match_mult("abcde[^fg]*h{5}[a-z]+", 11) == (
         Mult(Charclass("h"), Multiplier(Bound(5), Bound(5))),
@@ -82,14 +79,14 @@ def test_mult_matching():
     )
 
 
-def test_charclass_ranges():
+def test_charclass_ranges() -> None:
     # Should accept arbitrary ranges of characters in charclasses. No longer
     # limited to alphanumerics. (User beware...)
     assert parse("[z{|}~]") == parse("[z-~]")
     assert parse("[\\w:;<=>?@\\[\\\\\\]\\^`]") == parse("[0-z]")
 
 
-def test_hex_escapes():
+def test_hex_escapes() -> None:
     # Should be able to parse e.g. "\\x40"
     assert parse("\\x00") == parse("\x00")
     assert parse("\\x40") == parse("@")
@@ -97,7 +94,7 @@ def test_hex_escapes():
     assert parse("[\\x41-\\x5a]") == parse("[A-Z]")
 
 
-def test_w_d_s():
+def test_w_d_s() -> None:
     # Allow "\w", "\d" and "\s" in charclasses
     assert parse("\\w") == parse("[0-9A-Z_a-z]")
     assert parse("[\\w~]") == parse("[0-9A-Z_a-z~]")
@@ -105,7 +102,7 @@ def test_w_d_s():
     assert parse("[\\s]") == parse("[\t\n\r\f\v ]")
 
 
-def test_mult_parsing():
+def test_mult_parsing() -> None:
     assert parse("[a-g]+") == Pattern(Conc(Mult(Charclass("abcdefg"), PLUS)))
     assert parse("[a-g0-8$%]+") == Pattern(
         Conc(Mult(Charclass("abcdefg012345678$%"), PLUS))
@@ -115,7 +112,7 @@ def test_mult_parsing():
     )
 
 
-def test_conc_parsing():
+def test_conc_parsing() -> None:
     assert parse("abcde[^fg]*h{5}[a-z]+") == Pattern(
         Conc(
             Mult(Charclass("a"), ONE),
@@ -155,7 +152,7 @@ def test_conc_parsing():
     )
 
 
-def test_pattern_parsing():
+def test_pattern_parsing() -> None:
     assert parse("abc|def(ghi|jkl)") == Pattern(
         Conc(
             Mult(Charclass("a"), ONE),

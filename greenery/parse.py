@@ -5,16 +5,12 @@ __all__ = (
     "NoMatch",
 )
 
-from typing import Tuple, TypeVar
+from typing import Collection, Tuple, TypeVar
 
 from .bound import INF, Bound
 from .charclass import Charclass, escapes, shorthand
 from .multiplier import Multiplier, symbolic
 from .rxelems import Conc, Mult, Pattern
-
-# mypy: allow-untyped-calls
-# mypy: allow-untyped-defs
-# mypy: allow-incomplete-defs
 
 T_co = TypeVar("T_co", covariant=True)
 
@@ -31,7 +27,7 @@ class NoMatch(Exception):
 MatchResult = Tuple[T_co, int]
 
 
-def read_until(string: str, i: int, stop_char: str) -> tuple[str, int]:
+def read_until(string: str, i: int, stop_char: str) -> MatchResult[str]:
     start = i
     while True:
         if i >= len(string):
@@ -42,14 +38,14 @@ def read_until(string: str, i: int, stop_char: str) -> tuple[str, int]:
     return string[start:i], i + 1
 
 
-def static(string, i, static):
+def static(string: str, i: int, static: str) -> int:
     j = i + len(static)
     if string[i:j] == static:
         return j
     raise NoMatch
 
 
-def select_static(string, i, *statics):
+def select_static(string: str, i: int, *statics: str) -> MatchResult[str]:
     for st in statics:
         j = i + len(st)
         if string[i:j] == st:
@@ -57,7 +53,7 @@ def select_static(string, i, *statics):
     raise NoMatch
 
 
-def unescape_hex(string, i):
+def unescape_hex(string: str, i: int) -> MatchResult[str]:
     """Turn e.g. "\\x40" into "@". Exactly two hex digits"""
     hex_digits = "0123456789AaBbCcDdEeFf"
 
@@ -78,7 +74,7 @@ def unescape_hex(string, i):
     return char, j
 
 
-def match_internal_char(string, i):
+def match_internal_char(string: str, i: int) -> MatchResult[str]:
     # e.g. if we see "\\t", return "\t"
     for key in escapes.keys():
         try:
@@ -108,7 +104,10 @@ def match_internal_char(string, i):
     return char, j
 
 
-def match_class_interior_1(string, i):
+def match_class_interior_1(
+    string: str,
+    i: int,
+) -> MatchResult[tuple[frozenset[str], bool]]:
     # Attempt 1: shorthand e.g. "\w"
     for chars, cc_shorthand in Charclass.shorthand.items():
         try:
@@ -146,7 +145,7 @@ def match_class_interior_1(string, i):
     return (frozenset(char), False), j
 
 
-def match_class_interior(string, i):
+def match_class_interior(string: str, i: int) -> MatchResult[Charclass]:
     predicates = []
     try:
         while True:
@@ -159,7 +158,7 @@ def match_class_interior(string, i):
     return Charclass.union(*predicates), i
 
 
-def match_charclass(string: str, i):
+def match_charclass(string: str, i: int) -> MatchResult[Charclass]:
     if i >= len(string):
         raise NoMatch
 
@@ -217,7 +216,7 @@ def match_charclass(string: str, i):
     return Charclass(char), i
 
 
-def match_multiplicand(string, i):
+def match_multiplicand(string: str, i: int) -> MatchResult[Pattern | Charclass]:
     # explicitly non-capturing "(?:...)" syntax. No special significance
     try:
         j = static(string, i, "(?")
@@ -244,7 +243,7 @@ def match_multiplicand(string, i):
     return charclass, j
 
 
-def match_any_of(string, i, collection):
+def match_any_of(string: str, i: int, collection: Collection[str]) -> MatchResult[str]:
     for char in collection:
         try:
             return char, static(string, i, char)
@@ -253,7 +252,7 @@ def match_any_of(string, i, collection):
     raise NoMatch
 
 
-def match_bound(string: str, i):
+def match_bound(string: str, i: int) -> MatchResult[Bound]:
     # "0"
     try:
         return Bound(0), static(string, i, "0")
@@ -278,7 +277,7 @@ def match_bound(string: str, i):
     return INF, i
 
 
-def match_multiplier(string: str, i):
+def match_multiplier(string: str, i: int) -> MatchResult[Multiplier]:
     # {2,3} or {2,}
     try:
         j = static(string, i, "{")
@@ -311,13 +310,13 @@ def match_multiplier(string: str, i):
     raise NoMatch
 
 
-def match_mult(string: str, i):
+def match_mult(string: str, i: int) -> MatchResult[Mult]:
     multiplicand, j = match_multiplicand(string, i)
     multiplier, j = match_multiplier(string, j)
     return Mult(multiplicand, multiplier), j
 
 
-def match_conc(string: str, i):
+def match_conc(string: str, i: int) -> MatchResult[Conc]:
     mults = list()
     try:
         while True:
@@ -328,7 +327,7 @@ def match_conc(string: str, i):
     return Conc(*mults), i
 
 
-def match_pattern(string: str, i):
+def match_pattern(string: str, i: int) -> MatchResult[Pattern]:
     concs = list()
 
     # first one
@@ -345,7 +344,7 @@ def match_pattern(string: str, i):
             return Pattern(*concs), i
 
 
-def parse(string: str):
+def parse(string: str) -> Pattern:
     """
     Parse a full string and return a `Pattern` object. Fail if
     the whole string wasn't parsed
