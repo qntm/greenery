@@ -5,11 +5,8 @@ from .multiplier import ONE, ZERO
 from .parse import parse
 from .rxelems import Conc, Mult, Pattern
 
-# mypy: allow-untyped-calls
-# mypy: allow-untyped-defs
 
-
-def test_pattern_equality():
+def test_pattern_equality() -> None:
     assert Pattern(
         Conc(Mult(Charclass("a"), ONE)),
         Conc(Mult(Charclass("b"), ONE)),
@@ -25,7 +22,7 @@ def test_pattern_equality():
     )
 
 
-def test_pattern_str():
+def test_pattern_str() -> None:
     assert (
         str(
             Pattern(
@@ -78,11 +75,11 @@ def test_pattern_str():
     )
 
 
-def test_empty():
+def test_empty() -> None:
     assert Pattern().empty()
 
 
-def test_mult_reduction_easy():
+def test_mult_reduction_easy() -> None:
     assert Pattern(Conc()).reduce() == Pattern(Conc())
     assert Pattern(
         Conc(
@@ -107,11 +104,11 @@ def test_mult_reduction_easy():
     )
 
 
-def test_empty_pattern_reduction():
+def test_empty_pattern_reduction() -> None:
     assert str(Pattern().reduce()) == "[]"
 
 
-def test_empty_conc_suppression():
+def test_empty_conc_suppression() -> None:
     assert (
         str(
             Pattern(
@@ -127,7 +124,7 @@ def test_empty_conc_suppression():
     )
 
 
-def test_pattern_dock():
+def test_pattern_dock() -> None:
     a = Mult(Charclass("a"), ONE)
     c = Mult(Charclass("c"), ONE)
     f = Mult(Charclass("f"), ONE)
@@ -139,7 +136,7 @@ def test_pattern_dock():
     assert parse("aa").dock(Conc(a, a)) == parse("")
 
 
-def test_pattern_beheading():
+def test_pattern_beheading() -> None:
     a = Mult(Charclass("a"), ONE)
     c = Mult(Charclass("c"), ONE)
     f = Mult(Charclass("f"), ONE)
