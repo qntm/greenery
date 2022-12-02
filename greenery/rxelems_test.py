@@ -455,7 +455,16 @@ def test_bad_alphabet():
     # You can use anything you like in your FSM alphabet, but if you try to
     # convert it to an `rxelems` object then the only acceptable symbols are
     # single characters or `ANYTHING_ELSE`.
-    for bad_symbol in [None, (), 0, ("a",), "", "aa", "ab", True]:
+
+    # NOTE: This used to test with `None`, before type annotations were added.
+    # However, `None` is not `OrderedHashable` and can't be used with an `Fsm`
+    # alphabet at runtime to begin with, regardless of type annotations or even
+    # expanding `AlphabetType` to the most general usable constraints.
+    # By default, sorting a collection with `None` raises a `TypeError`.
+    # That has nothing to do with `from_fsm`.
+    bad_symbols = ((), 0, ("a",), "", "aa", "ab", True)
+
+    for bad_symbol in bad_symbols:
         f = Fsm(
             alphabet={bad_symbol},
             states={0},
