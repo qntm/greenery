@@ -287,15 +287,16 @@ def test_star_advanced():
 
 def test_reduce():
     # FSM accepts no strings but has 3 states, needs only 1
+    symbol = ()
     asdf = Fsm(
-        alphabet={None},
+        alphabet={symbol},
         states={0, 1, 2},
         initial=0,
         finals={1},
         map={
-            0: {None: 2},
-            1: {None: 2},
-            2: {None: 2},
+            0: {symbol: 2},
+            1: {symbol: 2},
+            2: {symbol: 2},
         },
     )
     asdf = asdf.reduce()
