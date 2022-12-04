@@ -104,6 +104,17 @@ def test_charclass_union() -> None:
     assert ~Charclass("ab") | ~Charclass("bc") == ~Charclass("b")
 
 
+def test_charclass_intersection() -> None:
+    # [ab] ∩ [bc] = [b]
+    assert Charclass("ab") & Charclass("bc") == Charclass("b")
+    # [ab] ∩ [^bc] = [a]
+    assert Charclass("ab") & ~Charclass("bc") == Charclass("a")
+    # [^ab] ∩ [bc] = [c]
+    assert ~Charclass("ab") & Charclass("bc") == Charclass("c")
+    # [^ab] ∩ [^bc] = [^abc]
+    assert ~Charclass("ab") & ~Charclass("bc") == ~Charclass("abc")
+
+
 def test_empty() -> None:
     assert NULLCHARCLASS.empty()
     assert not DOT.empty()
