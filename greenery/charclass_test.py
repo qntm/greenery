@@ -127,6 +127,14 @@ def test_charclass_intersection() -> None:
     # [^ab] ∩ [^bc] = [^abc]
     assert ~Charclass("ab") & ~Charclass("bc") == ~Charclass("abc")
 
+    assert Charclass.intersection(
+        Charclass("ab"),
+        Charclass("bcd"),
+        Charclass("abcde"),
+    ) == Charclass("b")
+
+    assert Charclass.intersection() == ~NULLCHARCLASS
+
 
 def test_empty() -> None:
     assert NULLCHARCLASS.empty()

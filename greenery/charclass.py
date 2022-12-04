@@ -257,12 +257,14 @@ class Charclass:
 
     __or__ = union
 
-    def __and__(self, other: Charclass, /) -> Charclass:
+    def intersection(*predicates: Charclass) -> Charclass:
         # ¬A AND ¬B = ¬(A OR B)
         # ¬A AND B = B - A
         # A AND ¬B = A - B
         # A AND B
-        return ~((~self) | (~other))
+        return ~Charclass.union(*(~cc for cc in predicates))
+
+    __and__ = intersection
 
 
 # Standard character classes
