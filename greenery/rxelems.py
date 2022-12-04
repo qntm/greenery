@@ -37,16 +37,16 @@ class Conc:
 
     mults: tuple[Mult, ...]
 
-    def __init__(self, *mults):
+    def __init__(self, /, *mults):
         object.__setattr__(self, "mults", tuple(mults))
 
-    def __eq__(self, other):
+    def __eq__(self, other, /):
         return self.mults == other.mults
 
-    def __hash__(self):
+    def __hash__(self, /):
         return hash(self.mults)
 
-    def __repr__(self):
+    def __repr__(self, /):
         args = ", ".join(repr(mult) for mult in self.mults)
         return f"Conc({args})"
 
@@ -89,7 +89,7 @@ class Conc:
                 r = self.mults[i]
                 s = self.mults[i + 1]
 
-                def to_pattern(multiplicand):
+                def to_pattern(multiplicand, /):
                     if isinstance(multiplicand, Pattern):
                         return multiplicand
                     return Pattern(Conc(Mult(multiplicand, ONE)))
@@ -152,7 +152,7 @@ class Conc:
 
         return self
 
-    def to_fsm(self, alphabet=None):
+    def to_fsm(self, /, alphabet=None):
         if alphabet is None:
             alphabet = self.alphabet()
 
@@ -162,16 +162,16 @@ class Conc:
             fsm1 += mult.to_fsm(alphabet)
         return fsm1
 
-    def alphabet(self):
+    def alphabet(self, /):
         return {ANYTHING_ELSE}.union(*[mult.alphabet() for mult in self.mults])
 
-    def empty(self):
+    def empty(self, /):
         return any(mult.empty() for mult in self.mults)
 
-    def __str__(self):
+    def __str__(self, /):
         return "".join(str(m) for m in self.mults)
 
-    def common(self, other, suffix=False):
+    def common(self, other, /, suffix=False):
         """
         Return the common prefix of these two `Conc`s; that is, the largest
         `Conc` which can be safely beheaded() from the front of both. The
@@ -217,7 +217,7 @@ class Conc:
 
         return Conc(*mults)
 
-    def dock(self, other):
+    def dock(self, other, /):
         """
         Subtract another `Conc` from this one.
         This is the opposite of concatenation.
@@ -247,7 +247,7 @@ class Conc:
 
         return Conc(*new)
 
-    def behead(self, other):
+    def behead(self, other, /):
         """
         As with dock() but the other way around. For example, if
         ABC + DEF = ABCDEF, then ABCDEF.behead(AB) = CDEF.
@@ -255,7 +255,7 @@ class Conc:
         # Observe that FEDCBA - BA = FEDC.
         return self.reversed().dock(other.reversed()).reversed()
 
-    def reversed(self):
+    def reversed(self, /):
         return Conc(*[mult.reversed() for mult in reversed(self.mults)])
 
 
@@ -406,26 +406,26 @@ class Pattern:
 
     concs: frozenset[Conc]
 
-    def __init__(self, *concs):
+    def __init__(self, /, *concs):
         object.__setattr__(self, "concs", frozenset(concs))
 
-    def __eq__(self, other):
+    def __eq__(self, other, /):
         return isinstance(other, Pattern) and self.concs == other.concs
 
-    def __hash__(self):
+    def __hash__(self, /):
         return hash(self.concs)
 
-    def __repr__(self):
+    def __repr__(self, /):
         args = ", ".join(repr(conc) for conc in self.concs)
         return f"Pattern({args})"
 
-    def alphabet(self):
+    def alphabet(self, /):
         return {ANYTHING_ELSE}.union(*[c.alphabet() for c in self.concs])
 
-    def empty(self):
+    def empty(self, /):
         return all(conc.empty() for conc in self.concs)
 
-    def intersection(self, other):
+    def intersection(self, other, /):
         # A deceptively simple method for an astoundingly difficult operation
         alphabet = self.alphabet() | other.alphabet()
 
@@ -434,7 +434,7 @@ class Pattern:
         combined = self.to_fsm(alphabet) & other.to_fsm(alphabet)
         return from_fsm(combined)
 
-    def __and__(self, other):
+    def __and__(self, other, /):
         return self.intersection(other)
 
     @call_fsm
@@ -445,21 +445,21 @@ class Pattern:
         """
         pass
 
-    def __sub__(self, other):
+    def __sub__(self, other, /):
         return self.difference(other)
 
-    def union(self, other):
+    def union(self, other, /):
         return Pattern(*(self.concs | other.concs))
 
-    def __or__(self, other):
+    def __or__(self, other, /):
         return self.union(other)
 
-    def __str__(self):
+    def __str__(self, /):
         if len(self.concs) == 0:
             raise Exception(f"Can't serialise {self!r}")
         return "|".join(sorted(str(conc) for conc in self.concs))
 
-    def reduce(self) -> Pattern:
+    def reduce(self, /) -> Pattern:
         if self == NULLPATTERN:
             return self
 
@@ -592,10 +592,10 @@ class Pattern:
         """
         pass
 
-    def __xor__(self, other):
+    def __xor__(self, other, /):
         return self.symmetric_difference(other)
 
-    def dock(self, other):
+    def dock(self, other, /):
         """
         The opposite of concatenation. Remove a common suffix from the
         present `Pattern`; that is, from each of its constituent concs.
@@ -604,7 +604,7 @@ class Pattern:
         """
         return Pattern(*[conc.dock(other) for conc in self.concs])
 
-    def behead(self, other):
+    def behead(self, other, /):
         """
         Like dock() but the other way around. Remove a common prefix from
         the present `Pattern`; that is, from each of its constituent concs.
@@ -613,7 +613,7 @@ class Pattern:
         """
         return Pattern(*[conc.behead(other) for conc in self.concs])
 
-    def _commonconc(self, suffix=False):
+    def _commonconc(self, /, suffix=False):
         """
         Find the longest `Conc` which acts as prefix to every `Conc` in
         this `Pattern`. This could be `EMPTYSTRING`. Return the common
@@ -631,7 +631,7 @@ class Pattern:
 
         return reduce(lambda x, y: x.common(y, suffix=suffix), self.concs)
 
-    def to_fsm(self, alphabet=None):
+    def to_fsm(self, /, alphabet=None):
         if alphabet is None:
             alphabet = self.alphabet()
 
@@ -640,17 +640,17 @@ class Pattern:
             fsm1 |= conc.to_fsm(alphabet)
         return fsm1
 
-    def reversed(self):
+    def reversed(self, /):
         return Pattern(*(c.reversed() for c in self.concs))
 
-    def copy(self):
+    def copy(self, /):
         """
         For completeness only, since `set.copy()` also exists. `Pattern`s
         are immutable, so I can see only very odd reasons to need this
         """
         return Pattern(*self.concs)
 
-    def equivalent(self, other):
+    def equivalent(self, other, /):
         """
         Two `Pattern`s are equivalent if they recognise the same strings.
         Note that in the general case this is actually quite an intensive
@@ -658,7 +658,7 @@ class Pattern:
         """
         return self.to_fsm().equivalent(other.to_fsm())
 
-    def times(self, multiplier):
+    def times(self, multiplier, /):
         """
         Equivalent to repeated concatenation. Multiplier consists of a
         minimum and a maximum; maximum may be infinite (for Kleene star
@@ -666,11 +666,11 @@ class Pattern:
         """
         return Pattern(Conc(Mult(self, multiplier)))
 
-    def __mul__(self, multiplier):
+    def __mul__(self, multiplier, /):
         return self.times(multiplier)
 
     @call_fsm
-    def everythingbut(self):
+    def everythingbut(self, /):
         """
         Return a `Pattern` which will match any string not matched by
         `self`, and which will not match any string matched by `self`.
@@ -680,30 +680,30 @@ class Pattern:
         """
         pass
 
-    def derive(self, string):
+    def derive(self, string, /):
         return from_fsm(self.to_fsm().derive(string))
 
-    def isdisjoint(self, other):
+    def isdisjoint(self, other, /):
         """
         Treat `self` and `other` as sets of strings and see if they are
         disjoint
         """
         return self.to_fsm().isdisjoint(other.to_fsm())
 
-    def matches(self, string):
+    def matches(self, string, /):
         return self.to_fsm().accepts(string)
 
-    def __contains__(self, string):
+    def __contains__(self, string, /):
         """
         This lets you use the syntax `"a" in pattern` to see whether the
         string "a" is in the set of strings matched by `pattern`.
         """
         return self.matches(string)
 
-    def __reversed__(self):
+    def __reversed__(self, /):
         return self.reversed()
 
-    def cardinality(self):
+    def cardinality(self, /):
         """
         Consider the regular expression as a set of strings and return the
         cardinality of that set, or raise an OverflowError if there are
@@ -713,10 +713,10 @@ class Pattern:
         # the `Pattern` may allow duplicate routes, such as "a|a".
         return self.to_fsm().cardinality()
 
-    def __len__(self):
+    def __len__(self, /):
         return self.cardinality()
 
-    def strings(self, otherchar=None):
+    def strings(self, /, *, otherchar=None):
         """
         Each time next() is called on this iterator, a new string is
         returned which this `Pattern` can match. `StopIteration`
@@ -740,7 +740,7 @@ class Pattern:
 
             yield "".join(string)
 
-    def __iter__(self):
+    def __iter__(self, /):
         """
         This allows you to do `for string in pattern` as a list
         comprehension!
@@ -763,20 +763,20 @@ class Mult:
     multiplicand: Charclass | Pattern
     multiplier: Multiplier
 
-    def __eq__(self, other):
+    def __eq__(self, other, /):
         return (
             isinstance(other.multiplicand, type(self.multiplicand))
             and self.multiplicand == other.multiplicand
             and self.multiplier == other.multiplier
         )
 
-    def __hash__(self):
+    def __hash__(self, /):
         return hash((self.multiplicand, self.multiplier))
 
-    def __repr__(self):
+    def __repr__(self, /):
         return f"Mult({self.multiplicand!r}, {self.multiplier!r})"
 
-    def dock(self, other):
+    def dock(self, other, /):
         """
         "Dock" another `Mult` from this one (i.e. remove part of the tail)
         and return the result. The reverse of concatenation. This is a lot
@@ -787,7 +787,7 @@ class Mult:
             raise Exception(f"Can't subtract {other!r} from {self!r}")
         return Mult(self.multiplicand, self.multiplier - other.multiplier)
 
-    def common(self, other):
+    def common(self, other, /):
         """
         Return the common part of these two mults. This is the largest
         `Mult` which can be safely subtracted from both the originals. The
@@ -800,13 +800,13 @@ class Mult:
         # Multiplicands disagree, no common part at all.
         return Mult(NULLCHARCLASS, ZERO)
 
-    def alphabet(self):
+    def alphabet(self, /):
         return {ANYTHING_ELSE} | self.multiplicand.alphabet()
 
-    def empty(self):
+    def empty(self, /):
         return self.multiplicand.empty() and self.multiplier.min > Bound(0)
 
-    def reduce(self) -> Mult:
+    def reduce(self, /) -> Mult:
         if self == NULLMULT:
             return self
 
@@ -856,14 +856,14 @@ class Mult:
         # no reduction possible
         return self
 
-    def __str__(self):
+    def __str__(self, /):
         if isinstance(self.multiplicand, Pattern):
             return f"({self.multiplicand}){self.multiplier}"
         if isinstance(self.multiplicand, Charclass):
             return f"{self.multiplicand}{self.multiplier}"
         raise Exception(f"Unknown type {type(self.multiplicand)}")
 
-    def to_fsm(self, alphabet=None):
+    def to_fsm(self, /, alphabet=None):
         if alphabet is None:
             alphabet = self.alphabet()
 
@@ -890,7 +890,7 @@ class Mult:
 
         return mandatory + optional
 
-    def reversed(self):
+    def reversed(self, /):
         return Mult(self.multiplicand.reversed(), self.multiplier)
 
 
