@@ -93,6 +93,17 @@ def test_charclass_negation() -> None:
     assert Charclass("a") == ~~Charclass("a")
 
 
+def test_charclass_union() -> None:
+    # [ab] ∪ [bc] = [abc]
+    assert Charclass("ab") | Charclass("bc") == Charclass("abc")
+    # [ab] ∪ [^bc] = [^c]
+    assert Charclass("ab") | ~Charclass("bc") == ~Charclass("c")
+    # [^a] ∪ [bc] = [^a]
+    assert ~Charclass("ab") | Charclass("bc") == ~Charclass("a")
+    # [^ab] ∪ [^bc] = [^b]
+    assert ~Charclass("ab") | ~Charclass("bc") == ~Charclass("b")
+
+
 def test_empty() -> None:
     assert NULLCHARCLASS.empty()
     assert not DOT.empty()
