@@ -39,7 +39,7 @@ class Charclass:
     chars: frozenset[str]
     negated: bool
 
-    def __init__(self, chars: Iterable[str], negated: bool = False):
+    def __init__(self, chars: Iterable[str] = (), negated: bool = False):
         chars = frozenset(chars)
         # chars should consist only of chars
         for c in chars:
@@ -267,7 +267,7 @@ SPACECHAR = Charclass("\t\n\v\f\r ")
 
 # This `Charclass` expresses "no possibilities at all"
 # and can never match anything.
-NULLCHARCLASS = Charclass("")
+NULLCHARCLASS = Charclass()
 
 NONWORDCHAR = ~WORDCHAR
 NONDIGITCHAR = ~DIGIT
