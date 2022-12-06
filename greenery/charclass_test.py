@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from .charclass import (
     DIGIT,
     DOT,
@@ -22,6 +24,17 @@ def test_charclass_equality():
     assert ~Charclass("a") == ~Charclass("a")
     assert ~Charclass("a") != Charclass("a")
     assert Charclass("ab") == Charclass("ba")
+
+
+def test_charclass_ctor():
+    with pytest.raises(Exception):
+        Charclass(frozenset({"a", ANYTHING_ELSE}))  # type: ignore
+
+    assert Charclass("ab") == Charclass(frozenset({"a", "b"}))
+
+    assert not Charclass("ab").negated
+    assert not Charclass("ab", negated=False).negated
+    assert Charclass("ab", negated=True).negated
 
 
 def test_repr():
