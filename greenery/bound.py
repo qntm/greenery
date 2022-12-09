@@ -24,7 +24,7 @@ class Bound:
         return f"Bound({self.v!r})"
 
     def __str__(self):
-        if self == INF:
+        if self.v is None:
             # This only happens for an unlimited upper bound
             return ""
         return str(self.v)
@@ -38,9 +38,9 @@ class Bound:
         return hash(self.v)
 
     def __lt__(self, other):
-        if self == INF:
+        if self.v is None:
             return False
-        if other == INF:
+        if other.v is None:
             return True
         return self.v < other.v
 
@@ -51,13 +51,13 @@ class Bound:
         """Multiply this bound by another"""
         if self == Bound(0) or other == Bound(0):
             return Bound(0)
-        if self == INF or other == INF:
+        if self.v is None or other.v is None:
             return INF
         return Bound(self.v * other.v)
 
     def __add__(self, other):
         """Add this bound to another"""
-        if self == INF or other == INF:
+        if self.v is None or other.v is None:
             return INF
         return Bound(self.v + other.v)
 
@@ -66,8 +66,8 @@ class Bound:
         Subtract another bound from this one.
         Caution: this operation is not meaningful for all bounds.
         """
-        if other == INF:
-            if self != INF:
+        if other.v is None:
+            if self.v is not None:
                 raise Exception(
                     f"Can't subtract {other!r} from {self!r}"
                 )
@@ -76,8 +76,8 @@ class Bound:
             # we can for example subtract Multiplier(Bound(0), INF) from
             # Multiplier(Bound(1), INF) to get Multiplier(Bound(1), Bound(1))
             return Bound(0)
-        if self == INF:
-            return self
+        if self.v is None:
+            return INF
         return Bound(self.v - other.v)
 
     def copy(self):
