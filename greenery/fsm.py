@@ -105,6 +105,8 @@ class Fsm:
     # pylint: disable-next=too-many-arguments
     def __init__(
         self,
+        /,
+        *,
         alphabet: Iterable[alpha_type],
         states: Iterable[state_type],
         initial: state_type,
@@ -161,7 +163,7 @@ class Fsm:
         object.__setattr__(self, "finals", finals)
         object.__setattr__(self, "map", map)
 
-    def accepts(self, input):
+    def accepts(self, input, /):
         """
         Test whether the present FSM accepts the supplied string (iterable
         of symbols). Equivalently, consider `self` as a possibly-infinite
@@ -182,14 +184,14 @@ class Fsm:
             state = self.map[state][symbol]
         return state in self.finals
 
-    def __contains__(self, string):
+    def __contains__(self, string, /):
         """
         This lets you use the syntax `"a" in fsm1` to see whether the
         string "a" is in the set of strings accepted by `fsm1`.
         """
         return self.accepts(string)
 
-    def reduce(self):
+    def reduce(self, /):
         """
         A result by Brzozowski (1963) shows that a minimal finite state
         machine equivalent to the original can be obtained by reversing the
@@ -197,7 +199,7 @@ class Fsm:
         """
         return self.reversed().reversed()
 
-    def __repr__(self):
+    def __repr__(self, /):
         args = ", ".join([
             f"alphabet={self.alphabet!r}",
             f"states={self.states!r}",
@@ -207,7 +209,7 @@ class Fsm:
         ])
         return f"Fsm({args})"
 
-    def __str__(self):
+    def __str__(self, /):
         rows = []
 
         sorted_alphabet = sorted(self.alphabet)
@@ -316,7 +318,7 @@ class Fsm:
 
         return crawl(alphabet, initial, final, follow).reduce()
 
-    def __add__(self, other):
+    def __add__(self, other, /):
         """
         Concatenate two finite state machines together.
         For example, if self accepts "0*" and other accepts "1+(0|1)",
@@ -326,7 +328,7 @@ class Fsm:
         """
         return self.concatenate(other)
 
-    def star(self):
+    def star(self, /):
         """
         If the present FSM accepts X, returns an FSM accepting X* (i.e. 0
         or more Xes). This is NOT as simple as naively connecting the final
@@ -359,7 +361,7 @@ class Fsm:
 
         return crawl(alphabet, initial, final, follow) | epsilon(alphabet)
 
-    def times(self, multiplier):
+    def times(self, multiplier, /):
         """
         Given an FSM and a multiplier, return the multiplied FSM.
         """
@@ -401,7 +403,7 @@ class Fsm:
 
         return crawl(alphabet, initial, final, follow).reduce()
 
-    def __mul__(self, multiplier):
+    def __mul__(self, multiplier, /):
         """
         Given an FSM and a multiplier, return the multiplied FSM.
         """
@@ -415,7 +417,7 @@ class Fsm:
         """
         return parallel(fsms, any)
 
-    def __or__(self, other):
+    def __or__(self, other, /):
         """
         Alternation.
         Return a finite state machine which accepts any sequence of symbols
@@ -436,7 +438,7 @@ class Fsm:
         """
         return parallel(fsms, all)
 
-    def __and__(self, other):
+    def __and__(self, other, /):
         """
         Treat the FSMs as sets of strings and return the intersection of
         those sets in the form of a new FSM.
@@ -452,14 +454,14 @@ class Fsm:
         """
         return parallel(fsms, lambda accepts: (accepts.count(True) % 2) == 1)
 
-    def __xor__(self, other):
+    def __xor__(self, other, /):
         """
         Symmetric difference. Returns an FSM which recognises only the
         strings recognised by `self` or `other` but not both.
         """
         return self.symmetric_difference(other)
 
-    def everythingbut(self):
+    def everythingbut(self, /):
         """
         Return a finite state machine which will accept any string NOT
         accepted by self, and will not accept any string accepted by self.
@@ -484,7 +486,7 @@ class Fsm:
 
         return crawl(alphabet, initial, final, follow).reduce()
 
-    def reversed(self):
+    def reversed(self, /):
         """
         Return a new FSM such that for every string that self accepts (e.g.
         "beer", the new FSM accepts the reversed string ("reeb").
@@ -517,14 +519,14 @@ class Fsm:
         return crawl(alphabet, initial, final, follow)
         # Do not reduce() the result, since reduce() calls us in turn
 
-    def __reversed__(self):
+    def __reversed__(self, /):
         """
         Return a new FSM such that for every string that self accepts (e.g.
         "beer", the new FSM accepts the reversed string ("reeb").
         """
         return self.reversed()
 
-    def islive(self, state):
+    def islive(self, /, state):
         """A state is "live" if a final state can be reached from it."""
         reachable = [state]
         i = 0
@@ -540,7 +542,7 @@ class Fsm:
             i += 1
         return False
 
-    def empty(self):
+    def empty(self, /):
         """
         An FSM is empty if it recognises no strings. An FSM may be
         arbitrarily complicated and have arbitrarily many final states
@@ -551,7 +553,7 @@ class Fsm:
         """
         return not self.islive(self.initial)
 
-    def strings(self):
+    def strings(self, /):
         """
         Generate strings (lists of symbols) that this FSM accepts. Since
         there may be infinitely many of these we use a generator instead of
@@ -595,13 +597,13 @@ class Fsm:
                         strings.append((nstring, nstate))
             i += 1
 
-    def __iter__(self):
+    def __iter__(self, /):
         """
         This allows you to do `for string in fsm1` as a list comprehension!
         """
         return self.strings()
 
-    def equivalent(self, other):
+    def equivalent(self, other, /):
         """
         Two FSMs are considered equivalent if they recognise the same
         strings. Or, to put it another way, if their symmetric difference
@@ -609,21 +611,21 @@ class Fsm:
         """
         return (self ^ other).empty()
 
-    def __eq__(self, other):
+    def __eq__(self, other, /):
         """
         You can use `fsm1 == fsm2` to determine whether two FSMs recognise
         the same strings.
         """
         return self.equivalent(other)
 
-    def different(self, other):
+    def different(self, other, /):
         """
         Two FSMs are considered different if they have a non-empty
         symmetric difference.
         """
         return not (self ^ other).empty()
 
-    def __ne__(self, other):
+    def __ne__(self, other, /):
         """
         Use `fsm1 != fsm2` to determine whether two FSMs recognise
         different strings.
@@ -640,10 +642,10 @@ class Fsm:
             lambda accepts: accepts[0] and not any(accepts[1:])
         )
 
-    def __sub__(self, other):
+    def __sub__(self, other, /):
         return self.difference(other)
 
-    def cardinality(self):
+    def cardinality(self, /):
         """
         Consider the FSM as a set of strings and return the cardinality of
         that set, or raise an OverflowError if there are infinitely many
@@ -677,21 +679,21 @@ class Fsm:
 
         return get_num_strings(self.initial)
 
-    def __len__(self):
+    def __len__(self, /):
         """
         Consider the FSM as a set of strings and return the cardinality of
         that set, or raise an OverflowError if there are infinitely many
         """
         return self.cardinality()
 
-    def isdisjoint(self, other):
+    def isdisjoint(self, other, /):
         """
         Treat `self` and `other` as sets of strings and see if they are
         disjoint
         """
         return (self & other).empty()
 
-    def issubset(self, other):
+    def issubset(self, other, /):
         """
         Treat `self` and `other` as sets of strings and see if `self` is a
         subset of `other`... `self` recognises no strings which `other`
@@ -699,7 +701,7 @@ class Fsm:
         """
         return (self - other).empty()
 
-    def __le__(self, other):
+    def __le__(self, other, /):
         """
         Treat `self` and `other` as sets of strings and see if `self` is a
         subset of `other`... `self` recognises no strings which `other`
@@ -707,49 +709,49 @@ class Fsm:
         """
         return self.issubset(other)
 
-    def ispropersubset(self, other):
+    def ispropersubset(self, other, /):
         """
         Treat `self` and `other` as sets of strings and see if `self` is a
         proper subset of `other`.
         """
         return self <= other and self != other
 
-    def __lt__(self, other):
+    def __lt__(self, other, /):
         """
         Treat `self` and `other` as sets of strings and see if `self` is a
         strict subset of `other`.
         """
         return self.ispropersubset(other)
 
-    def issuperset(self, other):
+    def issuperset(self, other, /):
         """
         Treat `self` and `other` as sets of strings and see if `self` is a
         superset of `other`.
         """
         return (other - self).empty()
 
-    def __ge__(self, other):
+    def __ge__(self, other, /):
         """
         Treat `self` and `other` as sets of strings and see if `self` is a
         superset of `other`.
         """
         return self.issuperset(other)
 
-    def ispropersuperset(self, other):
+    def ispropersuperset(self, other, /):
         """
         Treat `self` and `other` as sets of strings and see if `self` is a
         proper superset of `other`.
         """
         return self >= other and self != other
 
-    def __gt__(self, other):
+    def __gt__(self, other, /):
         """
         Treat `self` and `other` as sets of strings and see if `self` is a
         strict superset of `other`.
         """
         return self.ispropersuperset(other)
 
-    def copy(self):
+    def copy(self, /):
         """
         For completeness only, since `set.copy()` and `frozenset.copy()` exist.
         FSM objects are immutable; like `frozenset`, this just returns `self`.
@@ -758,7 +760,7 @@ class Fsm:
 
     __copy__ = copy
 
-    def derive(self, input):
+    def derive(self, input, /):
         """
         Compute the Brzozowski derivative of this FSM with respect to the
         input string of symbols.
@@ -828,7 +830,7 @@ def epsilon(alphabet):
     )
 
 
-def parallel(fsms, test):
+def parallel(fsms, test, /):
     """
     Crawl several FSMs in parallel, mapping the states of a larger
     meta-FSM. To determine whether a state in the larger FSM is final, pass
