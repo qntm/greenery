@@ -84,6 +84,7 @@ M = TypeVar("M")
 """Meta-state type for crawl(). Can be anything."""
 
 
+# pylint: disable=too-many-public-methods
 @dataclass(frozen=True, init=False)
 class Fsm:
     """
