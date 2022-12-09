@@ -4,10 +4,8 @@ import pytest
 
 from .bound import INF, Bound
 
-# mypy: allow-untyped-defs
 
-
-def test_ctor():
+def test_ctor() -> None:
     assert Bound(None) == INF
 
     Bound(0)
@@ -18,7 +16,7 @@ def test_ctor():
         Bound(-1)
 
 
-def test_eq_neq():
+def test_eq_neq() -> None:
     # pylint: disable=comparison-with-itself
     assert Bound(0) == Bound(0)
     assert INF == INF
@@ -28,11 +26,11 @@ def test_eq_neq():
     assert Bound(None) == INF
 
 
-def test_eq_neq_heterogeneous():
+def test_eq_neq_heterogeneous() -> None:
     assert Bound(1) != "blah"
 
 
-def test_comparisons():
+def test_comparisons() -> None:
     # pylint: disable=comparison-with-itself
     # pylint: disable=unneeded-not
 
@@ -42,7 +40,7 @@ def test_comparisons():
     assert not INF < INF
 
 
-def test_multiplication():
+def test_multiplication() -> None:
     assert Bound(0) * Bound(0) == Bound(0)
     assert Bound(0) * Bound(1) == Bound(0)
     assert Bound(0) * Bound(2) == Bound(0)
@@ -58,7 +56,7 @@ def test_multiplication():
     assert Bound(1) * Bound(0) == Bound(0)
 
 
-def test_addition():
+def test_addition() -> None:
     assert Bound(0) + Bound(0) == Bound(0)
     assert Bound(0) + Bound(1) == Bound(1)
     assert Bound(0) + Bound(5) == Bound(5)
@@ -74,7 +72,7 @@ def test_addition():
     assert INF + INF == INF
 
 
-def test_subtraction():
+def test_subtraction() -> None:
     assert Bound(0) - Bound(0) == Bound(0)
     assert Bound(1) - Bound(0) == Bound(1)
     assert Bound(6) - Bound(4) == Bound(2)
@@ -98,18 +96,18 @@ def test_subtraction():
         _ = Bound(10) - INF
 
 
-def test_copy():
+def test_copy() -> None:
     assert INF.copy() == INF
 
     b = Bound(6)
     assert b.copy() == b
 
 
-def test_bound_str():
+def test_bound_str() -> None:
     assert str(Bound(2)) == "2"
     assert str(INF) == ""
 
 
-def test_bound():
+def test_bound() -> None:
     assert min(Bound(0), INF) == Bound(0)
     assert min(Bound(1), INF) == Bound(1)
