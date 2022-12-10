@@ -564,7 +564,6 @@ def test_eq_ne(a, b):
     assert (a | b) == (b | a)
 
 
-@pytest.mark.xfail(reason="BUG: __eq__ does not check type")
 @pytest.mark.parametrize(
     argnames="other",
     argvalues=(

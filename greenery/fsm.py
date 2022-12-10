@@ -616,6 +616,8 @@ class Fsm:
         You can use `fsm1 == fsm2` to determine whether two FSMs recognise
         the same strings.
         """
+        if not isinstance(other, Fsm):
+            return NotImplemented
         return self.equivalent(other)
 
     def different(self, other, /):
@@ -630,7 +632,7 @@ class Fsm:
         Use `fsm1 != fsm2` to determine whether two FSMs recognise
         different strings.
         """
-        return self.different(other)
+        return not self == other
 
     def difference(*fsms):
         """
