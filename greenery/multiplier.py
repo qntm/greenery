@@ -37,7 +37,7 @@ class Multiplier:
     mandatory: Bound = field(init=False)
     optional: Bound = field(init=False)
 
-    def __post_init__(self):
+    def __post_init__(self, /):
         if self.min == INF:
             raise Exception(f"Minimum bound of a multiplier can't be {INF!r}")
         if self.min > self.max:
@@ -48,18 +48,18 @@ class Multiplier:
         object.__setattr__(self, "mandatory", self.min)
         object.__setattr__(self, "optional", self.max - self.min)
 
-    def __eq__(self, other):
+    def __eq__(self, other, /):
         if not isinstance(other, type(self)):
             return NotImplemented
         return self.min == other.min and self.max == other.max
 
-    def __hash__(self):
+    def __hash__(self, /):
         return hash((self.min, self.max))
 
-    def __repr__(self):
+    def __repr__(self, /):
         return f"Multiplier({self.min!r}, {self.max!r})"
 
-    def __str__(self):
+    def __str__(self, /):
         if self.max == Bound(0):
             raise Exception(f"Can't serialise a multiplier with bound {self.max!r}")
         if self in symbolic.keys():
@@ -68,7 +68,7 @@ class Multiplier:
             return "{" + str(self.min) + "}"
         return "{" + str(self.min) + "," + str(self.max) + "}"
 
-    def canmultiplyby(self, other):
+    def canmultiplyby(self, other, /):
         """
         Multiplication is not well-defined for all pairs of multipliers
         because the resulting possibilities do not necessarily form a
@@ -89,17 +89,17 @@ class Multiplier:
             or self.optional * other.mandatory + Bound(1) >= self.mandatory
         )
 
-    def __mul__(self, other):
+    def __mul__(self, other, /):
         """Multiply this multiplier by another"""
         if not self.canmultiplyby(other):
             raise Exception(f"Can't multiply {self!r} by {other!r}")
         return Multiplier(self.min * other.min, self.max * other.max)
 
-    def __add__(self, other):
+    def __add__(self, other, /):
         """Add two multipliers together"""
         return Multiplier(self.min + other.min, self.max + other.max)
 
-    def __sub__(self, other):
+    def __sub__(self, other, /):
         """
         Subtract another multiplier from this one.
         Caution: multipliers are not totally ordered.
@@ -109,7 +109,7 @@ class Multiplier:
         optional = self.optional - other.optional
         return Multiplier(mandatory, mandatory + optional)
 
-    def canintersect(self, other):
+    def canintersect(self, other, /):
         """
         Intersection is not well-defined for all pairs of multipliers.
         For example:
@@ -119,7 +119,7 @@ class Multiplier:
         """
         return not (self.max < other.min or other.max < self.min)
 
-    def __and__(self, other):
+    def __and__(self, other, /):
         """
         Find the intersection of two multipliers: that is, a third
         multiplier expressing the range covered by both of the originals.
@@ -131,14 +131,14 @@ class Multiplier:
         b = min(self.max, other.max)
         return Multiplier(a, b)
 
-    def canunion(self, other):
+    def canunion(self, other, /):
         """
         Union is not defined for all pairs of multipliers.
         E.g. {0,1} | {3,4} -> nope
         """
         return not (self.max + Bound(1) < other.min or other.max + Bound(1) < self.min)
 
-    def __or__(self, other):
+    def __or__(self, other, /):
         """
         Find the union of two multipliers: that is, a third multiplier
         expressing the range covered by either of the originals. This is
@@ -150,7 +150,7 @@ class Multiplier:
         b = max(self.max, other.max)
         return Multiplier(a, b)
 
-    def common(self, other):
+    def common(self, other, /):
         """
         Find the shared part of two multipliers. This is the largest
         multiplier which can be safely subtracted from both the originals.
@@ -160,7 +160,7 @@ class Multiplier:
         optional = min(self.optional, other.optional)
         return Multiplier(mandatory, mandatory + optional)
 
-    def copy(self):
+    def copy(self, /):
         return Multiplier(self.min.copy(), self.max.copy())
 
 
