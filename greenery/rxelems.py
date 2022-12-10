@@ -371,22 +371,6 @@ def from_fsm(f: Fsm) -> Pattern:
     return brz[f.initial][outside].reduce()
 
 
-def call_fsm(method):
-    """
-    Take a method which acts on 0 or more regular expression objects...
-    return a new method which simply converts them all to FSMs, calls the
-    FSM method on them instead, then converts the result back to a regular
-    expression. We do this for several of the more annoying operations.
-    """
-    fsm_method = getattr(Fsm, method.__name__)
-
-    def new_method(*elems):
-        alphabet = frozenset().union(*(elem.alphabet() for elem in elems))
-        return from_fsm(fsm_method(*[elem.to_fsm(alphabet) for elem in elems]))
-
-    return new_method
-
-
 @dataclass(frozen=True)
 class Pattern:
     """
@@ -439,13 +423,13 @@ class Pattern:
     def __and__(self, other, /):
         return self.intersection(other)
 
-    @call_fsm
     def difference(*elems):
         """
         Return a regular expression which matches any string which `self`
         matches but none of the strings which `other` matches.
         """
-        pass
+        alphabet = frozenset().union(*(elem.alphabet() for elem in elems))
+        return from_fsm(Fsm.difference(*(elem.to_fsm(alphabet) for elem in elems)))
 
     def __sub__(self, other, /):
         return self.difference(other)
@@ -586,13 +570,15 @@ class Pattern:
 
         return self
 
-    @call_fsm
     def symmetric_difference(*elems):
         """
         Return a regular expression matching only the strings recognised by
         `self` or `other` but not both.
         """
-        pass
+        alphabet = frozenset().union(*(elem.alphabet() for elem in elems))
+        return from_fsm(
+            Fsm.symmetric_difference(*(elem.to_fsm(alphabet) for elem in elems))
+        )
 
     def __xor__(self, other, /):
         return self.symmetric_difference(other)
@@ -671,7 +657,6 @@ class Pattern:
     def __mul__(self, multiplier, /):
         return self.times(multiplier)
 
-    @call_fsm
     def everythingbut(self, /):
         """
         Return a `Pattern` which will match any string not matched by
@@ -680,7 +665,7 @@ class Pattern:
         returns utter garbage when actually printed), but becomes trivial
         to code thanks to FSM routines.
         """
-        pass
+        return from_fsm(self.to_fsm().everythingbut())
 
     def derive(self, string, /):
         return from_fsm(self.to_fsm().derive(string))
