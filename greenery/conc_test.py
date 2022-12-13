@@ -5,7 +5,7 @@ import pytest
 from .bound import Bound
 from .charclass import Charclass
 from .multiplier import ONE, PLUS, QM, STAR, ZERO, Multiplier
-from .rxelems import EMPTYSTRING, Conc, Mult
+from .rxelems import Conc, Mult
 
 
 def test_conc_equality():
@@ -17,7 +17,7 @@ def test_conc_equality():
         Charclass("a"),
         Multiplier(Bound(1), Bound(2)))
     )
-    assert a != EMPTYSTRING
+    assert a != Conc()
 
 
 def test_conc_str():
