@@ -5,6 +5,7 @@ __all__ = (
     "INF",
     "Multiplier",
     "PLUS",
+    "Pattern",
     "QM",
     "STAR",
     "parse",
@@ -13,3 +14,4 @@ __all__ = (
 from .bound import INF, Bound
 from .multiplier import PLUS, QM, STAR, Multiplier
 from .parse import parse
+from .rxelems import Pattern
