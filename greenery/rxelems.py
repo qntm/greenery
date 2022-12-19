@@ -894,10 +894,10 @@ class Mult:
 
     def __str__(self):
         if isinstance(self.multiplicand, Pattern):
-            return f"({str(self.multiplicand)}){str(self.multiplier)}"
+            return f"({self.multiplicand}){self.multiplier}"
         if isinstance(self.multiplicand, Charclass):
-            return f"{str(self.multiplicand)}{str(self.multiplier)}"
-        raise Exception(f"Unknown type {str(type(self.multiplicand))}")
+            return f"{self.multiplicand}{self.multiplier}"
+        raise Exception(f"Unknown type {type(self.multiplicand)}")
 
     def to_fsm(self, alphabet=None):
         if alphabet is None:
