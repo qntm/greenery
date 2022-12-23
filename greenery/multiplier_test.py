@@ -18,6 +18,21 @@ def test_bound_qm():
     assert QM.optional == Bound(1)
 
 
+def test_eq():
+    assert ZERO == Multiplier(Bound(0), Bound(0))
+    assert ONE == Multiplier(Bound(1), Bound(1))
+    assert STAR == Multiplier(Bound(0), INF)
+    assert Multiplier(Bound(1), Bound(2)) == Multiplier(Bound(1), Bound(2))
+
+    assert ZERO != ONE
+    assert STAR != QM
+
+
+@pytest.mark.xfail(reason="BUG: __eq__ does not check type")
+def test_eq_het():
+    assert ZERO != "goldfish"
+
+
 def test_multiplier_common():
     assert ZERO.common(ZERO) == ZERO
     assert ZERO.common(QM) == ZERO
