@@ -5,6 +5,13 @@
 
 from __future__ import annotations
 
+__all__ = (
+    "Conc",
+    "Mult",
+    "Pattern",
+    "from_fsm",
+)
+
 from dataclasses import dataclass
 from functools import reduce
 from typing import Union
