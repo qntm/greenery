@@ -1,5 +1,19 @@
 from __future__ import annotations
 
+__all__ = (
+    "Charclass",
+    "DIGIT",
+    "DOT",
+    "NONDIGITCHAR",
+    "NONSPACECHAR",
+    "NONWORDCHAR",
+    "NULLCHARCLASS",
+    "SPACECHAR",
+    "WORDCHAR",
+    "escapes",
+    "shorthand",
+)
+
 from dataclasses import dataclass
 from typing import FrozenSet, Union
 
