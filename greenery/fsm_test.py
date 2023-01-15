@@ -477,8 +477,8 @@ def test_difference(a: FixtureA, b: FixtureB) -> None:
         },
     )
 
-    assert list((a ^ a).strings()) == []
-    assert list((b ^ b).strings()) == []
+    assert not list((a ^ a).strings())
+    assert not list((b ^ b).strings())
     assert list((a ^ b).strings()) == [["a"], ["b"]]
     assert list((aorb ^ a).strings()) == [["b"]]
 
@@ -694,7 +694,7 @@ def test_new_set_methods(a: FixtureA, b: FixtureB) -> None:
     assert list(a.concatenate(a, a).strings()) == [["a", "a", "a"]]
     assert list(a.concatenate().strings()) == [["a"]]
     assert list(Fsm.concatenate(b, a, b).strings()) == [["b", "a", "b"]]
-    assert list(Fsm.concatenate().strings()) == []
+    assert not list(Fsm.concatenate().strings())
 
 
 def test_copy(a: FixtureA) -> None:

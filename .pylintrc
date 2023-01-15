@@ -155,7 +155,6 @@ disable=
         unnecessary-dict-index-lookup,
         unnecessary-lambda,
         unused-argument,
-        use-implicit-booleaness-not-comparison,
         useless-suppression,
         while-used,
 
