@@ -243,12 +243,12 @@ class Fsm:
         # column widths
         colwidths = []
         for x in range(len(rows[0])):
-            colwidths.append(max(len(str(rows[y][x])) for y in range(len(rows))) + 1)
+            colwidths.append(max(len(str(row[x])) for y, row in enumerate(rows)) + 1)
 
         # apply padding
-        for y in range(len(rows)):
-            for x in range(len(rows[y])):
-                rows[y][x] = rows[y][x].ljust(colwidths[x])
+        for y, row in enumerate(rows):
+            for x, col in enumerate(row):
+                rows[y][x] = col.ljust(colwidths[x])
 
         # horizontal line
         rows.insert(1, ["-" * colwidth for colwidth in colwidths])
@@ -876,18 +876,18 @@ def parallel(
         symbol: alpha_type,
     ) -> Mapping[int, state_type]:
         next_states = {}
-        for i in range(len(fsms)):
+        for i, fsm in enumerate(fsms):
             actual_symbol: alpha_type
-            if symbol not in fsms[i].alphabet and ANYTHING_ELSE in fsms[i].alphabet:
+            if symbol not in fsm.alphabet and ANYTHING_ELSE in fsm.alphabet:
                 actual_symbol = ANYTHING_ELSE
             else:
                 actual_symbol = symbol
             if (
                 i in current
-                and current[i] in fsms[i].map
-                and actual_symbol in fsms[i].map[current[i]]
+                and current[i] in fsm.map
+                and actual_symbol in fsm.map[current[i]]
             ):
-                next_states[i] = fsms[i].map[current[i]][actual_symbol]
+                next_states[i] = fsm.map[current[i]][actual_symbol]
         if not next_states:
             raise OblivionError
         return next_states

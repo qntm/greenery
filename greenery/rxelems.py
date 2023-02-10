@@ -489,8 +489,7 @@ class Pattern:
         # multipliers.
         # e.g. "a{1,2}|a{3,4}|bc" -> "a{1,4}|bc"
         oldconcs = list(self.concs)  # so we can index the things
-        for i in range(len(oldconcs)):
-            conc1 = oldconcs[i]
+        for i, conc1 in enumerate(oldconcs):
             if len(conc1.mults) != 1:
                 continue
             multiplicand1 = conc1.mults[0].multiplicand
