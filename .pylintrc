@@ -143,7 +143,6 @@ disable=
         missing-module-docstring,
         no-method-argument,
         no-self-argument,
-        protected-access,
         redefined-builtin,
         redefined-loop-name,
         redefined-outer-name,

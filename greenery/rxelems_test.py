@@ -597,6 +597,7 @@ def test_set_ops() -> None:
 
 
 def test_pattern_commonconc() -> None:
+    # pylint: disable=protected-access
     assert str(parse("aa|aa")._commonconc()) == "aa"
     assert str(parse("abc|aa")._commonconc()) == "a"
     assert str(parse("a|bc")._commonconc()) == ""
@@ -607,6 +608,7 @@ def test_pattern_commonconc() -> None:
 
 
 def test_pattern_commonconc_suffix() -> None:
+    # pylint: disable=protected-access
     assert str(parse("a|bc")._commonconc(suffix=True)) == ""
     assert str(parse("aa|bca")._commonconc(suffix=True)) == "a"
     assert str(parse("xyza|abca|a")._commonconc(suffix=True)) == "a"
