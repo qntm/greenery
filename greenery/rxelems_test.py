@@ -11,6 +11,8 @@ from .fsm import ANYTHING_ELSE, Fsm
 from .parse import parse
 from .rxelems import from_fsm
 
+# pylint: disable=too-many-lines
+
 if __name__ == "__main__":
     raise Exception("Test files can't be run directly. Use `python -m pytest greenery`")
 
@@ -1006,6 +1008,8 @@ def test_bug_48_simpler() -> None:
 
 
 def test_bug_48() -> None:
+    # pylint: disable=too-many-locals
+
     S5, S26, S45, S63, S80, S97, S113, S127, S140, S152, S163, S175, S182 = range(13)
     char0, char1, char2, char3, char4, char5, char6, char7, char8 = (
         "_",

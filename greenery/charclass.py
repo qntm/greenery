@@ -88,6 +88,8 @@ class Charclass:
     }
 
     def __str__(self, /) -> str:
+        # pylint: disable=too-many-return-statements
+
         # e.g. \w
         if self in shorthand.keys():
             return shorthand[self]

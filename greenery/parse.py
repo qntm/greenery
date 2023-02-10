@@ -157,6 +157,8 @@ def match_class_interior(string: str, i: int) -> MatchResult[Charclass]:
 
 
 def match_charclass(string: str, i: int) -> MatchResult[Charclass]:
+    # pylint: disable=too-many-return-statements
+
     if i >= len(string):
         raise NoMatch
 

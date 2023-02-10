@@ -50,6 +50,9 @@ class Conc:
         return f"Conc({args})"
 
     def reduce(self) -> Conc:
+        # pylint: disable=too-many-branches
+        # pylint: disable=too-many-return-statements
+
         if self == NULLCONC:
             return self
 
@@ -271,6 +274,8 @@ def from_fsm(f: Fsm) -> Pattern:
     Turn the supplied finite state machine into a `Pattern`. This is
     accomplished using the Brzozowski algebraic method.
     """
+    # pylint: disable=too-many-branches
+
     # Make sure the supplied alphabet is kosher. It must contain only single-
     # character strings or `ANYTHING_ELSE`.
     for symbol in f.alphabet:
@@ -447,6 +452,11 @@ class Pattern:
         return "|".join(sorted(str(conc) for conc in self.concs))
 
     def reduce(self, /) -> Pattern:
+        # pylint: disable=too-many-branches
+        # pylint: disable=too-many-locals
+        # pylint: disable=too-many-return-statements
+        # pylint: disable=too-many-statements
+
         if self == NULLPATTERN:
             return self
 
