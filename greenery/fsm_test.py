@@ -450,7 +450,7 @@ def test_invalid_fsms() -> None:
 
 def test_bad_multiplier(a: FixtureA) -> None:
     with pytest.raises(Exception, match="Can't multiply"):
-        a * -1
+        _ = a * -1
 
 
 def test_anything_else_acceptance() -> None:
@@ -585,9 +585,9 @@ def test_dead_default() -> None:
         + "  4    True                     \n"
         + "  5    False                    \n"
     )
-    blockquote | blockquote
-    blockquote & blockquote
-    blockquote ^ blockquote
+    _ = blockquote | blockquote
+    _ = blockquote & blockquote
+    _ = blockquote ^ blockquote
     # Fsm does not support the `Reversible` protocol, because its
     # `__reversed__` implementation does not return an iterator.
     # Even if it did, it would not conform semantically because it returns an
