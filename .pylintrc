@@ -456,6 +456,9 @@ good-names-rgxs=
         # May be pluralized.
         ^[abcdefghijkmnpqrstuvwxyz]s?$,
 
+# Type variables have slightly different conventions.
+typevar-rgx=_?[A-Z]\d*(_co|_contra)?
+
 # Include a hint for the correct naming format with invalid-name.
 include-naming-hint=no
 
