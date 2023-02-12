@@ -1,11 +1,11 @@
-# -*- coding: utf-8 -*-
-
 '''
     Finite state machine library, intended to be used by `greenery` only
 '''
 
-from typing import Optional, Union, Set, Dict
+from __future__ import annotations
+
 from dataclasses import dataclass
+from typing import Dict, Optional, Set, Union
 
 ANYTHING_ELSE = '9bd74361-04f9-4742-9d3a-1d14a6f0044c'
 

@@ -1,11 +1,11 @@
-# -*- coding: utf-8 -*-
+from __future__ import annotations
 
 import pytest
 
 from .bound import Bound
-from .multiplier import Multiplier, ZERO, QM, ONE, STAR, PLUS
 from .charclass import Charclass
-from .rxelems import Conc, Mult, EMPTYSTRING
+from .multiplier import ONE, PLUS, QM, STAR, ZERO, Multiplier
+from .rxelems import EMPTYSTRING, Conc, Mult
 
 
 def test_conc_equality():

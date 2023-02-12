@@ -1,8 +1,8 @@
-# -*- coding: utf-8 -*-
+from __future__ import annotations
 
 import pytest
 
-from .fsm import Fsm, null, epsilon, ANYTHING_ELSE
+from .fsm import ANYTHING_ELSE, Fsm, epsilon, null
 
 
 def test_addbug():
