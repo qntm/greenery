@@ -22,6 +22,7 @@ if __name__ == "__main__":
 def test_charclass_str() -> None:
     # Arbitrary ranges
     assert str(parse("[\\w:;<=>?@\\[\\\\\\]\\^`]")) == "[0-z]"
+    # pylint: disable-next=fixme
     # TODO: what if \d is a proper subset of `chars`?
 
     # escape sequences are not preserved
@@ -840,6 +841,7 @@ def test_bad_reduction_bug() -> None:
     assert parse("0|[1-9]|ab").reduce() == parse("\\d|ab")
     assert parse("0|[1-9]|a{5,7}").reduce() == parse("\\d|a{5,7}")
     assert parse("0|(0|[1-9]|a{5,7})").reduce() == parse("0|(\\d|a{5,7})")
+    # pylint: disable-next=fixme
     # TODO: should do better than this! Merge that 0
 
 

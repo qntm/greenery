@@ -140,7 +140,6 @@ disable=
         eq-without-hash,
         expression-not-assigned,
         file-ignored,
-        fixme,
         invalid-name,
         locally-disabled,
         missing-function-docstring,
