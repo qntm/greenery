@@ -162,6 +162,7 @@ black .
 mypy greenery
 flake8 --count --statistics --show-source --select=E9,F63,F7,F82 .
 flake8 --count --statistics --exit-zero --max-complexity=10 .
+pylint --recursive=true .
 pytest
 ```
 
