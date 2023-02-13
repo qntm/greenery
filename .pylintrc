@@ -20,7 +20,10 @@ fail-on=
 fail-under=10.0
 
 # Files or directories to be skipped. They should be base names, not paths.
-ignore=CVS
+ignore=
+        dist,
+        env,
+        venv,
 
 # Add files or directories matching the regex patterns to the ignore-list. The
 # regex matches against paths.
@@ -29,6 +32,14 @@ ignore-paths=
 # Files or directories matching the regex patterns are skipped. The regex
 # matches against base names, not paths.
 ignore-patterns=
+        # Anything beginning with a dot.
+        ^\..+$,
+        # Anything ending in `.venv` (e.g. dev.venv)
+        \.venv$,
+        # Anything ending in `.egg-info`
+        \.egg-info$,
+        # Anything like __pycache__ or __mypycache__ or whatever.
+        ^__.*cache.*__$,
 
 # Python code to execute, usually for sys.path manipulation such as
 # pygtk.require().
