@@ -550,8 +550,7 @@ class Pattern:
                    and conc.mults[0].multiplier.min == Bound(0):
                     # Then we can omit the empty string.
                     # E.g. "|(ab)*|def" => "(ab)*|def".
-                    rest = self.concs - {EMPTYSTRING}
-                    return Pattern(*rest).reduce()
+                    return Pattern(*(self.concs - {EMPTYSTRING})).reduce()
 
             for conc in self.concs:
                 # ...and there is another `Conc`
@@ -566,8 +565,9 @@ class Pattern:
                             conc.mults[0].multiplier * QM
                         )
                     )
-                    rest = self.concs - {EMPTYSTRING, conc} | {merged_conc}
-                    return Pattern(*rest).reduce()
+                    return Pattern(
+                        *(self.concs - {EMPTYSTRING, conc} | {merged_conc})
+                    ).reduce()
 
         # If the present `Pattern`'s `Conc`s all have a common prefix, split
         # that out. This increases the depth of the object
