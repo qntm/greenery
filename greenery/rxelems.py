@@ -270,7 +270,7 @@ class _Outside(Enum):
     TOKEN = auto()
 
 
-def from_fsm(f: Fsm):
+def from_fsm(f: Fsm) -> Pattern:
     '''
         Turn the supplied finite state machine into a `Pattern`. This is
         accomplished using the Brzozowski algebraic method.
