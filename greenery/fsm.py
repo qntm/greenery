@@ -26,6 +26,9 @@ class OblivionError(Exception):
     pass
 
 
+alpha_type = str
+
+
 state_type = Optional[Union[int, str]]
 
 
@@ -46,9 +49,9 @@ class Fsm:
     '''
     initial: state_type
     finals: Set[state_type]
-    alphabet: Set[str]
+    alphabet: Set[alpha_type]
     states: Set[state_type]
-    map: Dict[state_type, Dict[str, state_type]]
+    map: Dict[state_type, Dict[alpha_type, state_type]]
 
     def __post_init__(self):
         '''
