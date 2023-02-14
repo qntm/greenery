@@ -324,9 +324,9 @@ def from_fsm(f: Fsm):
         for symbol in f.map[a]:
             b = f.map[a][symbol]
             if symbol == ANYTHING_ELSE:
-                charclass = ~Charclass(f.alphabet - {ANYTHING_ELSE})
+                charclass = ~Charclass(frozenset(f.alphabet) - {ANYTHING_ELSE})
             else:
-                charclass = Charclass({symbol})
+                charclass = Charclass(frozenset((symbol,)))
 
             brz[a][b] = Pattern(
                 *brz[a][b].concs,
