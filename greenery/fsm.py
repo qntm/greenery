@@ -72,7 +72,7 @@ class Fsm:
                 f"Final states {repr(self.finals)} "
                 f"must be a subset of {repr(self.states)}"
             )
-        for state, symbol in self.map.items():
+        for state, _state_trans in self.map.items():
             if state not in self.states:
                 raise Exception(f"Transition from unknown state {repr(state)}")
             for symbol in self.map[state]:
