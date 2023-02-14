@@ -37,7 +37,7 @@ class Conc():
         args = ", ".join(repr(mult) for mult in self.mults)
         return f"Conc({args})"
 
-    def reduce(self):
+    def reduce(self) -> Conc:
         if self == NULLCONC:
             return self
 
@@ -465,7 +465,7 @@ class Pattern:
             raise Exception(f"Can't serialise {repr(self)}")
         return "|".join(sorted(str(conc) for conc in self.concs))
 
-    def reduce(self):
+    def reduce(self) -> Pattern:
         if self == NULLPATTERN:
             return self
 
@@ -820,7 +820,7 @@ class Mult:
     def empty(self):
         return self.multiplicand.empty() and self.multiplier.min > Bound(0)
 
-    def reduce(self):
+    def reduce(self) -> Mult:
         if self == NULLMULT:
             return self
 
