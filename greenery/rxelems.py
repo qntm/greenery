@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum, auto
 
 from .fsm import Fsm, ANYTHING_ELSE, null, epsilon, alphabet_key
 from .multiplier import Multiplier, ZERO, QM, ONE, STAR
@@ -262,6 +263,13 @@ class Conc():
         return Conc(*[mult.reversed() for mult in reversed(self.mults)])
 
 
+# We need a new state not already used.
+class _Outside(Enum):
+    """Marker state for use in `from_fsm`."""
+
+    TOKEN = auto()
+
+
 def from_fsm(f: Fsm):
     '''
         Turn the supplied finite state machine into a `Pattern`. This is
@@ -278,8 +286,7 @@ def from_fsm(f: Fsm):
             f"Symbol {repr(symbol)} cannot be used in a regular expression"
         )
 
-    # We need a new state not already used
-    outside = object()
+    outside = _Outside.TOKEN
 
     # The set of strings that would be accepted by this FSM if you started
     # at state i is represented by the regex R_i.
