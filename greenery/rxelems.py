@@ -21,6 +21,9 @@ class Conc():
         e.g. abcde[^fg]*h{4}[a-z]+(subpattern)(subpattern2)
         To express the empty string, use an empty `Conc`, Conc().
     '''
+
+    mults: tuple[Mult, ...]
+
     def __init__(self, *mults):
         object.__setattr__(self, "mults", tuple(mults))
 
@@ -406,6 +409,9 @@ class Pattern:
         subpattern, "ghi|jkl". This new subpattern again consists of two
         `Conc`s: "ghi" and "jkl".
     '''
+
+    concs: frozenset[Conc]
+
     def __init__(self, *concs):
         object.__setattr__(self, "concs", frozenset(concs))
 
