@@ -8,7 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum, auto
 
-from .fsm import Fsm, ANYTHING_ELSE, null, epsilon, alphabet_key
+from .fsm import Fsm, ANYTHING_ELSE, null, epsilon, alphabet_key, state_type
 from .multiplier import Multiplier, ZERO, QM, ONE, STAR
 from .charclass import Charclass, NULLCHARCLASS
 from .bound import Bound, INF
@@ -315,7 +315,8 @@ def from_fsm(f: Fsm):
         i += 1
 
     # Our system of equations is represented like so:
-    brz = {}
+    brz: dict[state_type, dict[state_type | _Outside, Pattern]] = {}
+
     for a in f.states:
         brz[a] = {}
         for b in f.states:
