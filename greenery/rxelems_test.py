@@ -365,9 +365,9 @@ def test_even_star_bug1():
     assert elesscomplex.accepts("a")
     assert not elesscomplex.accepts("aa")
     assert elesscomplex.accepts("aaa")
-    elesscomplex = from_fsm(elesscomplex)
-    assert str(elesscomplex) in {"a(a{2})*", "(a{2})*a"}
-    elesscomplex = elesscomplex.to_fsm()
+    elesscomplex_pat = from_fsm(elesscomplex)
+    assert str(elesscomplex_pat) in {"a(a{2})*", "(a{2})*a"}
+    elesscomplex = elesscomplex_pat.to_fsm()
     assert not elesscomplex.accepts("")
     assert elesscomplex.accepts("a")
     assert not elesscomplex.accepts("aa")
@@ -751,10 +751,10 @@ def test_silly_reduction():
         + "(aa|bb*aa)a*|((ab|bb*ab)|(aa|bb*aa)a*b)"
         + "((ab|bb*ab)|(aa|bb*aa)a*b)*"
     )
-    long = parse(long)
-    long = long.to_fsm().reversed()
-    long = from_fsm(long).reversed()
-    assert str(long) == "[ab]*a[ab]"
+    long_pat1 = parse(long)
+    long_fsm = long_pat1.to_fsm().reversed()
+    long_pat2 = from_fsm(long_fsm).reversed()
+    assert str(long_pat2) == "[ab]*a[ab]"
     short = "[ab]*a?b*|[ab]*b?a*"
     assert str(parse(".*") & parse(short)) == "[ab]*"
 
