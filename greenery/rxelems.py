@@ -216,7 +216,7 @@ class Conc:
                 break
 
         if suffix:
-            mults = reversed(mults)
+            mults = mults[::-1]
 
         return Conc(*mults)
 
