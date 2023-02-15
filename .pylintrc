@@ -132,7 +132,6 @@ disable=
         missing-module-docstring,
         no-method-argument,
         no-self-argument,
-        redefined-loop-name,
         similarities,
         suppressed-message,
         too-complex,

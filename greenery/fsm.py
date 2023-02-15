@@ -173,9 +173,12 @@ class Fsm:
         converted to `ANYTHING_ELSE`.
         """
         state = self.initial
-        for symbol in symbols:
-            if ANYTHING_ELSE in self.alphabet and symbol not in self.alphabet:
-                symbol = ANYTHING_ELSE
+        for sym in symbols:
+            symbol = (
+                ANYTHING_ELSE
+                if ANYTHING_ELSE in self.alphabet and sym not in self.alphabet
+                else sym
+            )
 
             # Missing transition = transition to dead state
             if not (state in self.map and symbol in self.map[state]):
@@ -792,11 +795,14 @@ class Fsm:
         try:
             # Consume the input string.
             state = self.initial
-            for symbol in symbols:
-                if symbol not in self.alphabet:
+            for sym in symbols:
+                symbol: AlphaType
+                if sym not in self.alphabet:
                     if ANYTHING_ELSE not in self.alphabet:
-                        raise KeyError(symbol)
+                        raise KeyError(sym)
                     symbol = ANYTHING_ELSE
+                else:
+                    symbol = sym
 
                 # Missing transition = transition to dead state
                 if not (state in self.map and symbol in self.map[state]):
