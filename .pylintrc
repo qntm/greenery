@@ -125,7 +125,6 @@ disable=
         consider-using-augmented-assign,
         docstring-first-line-empty,
         duplicate-code,
-        eq-without-hash,
         file-ignored,
         locally-disabled,
         missing-function-docstring,

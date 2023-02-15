@@ -20,6 +20,7 @@ from functools import total_ordering
 from typing import (
     Any,
     Callable,
+    ClassVar,
     Collection,
     Iterable,
     Iterator,
@@ -213,6 +214,14 @@ class Fsm:
             ]
         )
         return f"Fsm({args})"
+
+    # The Python `__eq__` + `__hash__` contract requires that value-equality
+    # implies hash-equality. `Fsm` `__eq__` implementation currently represents
+    # equality of the set of accepted strings, independent of specific state
+    # labels or unused members of the alphabet. This is not trivial to hash.
+    # Regarding the type suppression, see
+    # https://github.com/python/mypy/issues/4266
+    __hash__: ClassVar[None] = None  # type: ignore
 
     def __str__(self, /) -> str:
         rows = []
