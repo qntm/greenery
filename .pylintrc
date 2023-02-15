@@ -140,7 +140,6 @@ disable=
         missing-module-docstring,
         no-method-argument,
         no-self-argument,
-        redefined-builtin,
         redefined-loop-name,
         redefined-variable-type,
         similarities,
