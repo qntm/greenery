@@ -359,8 +359,8 @@ class Fsm:
             for (substate, iteration) in state:
                 if substate == self.initial \
                    and (
-                       self.initial in self.finals or
-                       iteration == multiplier
+                       self.initial in self.finals
+                       or iteration == multiplier
                    ):
                     return True
             return False

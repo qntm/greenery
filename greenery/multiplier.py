@@ -141,8 +141,8 @@ class Multiplier:
             E.g. {0,1} | {3,4} -> nope
         '''
         return not (
-            self.max + Bound(1) < other.min or
-            other.max + Bound(1) < self.min
+            self.max + Bound(1) < other.min
+            or other.max + Bound(1) < self.min
         )
 
     def __or__(self, other):

@@ -135,9 +135,9 @@ class Charclass:
                 "".join(escapeChar(char) for char in currentRange),
                 # "a-b" or "a-c" or "a-d"
                 (
-                    escapeChar(currentRange[0]) +
-                    "-" +
-                    escapeChar(currentRange[-1])
+                    escapeChar(currentRange[0])
+                    + "-"
+                    + escapeChar(currentRange[-1])
                 ),
             ]
             return sorted(strs, key=lambda str: len(str))[0]

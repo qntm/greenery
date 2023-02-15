@@ -418,8 +418,8 @@ def test_base_N():
                 (
                     "initial",
                     dict(
-                        [(str(j), j % N) for j in range(1, base)] +
-                        [("0", "zero")]
+                        [(str(j), j % N) for j in range(1, base)]
+                        + [("0", "zero")]
                     )
                 ),
                 (
@@ -720,9 +720,9 @@ def test_parse_regex_intersection():
     assert str(parse("[a-g0-8$%\\^]+") & parse("[^d]{2,8}")) == \
         "[$%0-8\\^abcefg]{2,8}"
     assert str(
-        parse("\\W*") &
-        parse("[a-g0-8$%\\^]+") &
-        parse("[^d]{2,8}")
+        parse("\\W*")
+        & parse("[a-g0-8$%\\^]+")
+        & parse("[^d]{2,8}")
     ) == \
         "[$%\\^]{2,8}"
     assert str(parse("\\d{4}-\\d{2}-\\d{2}") & parse("19.*")) == \
