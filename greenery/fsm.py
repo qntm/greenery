@@ -298,10 +298,10 @@ class Fsm:
 
         def final(state: frozenset[tuple[int, StateType]]) -> bool:
             """If you're in a final state of the final FSM, it's final"""
-            for i, substate in state:
-                if i == len(fsms) - 1 and substate in fsms[i].finals:
-                    return True
-            return False
+            return any(
+                i == len(fsms) - 1 and substate in fsms[i].finals
+                for i, substate in state
+            )
 
         def follow(
             current: frozenset[tuple[int, StateType]],
@@ -398,12 +398,11 @@ class Fsm:
             If the initial state is final then multiplying doesn't alter
             that
             """
-            for substate, iteration in state:
-                if substate == self.initial and (
-                    self.initial in self.finals or iteration == multiplier
-                ):
-                    return True
-            return False
+            return any(
+                substate == self.initial
+                and (self.initial in self.finals or iteration == multiplier)
+                for substate, iteration in state
+            )
 
         def follow(
             current: Collection[tuple[StateType, int]],

@@ -120,7 +120,6 @@ confidence=
 # --disable=W".
 disable=
         broad-exception-raised,
-        consider-using-any-or-all,
         consider-using-assignment-expr,
         consider-using-augmented-assign,
         docstring-first-line-empty,
