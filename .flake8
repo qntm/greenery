@@ -1,8 +1,6 @@
 [flake8]
 max-line-length = 80
 ignore =
-  # missing whitespace around arithmetic operator
-  E226,
   # line break before binary operator
   W503,
   # line break after binary operator

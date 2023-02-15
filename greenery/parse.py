@@ -90,7 +90,7 @@ def match_internal_char(string, i):
 
     # single non-special character, not contained
     # inside square brackets
-    char, j = string[i], i+1
+    char, j = string[i], i + 1
     if char in Charclass.classSpecial:
         raise NoMatch
 
@@ -208,7 +208,7 @@ def match_charclass(string: str, i):
         pass
 
     # single non-special character, not contained inside square brackets
-    char, i = string[i], i+1
+    char, i = string[i], i + 1
     if char in Charclass.allSpecial:
         raise NoMatch
 
