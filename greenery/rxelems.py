@@ -831,7 +831,7 @@ class Mult:
             and self.multiplier.canmultiplyby(QM)
         ):
             return Mult(
-                Pattern(*filter(lambda conc: conc.mults, self.multiplicand.concs)),
+                Pattern(*(conc for conc in self.multiplicand.concs if conc.mults)),
                 self.multiplier * QM,
             ).reduce()
 

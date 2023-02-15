@@ -119,7 +119,6 @@ confidence=
 # no Warning level messages displayed, use "--disable=all --enable=classes
 # --disable=W".
 disable=
-        bad-builtin,
         broad-exception-raised,
         consider-ternary-expression,
         consider-using-any-or-all,
