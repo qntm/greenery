@@ -11,6 +11,7 @@ from .fsm import ANYTHING_ELSE, Fsm
 from .parse import parse
 from .rxelems import from_fsm
 
+# pylint: disable=compare-to-empty-string
 # pylint: disable=too-many-lines
 
 if __name__ == "__main__":

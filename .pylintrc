@@ -121,7 +121,6 @@ confidence=
 disable=
         bad-builtin,
         broad-exception-raised,
-        compare-to-empty-string,
         compare-to-zero,
         consider-iterating-dictionary,
         consider-ternary-expression,

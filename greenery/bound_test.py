@@ -105,6 +105,8 @@ def test_copy() -> None:
 
 def test_bound_str() -> None:
     assert str(Bound(2)) == "2"
+
+    # pylint: disable-next=compare-to-empty-string
     assert str(INF) == ""
 
 
