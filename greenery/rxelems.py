@@ -797,8 +797,8 @@ class Mult:
 
     def __eq__(self, other):
         return isinstance(other.multiplicand, type(self.multiplicand)) \
-               and self.multiplicand == other.multiplicand \
-               and self.multiplier == other.multiplier
+            and self.multiplicand == other.multiplicand \
+            and self.multiplier == other.multiplier
 
     def __hash__(self):
         return hash((self.multiplicand, self.multiplier))

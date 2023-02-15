@@ -43,8 +43,8 @@ class Charclass:
 
     def __eq__(self, other):
         return isinstance(other, Charclass) \
-               and self.chars == other.chars \
-               and self.negated == other.negated
+            and self.chars == other.chars \
+            and self.negated == other.negated
 
     def __hash__(self):
         return hash((self.chars, self.negated))

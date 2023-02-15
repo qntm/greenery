@@ -480,10 +480,10 @@ def test_dead_default():
         initial=0,
         finals={4},
         map={
-                0: {"/": 1},
-                1: {"*": 2},
-                2: {"/": 2, ANYTHING_ELSE: 2, "*": 3},
-                3: {"/": 4, ANYTHING_ELSE: 2, "*": 3},
+            0: {"/": 1},
+            1: {"*": 2},
+            2: {"/": 2, ANYTHING_ELSE: 2, "*": 3},
+            3: {"/": 4, ANYTHING_ELSE: 2, "*": 3},
         }
     ))
     assert str(blockquote) == "/\\*([^*]|\\*+[^*/])*\\*+/"
