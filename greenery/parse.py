@@ -12,6 +12,11 @@ from .charclass import Charclass, escapes, shorthand
 from .multiplier import Multiplier, symbolic
 from .rxelems import Conc, Mult, Pattern
 
+# Currently many statements are grouped by `try/except NoMatch` in order to try
+# multiple matching functions in sequence. They can be refactored into smaller
+# functions to remove this suppression.
+# pylint: disable=too-many-try-statements
+
 T_co = TypeVar("T_co", covariant=True)
 
 

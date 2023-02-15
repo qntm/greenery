@@ -134,7 +134,6 @@ disable=
         suppressed-message,
         too-complex,
         too-few-public-methods,
-        too-many-try-statements,
         useless-suppression,
         while-used,
 

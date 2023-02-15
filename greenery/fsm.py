@@ -800,37 +800,34 @@ class Fsm:
         `KeyError`. If you fall into oblivion, then the derivative is an
         FSM accepting no strings.
         """
-        try:
-            # Consume the input string.
-            state = self.initial
-            for sym in symbols:
-                symbol: AlphaType
-                if sym not in self.alphabet:
-                    if ANYTHING_ELSE not in self.alphabet:
-                        raise KeyError(sym)
-                    symbol = ANYTHING_ELSE
-                else:
-                    symbol = sym
+        # Consume the input string.
+        state = self.initial
+        for sym in symbols:
+            symbol: AlphaType
+            if sym not in self.alphabet:
+                if ANYTHING_ELSE not in self.alphabet:
+                    raise KeyError(sym)
+                symbol = ANYTHING_ELSE
+            else:
+                symbol = sym
 
-                # Missing transition = transition to dead state
-                if not (state in self.map and symbol in self.map[state]):
-                    raise OblivionError
+            # Missing transition = transition to dead state
+            if not (state in self.map and symbol in self.map[state]):
+                # Fell out of the FSM.
+                # The derivative of this FSM is the empty FSM.
+                return null(self.alphabet)
 
-                state = self.map[state][symbol]
+            state = self.map[state][symbol]
 
-            # OK so now we have consumed that string, use the new location as
-            # the starting point.
-            return Fsm(
-                alphabet=self.alphabet,
-                states=self.states,
-                initial=state,
-                finals=self.finals,
-                map=self.map,
-            )
-
-        except OblivionError:
-            # Fell out of the FSM. The derivative of this FSM is the empty FSM.
-            return null(self.alphabet)
+        # OK so now we have consumed that string, use the new location as
+        # the starting point.
+        return Fsm(
+            alphabet=self.alphabet,
+            states=self.states,
+            initial=state,
+            finals=self.finals,
+            map=self.map,
+        )
 
 
 def null(alphabet: Iterable[AlphaType]) -> Fsm:
@@ -939,16 +936,15 @@ def crawl(
         for symbol in sorted(alphabet):
             try:
                 next_state = follow(state, symbol)
-
-                try:
-                    j = states.index(next_state)
-                except ValueError:
-                    j = len(states)
-                    states.append(next_state)
-
             except OblivionError:
                 # Reached an oblivion state. Don't list it.
                 continue
+
+            try:
+                j = states.index(next_state)
+            except ValueError:
+                j = len(states)
+                states.append(next_state)
 
             transitions[i][symbol] = j
 
