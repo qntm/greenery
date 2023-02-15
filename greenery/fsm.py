@@ -282,10 +282,7 @@ class Fsm:
         # We start at the start of the first FSM. If this state is final in the
         # first FSM, then we are also at the start of the second FSM. And so
         # on.
-        initial_: set[tuple[int, state_type]] = set()
-        if fsms:
-            initial_.update(connect_all(0, fsms[0].initial))
-        initial: frozenset[tuple[int, state_type]] = frozenset(initial_)
+        initial = frozenset(connect_all(0, fsms[0].initial) if fsms else ())
 
         def final(state: frozenset[tuple[int, state_type]]) -> bool:
             """If you're in a final state of the final FSM, it's final"""

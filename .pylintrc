@@ -136,7 +136,6 @@ disable=
         no-method-argument,
         no-self-argument,
         redefined-loop-name,
-        redefined-variable-type,
         similarities,
         suppressed-message,
         too-complex,
