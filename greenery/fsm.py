@@ -870,11 +870,11 @@ def parallel(
     ) -> Mapping[int, StateType]:
         next_states = {}
         for i, fsm in enumerate(fsms):
-            actual_symbol: AlphaType
-            if symbol not in fsm.alphabet and ANYTHING_ELSE in fsm.alphabet:
-                actual_symbol = ANYTHING_ELSE
-            else:
-                actual_symbol = symbol
+            actual_symbol = (
+                ANYTHING_ELSE
+                if symbol not in fsm.alphabet and ANYTHING_ELSE in fsm.alphabet
+                else symbol
+            )
             if (
                 i in current
                 and current[i] in fsm.map

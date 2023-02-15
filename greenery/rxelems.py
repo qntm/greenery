@@ -329,12 +329,12 @@ def from_fsm(f: Fsm) -> Pattern:
     for a in f.map:
         for symbol in f.map[a]:
             b = f.map[a][symbol]
-            if symbol is ANYTHING_ELSE:
-                charclass = ~Charclass(
-                    frozenset(s for s in f.alphabet if s is not ANYTHING_ELSE)
-                )
-            else:
-                charclass = Charclass(frozenset((symbol,)))
+
+            charclass = (
+                ~Charclass(frozenset(s for s in f.alphabet if s is not ANYTHING_ELSE))
+                if symbol is ANYTHING_ELSE
+                else Charclass(frozenset((symbol,)))
+            )
 
             brz[a][b] = Pattern(*brz[a][b].concs, Conc(Mult(charclass, ONE))).reduce()
 
@@ -454,7 +454,6 @@ class Pattern:
         # pylint: disable=too-many-branches
         # pylint: disable=too-many-locals
         # pylint: disable=too-many-return-statements
-        # pylint: disable=too-many-statements
 
         if self == NULLPATTERN:
             return self
