@@ -244,9 +244,8 @@ class Conc:
             # other.mults, then we have a problem. For example, "ABC{2} - BC"
             # subtracts the C successfully but leaves something behind,
             # then tries to subtract the B too, which isn't possible
-            else:
-                if i:
-                    raise Exception(f"Can't subtract {other!r} from {self!r}")
+            elif i:
+                raise Exception(f"Can't subtract {other!r} from {self!r}")
 
         return Conc(*new)
 

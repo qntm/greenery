@@ -132,7 +132,6 @@ disable=
         consider-using-f-string,
         docstring-first-line-empty,
         duplicate-code,
-        else-if-used,
         eq-without-hash,
         file-ignored,
         invalid-name,
