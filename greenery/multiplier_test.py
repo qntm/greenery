@@ -5,6 +5,9 @@ import pytest
 from .bound import INF, Bound
 from .multiplier import ONE, PLUS, QM, STAR, ZERO, Multiplier
 
+# mypy: allow-untyped-calls
+# mypy: allow-untyped-defs
+
 
 def test_multiplier_str():
     assert str(Multiplier(Bound(2), INF)) == "{2,}"

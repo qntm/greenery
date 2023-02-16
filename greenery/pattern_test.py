@@ -5,6 +5,9 @@ from .multiplier import ONE, ZERO
 from .parse import parse
 from .rxelems import Conc, Mult, Pattern
 
+# mypy: allow-untyped-calls
+# mypy: allow-untyped-defs
+
 
 def test_pattern_equality():
     assert Pattern(

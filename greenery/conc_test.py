@@ -7,6 +7,9 @@ from .charclass import Charclass
 from .multiplier import ONE, PLUS, QM, STAR, ZERO, Multiplier
 from .rxelems import Conc, Mult
 
+# mypy: allow-untyped-calls
+# mypy: allow-untyped-defs
+
 
 def test_conc_equality():
     a = Conc(Mult(Charclass("a"), ONE))

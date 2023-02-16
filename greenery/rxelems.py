@@ -21,6 +21,10 @@ from .charclass import NULLCHARCLASS, Charclass
 from .fsm import ANYTHING_ELSE, Fsm, epsilon, null, state_type
 from .multiplier import ONE, QM, STAR, ZERO, Multiplier
 
+# mypy: allow-untyped-calls
+# mypy: allow-untyped-defs
+# mypy: no-check-untyped-defs
+
 
 @dataclass(frozen=True)
 class Conc():

@@ -10,6 +10,10 @@ from .fsm import ANYTHING_ELSE, Fsm
 from .parse import parse
 from .rxelems import from_fsm
 
+# mypy: allow-untyped-calls
+# mypy: allow-untyped-defs
+# mypy: no-check-untyped-defs
+
 if __name__ == "__main__":
     raise Exception(
         "Test files can't be run directly. Use `python -m pytest greenery`"

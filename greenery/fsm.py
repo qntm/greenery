@@ -18,6 +18,11 @@ from enum import Enum, auto
 from functools import total_ordering
 from typing import Any, Union
 
+# mypy: allow-incomplete-defs
+# mypy: allow-untyped-calls
+# mypy: allow-untyped-defs
+# mypy: no-check-untyped-defs
+
 
 @total_ordering
 class AnythingElse(Enum):
