@@ -1,0 +1,16 @@
+{
+  "editor.insertSpaces": true,
+  "editor.tabSize": 2,
+  "files.insertFinalNewline": true,
+  "files.trimFinalNewlines": true,
+  "files.trimTrailingWhitespace": true,
+  "isort.check": true,
+  "python.analysis.importFormat": "relative",
+  "python.linting.flake8Enabled": true,
+  "python.linting.mypyEnabled": true,
+  "python.testing.pytestEnabled": true,
+  "[python]": {
+    "editor.tabSize": 4,
+    "vim.textwidth": 80
+  }
+}
