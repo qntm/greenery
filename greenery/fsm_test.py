@@ -1,10 +1,10 @@
-# -*- coding: utf-8 -*-
+from __future__ import annotations
 
 import pickle
 
 import pytest
 
-from .fsm import Fsm, null, epsilon, ANYTHING_ELSE, AnythingElse
+from .fsm import ANYTHING_ELSE, AnythingElse, Fsm, epsilon, null
 
 
 def test_addbug():
@@ -840,7 +840,7 @@ def test_anything_else_pickle():
         states={0, 1},
         initial=0,
         finals={1},
-        map={0: {ANYTHING_ELSE: 1}}
+        map={0: {ANYTHING_ELSE: 1}},
     )
 
     fsm1_unpickled = pickle.loads(pickle.dumps(fsm1))

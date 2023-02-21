@@ -1,13 +1,20 @@
-# -*- coding: utf-8 -*-
-
 '''
     Finite state machine library, intended to be used by `greenery` only
 '''
 
+from __future__ import annotations
+
+__all__ = (
+    "ANYTHING_ELSE",
+    "Fsm",
+    "epsilon",
+    "null",
+)
+
+from dataclasses import dataclass
 from enum import Enum, auto
 from functools import total_ordering
-from typing import Any, Optional, Union, Set, Dict
-from dataclasses import dataclass
+from typing import Any, Dict, Optional, Set, Union
 
 
 @total_ordering
