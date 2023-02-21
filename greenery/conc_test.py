@@ -3,9 +3,9 @@ from __future__ import annotations
 import pytest
 
 from .bound import Bound
-from .multiplier import Multiplier, ZERO, QM, ONE, STAR, PLUS
 from .charclass import Charclass
-from .rxelems import Conc, Mult, EMPTYSTRING
+from .multiplier import ONE, PLUS, QM, STAR, ZERO, Multiplier
+from .rxelems import Conc, Mult
 
 
 def test_conc_equality():
@@ -17,7 +17,7 @@ def test_conc_equality():
         Charclass("a"),
         Multiplier(Bound(1), Bound(2)))
     )
-    assert a != EMPTYSTRING
+    assert a != Conc()
 
 
 def test_conc_str():

@@ -1,7 +1,16 @@
 from __future__ import annotations
 
-from .charclass import Charclass, WORDCHAR, DIGIT, SPACECHAR, NONWORDCHAR, \
-    NONDIGITCHAR, NONSPACECHAR, DOT, NULLCHARCLASS
+from .charclass import (
+    DIGIT,
+    DOT,
+    NONDIGITCHAR,
+    NONSPACECHAR,
+    NONWORDCHAR,
+    NULLCHARCLASS,
+    SPACECHAR,
+    WORDCHAR,
+    Charclass,
+)
 from .fsm import ANYTHING_ELSE
 
 

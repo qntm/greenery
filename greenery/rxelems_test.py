@@ -1,17 +1,19 @@
 from __future__ import annotations
 
+import pickle
+import time
+
+import pytest
+
+from .charclass import DIGIT, WORDCHAR
+from .fsm import ANYTHING_ELSE, Fsm
+from .parse import parse
+from .rxelems import from_fsm
+
 if __name__ == "__main__":
     raise Exception(
         "Test files can't be run directly. Use `python -m pytest greenery`"
     )
-
-import pickle
-import pytest
-
-from .fsm import Fsm, ANYTHING_ELSE
-from .rxelems import from_fsm
-from .charclass import DIGIT, WORDCHAR
-from .parse import parse
 
 
 ###############################################################################
@@ -930,7 +932,6 @@ def test_isdisjoint():
 
 def test_bug_slow():
     # issue #43
-    import time
     m = Fsm(
         alphabet={'R', 'L', 'U', 'D'},
         states={
