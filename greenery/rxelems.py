@@ -1,17 +1,25 @@
-# -*- coding: utf-8 -*-
-
 '''
     Because of the circularity between `Pattern`, `Conc` and `Mult`, all three
     need to be in the same source file?
 '''
 
+from __future__ import annotations
+
+__all__ = (
+    "Conc",
+    "Mult",
+    "Pattern",
+    "from_fsm",
+)
+
 from dataclasses import dataclass
+from functools import reduce
 from typing import Union
 
-from .fsm import Fsm, ANYTHING_ELSE, null, epsilon, alphabet_key
-from .multiplier import Multiplier, ZERO, QM, ONE, STAR
-from .charclass import Charclass, NULLCHARCLASS
-from .bound import Bound, INF
+from .bound import INF, Bound
+from .charclass import NULLCHARCLASS, Charclass
+from .fsm import ANYTHING_ELSE, Fsm, alphabet_key, epsilon, null
+from .multiplier import ONE, QM, STAR, ZERO, Multiplier
 
 
 @dataclass(frozen=True)
@@ -630,7 +638,6 @@ class Pattern:
         if len(self.concs) == 0:
             raise Exception(f"Can't call _commonconc on {repr(self)}")
 
-        from functools import reduce
         return reduce(
             lambda x, y: x.common(y, suffix=suffix),
             self.concs

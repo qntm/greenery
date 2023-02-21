@@ -1,6 +1,6 @@
-# -*- coding: utf-8 -*-
+from __future__ import annotations
 
-from .bound import Bound, INF
+from .bound import INF, Bound
 
 
 def test_bound_str():

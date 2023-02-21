@@ -1,9 +1,9 @@
-# -*- coding: utf-8 -*-
+from __future__ import annotations
 
+from .bound import INF, Bound
+from .charclass import DIGIT, Charclass
 from .fsm import ANYTHING_ELSE
-from .charclass import Charclass, DIGIT
-from .bound import Bound, INF
-from .multiplier import Multiplier, ONE, QM, STAR, PLUS
+from .multiplier import ONE, PLUS, QM, STAR, Multiplier
 from .rxelems import Mult
 
 

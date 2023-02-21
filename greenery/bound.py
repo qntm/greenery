@@ -1,4 +1,9 @@
-# -*- coding: utf-8 -*-
+from __future__ import annotations
+
+__all__ = (
+    "Bound",
+    "INF",
+)
 
 from dataclasses import dataclass
 from typing import Optional
