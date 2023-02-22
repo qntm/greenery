@@ -18,7 +18,7 @@ from functools import reduce
 
 from .bound import INF, Bound
 from .charclass import NULLCHARCLASS, Charclass
-from .fsm import ANYTHING_ELSE, Fsm, alphabet_key, epsilon, null, state_type
+from .fsm import ANYTHING_ELSE, Fsm, epsilon, null, state_type
 from .multiplier import ONE, QM, STAR, ZERO, Multiplier
 
 
@@ -286,7 +286,7 @@ def from_fsm(f: Fsm) -> Pattern:
     # Make sure the supplied alphabet is kosher. It must contain only single-
     # character strings or `ANYTHING_ELSE`.
     for symbol in f.alphabet:
-        if symbol == ANYTHING_ELSE:
+        if symbol is ANYTHING_ELSE:
             continue
         if isinstance(symbol, str) and len(symbol) == 1:
             continue
@@ -316,7 +316,7 @@ def from_fsm(f: Fsm) -> Pattern:
     while i < len(states):
         current = states[i]
         if current in f.map:
-            for symbol in sorted(f.map[current], key=alphabet_key):
+            for symbol in sorted(f.map[current]):
                 next = f.map[current][symbol]
                 if next not in states:
                     states.append(next)
@@ -339,8 +339,10 @@ def from_fsm(f: Fsm) -> Pattern:
     for a in f.map:
         for symbol in f.map[a]:
             b = f.map[a][symbol]
-            if symbol == ANYTHING_ELSE:
-                charclass = ~Charclass(frozenset(f.alphabet) - {ANYTHING_ELSE})
+            if symbol is ANYTHING_ELSE:
+                charclass = ~Charclass(
+                    frozenset(s for s in f.alphabet if s is not ANYTHING_ELSE)
+                )
             else:
                 charclass = Charclass(frozenset((symbol,)))
 
@@ -761,7 +763,7 @@ class Pattern:
                 if otherchar is None:
                     raise Exception("Please choose an `otherchar`")
                 string = [
-                    otherchar if char == ANYTHING_ELSE else char
+                    otherchar if char is ANYTHING_ELSE else char
                     for char in string
                 ]
 
