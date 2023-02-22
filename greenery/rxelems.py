@@ -13,12 +13,12 @@ __all__ = (
 )
 
 from dataclasses import dataclass
+from enum import Enum, auto
 from functools import reduce
-from typing import Union
 
 from .bound import INF, Bound
 from .charclass import NULLCHARCLASS, Charclass
-from .fsm import ANYTHING_ELSE, Fsm, epsilon, null
+from .fsm import ANYTHING_ELSE, Fsm, epsilon, null, state_type
 from .multiplier import ONE, QM, STAR, ZERO, Multiplier
 
 
@@ -30,6 +30,9 @@ class Conc():
         e.g. abcde[^fg]*h{4}[a-z]+(subpattern)(subpattern2)
         To express the empty string, use an empty `Conc`, Conc().
     '''
+
+    mults: tuple[Mult, ...]
+
     def __init__(self, *mults):
         object.__setattr__(self, "mults", tuple(mults))
 
@@ -43,7 +46,7 @@ class Conc():
         args = ", ".join(repr(mult) for mult in self.mults)
         return f"Conc({args})"
 
-    def reduce(self):
+    def reduce(self) -> Conc:
         if self == NULLCONC:
             return self
 
@@ -268,7 +271,14 @@ class Conc():
         return Conc(*[mult.reversed() for mult in reversed(self.mults)])
 
 
-def from_fsm(f: Fsm):
+# We need a new state not already used.
+class _Outside(Enum):
+    """Marker state for use in `from_fsm`."""
+
+    TOKEN = auto()
+
+
+def from_fsm(f: Fsm) -> Pattern:
     '''
         Turn the supplied finite state machine into a `Pattern`. This is
         accomplished using the Brzozowski algebraic method.
@@ -284,8 +294,7 @@ def from_fsm(f: Fsm):
             f"Symbol {repr(symbol)} cannot be used in a regular expression"
         )
 
-    # We need a new state not already used
-    outside = object()
+    outside = _Outside.TOKEN
 
     # The set of strings that would be accepted by this FSM if you started
     # at state i is represented by the regex R_i.
@@ -314,7 +323,8 @@ def from_fsm(f: Fsm):
         i += 1
 
     # Our system of equations is represented like so:
-    brz = {}
+    brz: dict[state_type, dict[state_type | _Outside, Pattern]] = {}
+
     for a in f.states:
         brz[a] = {}
         for b in f.states:
@@ -330,9 +340,11 @@ def from_fsm(f: Fsm):
         for symbol in f.map[a]:
             b = f.map[a][symbol]
             if symbol is ANYTHING_ELSE:
-                charclass = ~Charclass(f.alphabet - {ANYTHING_ELSE})
+                charclass = ~Charclass(
+                    frozenset(s for s in f.alphabet if s is not ANYTHING_ELSE)
+                )
             else:
-                charclass = Charclass({symbol})
+                charclass = Charclass(frozenset((symbol,)))
 
             brz[a][b] = Pattern(
                 *brz[a][b].concs,
@@ -415,6 +427,9 @@ class Pattern:
         subpattern, "ghi|jkl". This new subpattern again consists of two
         `Conc`s: "ghi" and "jkl".
     '''
+
+    concs: frozenset[Conc]
+
     def __init__(self, *concs):
         object.__setattr__(self, "concs", frozenset(concs))
 
@@ -468,7 +483,7 @@ class Pattern:
             raise Exception(f"Can't serialise {repr(self)}")
         return "|".join(sorted(str(conc) for conc in self.concs))
 
-    def reduce(self):
+    def reduce(self) -> Pattern:
         if self == NULLPATTERN:
             return self
 
@@ -553,8 +568,7 @@ class Pattern:
                    and conc.mults[0].multiplier.min == Bound(0):
                     # Then we can omit the empty string.
                     # E.g. "|(ab)*|def" => "(ab)*|def".
-                    rest = self.concs - {EMPTYSTRING}
-                    return Pattern(*rest).reduce()
+                    return Pattern(*(self.concs - {EMPTYSTRING})).reduce()
 
             for conc in self.concs:
                 # ...and there is another `Conc`
@@ -569,8 +583,9 @@ class Pattern:
                             conc.mults[0].multiplier * QM
                         )
                     )
-                    rest = self.concs - {EMPTYSTRING, conc} | {merged_conc}
-                    return Pattern(*rest).reduce()
+                    return Pattern(
+                        *(self.concs - {EMPTYSTRING, conc} | {merged_conc})
+                    ).reduce()
 
         # If the present `Pattern`'s `Conc`s all have a common prefix, split
         # that out. This increases the depth of the object
@@ -773,7 +788,7 @@ class Mult:
 
         e.g. a, b{2}, c?, d*, [efg]{2,5}, f{2,}, (anysubpattern)+, .*, ...
     '''
-    multiplicand: Union[Charclass, Pattern]
+    multiplicand: Charclass | Pattern
     multiplier: Multiplier
 
     def __eq__(self, other):
@@ -822,7 +837,7 @@ class Mult:
     def empty(self):
         return self.multiplicand.empty() and self.multiplier.min > Bound(0)
 
-    def reduce(self):
+    def reduce(self) -> Mult:
         if self == NULLMULT:
             return self
 
@@ -878,7 +893,7 @@ class Mult:
             return f"({str(self.multiplicand)}){str(self.multiplier)}"
         if isinstance(self.multiplicand, Charclass):
             return f"{str(self.multiplicand)}{str(self.multiplier)}"
-        raise Exception(f"Unknown type {str(type(self.inner))}")
+        raise Exception(f"Unknown type {str(type(self.multiplicand))}")
 
     def to_fsm(self, alphabet=None):
         if alphabet is None:
