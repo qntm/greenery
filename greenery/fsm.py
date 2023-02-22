@@ -10,10 +10,11 @@ __all__ = (
     "alphabet_key",
     "epsilon",
     "null",
+    "state_type",
 )
 
 from dataclasses import dataclass
-from typing import Dict, Optional, Set, Union
+from typing import Union
 
 ANYTHING_ELSE = '9bd74361-04f9-4742-9d3a-1d14a6f0044c'
 
@@ -34,7 +35,7 @@ class OblivionError(Exception):
     pass
 
 
-state_type = Optional[Union[int, str]]
+state_type = Union[int, str, None]
 
 
 @dataclass(frozen=True)
@@ -53,10 +54,10 @@ class Fsm:
         The majority of these methods are available using operator overloads.
     '''
     initial: state_type
-    finals: Set[state_type]
-    alphabet: Set[str]
-    states: Set[state_type]
-    map: Dict[state_type, Dict[str, state_type]]
+    finals: set[state_type]
+    alphabet: set[str]
+    states: set[state_type]
+    map: dict[state_type, dict[str, state_type]]
 
     def __post_init__(self):
         '''
@@ -80,7 +81,7 @@ class Fsm:
                 f"Final states {repr(self.finals)} "
                 f"must be a subset of {repr(self.states)}"
             )
-        for state, symbol in self.map.items():
+        for state, _state_trans in self.map.items():
             if state not in self.states:
                 raise Exception(f"Transition from unknown state {repr(state)}")
             for symbol in self.map[state]:

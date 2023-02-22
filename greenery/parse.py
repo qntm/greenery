@@ -5,8 +5,6 @@ __all__ = (
     "NoMatch",
 )
 
-from typing import Tuple
-
 from .bound import INF, Bound
 from .charclass import Charclass, escapes, shorthand
 from .multiplier import Multiplier, symbolic
@@ -21,7 +19,7 @@ class NoMatch(Exception):
     pass
 
 
-def read_until(string: str, i: int, stop_char: str) -> Tuple[int, str]:
+def read_until(string: str, i: int, stop_char: str) -> tuple[int, str]:
     start = i
     while True:
         if i >= len(string):

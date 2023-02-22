@@ -15,7 +15,6 @@ __all__ = (
 )
 
 from dataclasses import dataclass
-from typing import FrozenSet, Union
 
 from .fsm import ANYTHING_ELSE, Fsm
 
@@ -30,7 +29,7 @@ class Charclass:
         if the full alphabet is extremely large, but also requires dedicated
         combination functions.
     '''
-    chars: Union[FrozenSet[str], str]
+    chars: frozenset[str] | str
     negated: bool = False
 
     def __post_init__(self):
