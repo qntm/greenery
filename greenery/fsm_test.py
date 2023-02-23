@@ -584,7 +584,13 @@ def test_dead_default():
     blockquote | blockquote
     blockquote & blockquote
     blockquote ^ blockquote
-    reversed(blockquote)
+    # Fsm does not support the `Reversible` protocol, because its
+    # `__reversed__` implementation does not return an iterator.
+    # Even if it did, it would not conform semantically because it returns an
+    # iterable of the reversed strings, not a reversed iteration of those
+    # strings.
+    # reversed(blockquote)
+    blockquote.reversed()
     assert not blockquote.everythingbut() \
         .accepts(["/", "*", "whatever", "*", "/"])
 
