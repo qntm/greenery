@@ -10,6 +10,10 @@ from .charclass import Charclass, escapes, shorthand
 from .multiplier import Multiplier, symbolic
 from .rxelems import Conc, Mult, Pattern
 
+# mypy: allow-untyped-calls
+# mypy: allow-untyped-defs
+# mypy: allow-incomplete-defs
+
 
 class NoMatch(Exception):
     '''

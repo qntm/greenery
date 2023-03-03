@@ -6,6 +6,10 @@ import pytest
 
 from .fsm import ANYTHING_ELSE, AnythingElse, Fsm, epsilon, null
 
+# mypy: allow-untyped-calls
+# mypy: allow-untyped-defs
+# mypy: no-check-untyped-defs
+
 
 def test_addbug():
     # Odd bug with Fsm.__add__(), exposed by "[bc]*c"

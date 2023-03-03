@@ -6,6 +6,9 @@ from .fsm import ANYTHING_ELSE
 from .multiplier import ONE, PLUS, QM, STAR, Multiplier
 from .rxelems import Mult
 
+# mypy: allow-untyped-calls
+# mypy: allow-untyped-defs
+
 
 def test_mult_equality():
     a = Mult(Charclass("a"), ONE)

@@ -13,6 +13,9 @@ from .charclass import (
 )
 from .fsm import ANYTHING_ELSE
 
+# mypy: allow-untyped-calls
+# mypy: allow-untyped-defs
+
 
 def test_charclass_equality():
     assert Charclass("a") == Charclass("a")

@@ -14,6 +14,9 @@ from dataclasses import dataclass, field
 
 from .bound import INF, Bound
 
+# mypy: allow-untyped-calls
+# mypy: allow-untyped-defs
+
 
 @dataclass(frozen=True)
 class Multiplier:

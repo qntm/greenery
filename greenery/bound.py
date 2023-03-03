@@ -7,6 +7,8 @@ __all__ = (
 
 from dataclasses import dataclass
 
+# mypy: allow-untyped-defs
+
 
 @dataclass(frozen=True)
 class Bound:

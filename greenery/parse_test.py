@@ -10,6 +10,9 @@ from .multiplier import ONE, PLUS, STAR, Multiplier
 from .parse import NoMatch, match_charclass, match_mult, parse
 from .rxelems import Conc, Mult, Pattern
 
+# mypy: allow-untyped-calls
+# mypy: allow-untyped-defs
+
 if __name__ == "__main__":
     raise Exception(
         "Test files can't be run directly. Use `python -m pytest greenery`"

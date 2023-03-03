@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from .bound import INF, Bound
 
+# mypy: allow-untyped-defs
+
 
 def test_bound_str():
     assert str(Bound(2)) == "2"
