@@ -16,10 +16,11 @@ from .rxelems import Conc, Mult, Pattern
 
 
 class NoMatch(Exception):
-    '''
-        Thrown when parsing fails.
-        Almost always caught and almost never fatal
-    '''
+    """
+    Thrown when parsing fails.
+    Almost always caught and almost never fatal
+    """
+
     pass
 
 
@@ -50,7 +51,7 @@ def select_static(string, i, *statics):
 
 
 def unescape_hex(string, i):
-    '''Turn e.g. "\\x40" into "@". Exactly two hex digits'''
+    """Turn e.g. "\\x40" into "@". Exactly two hex digits"""
     hex_digits = "0123456789AaBbCcDdEeFf"
 
     j = static(string, i, "\\x")
@@ -93,7 +94,7 @@ def match_internal_char(string, i):
 
     # single non-special character, not contained
     # inside square brackets
-    char, j = string[i], i+1
+    char, j = string[i], i + 1
     if char in Charclass.classSpecial:
         raise NoMatch
 
@@ -126,7 +127,7 @@ def match_class_interior_1(string, i):
 
         # Be strict here, "d-d" is not allowed
         if firstIndex >= lastIndex:
-            raise NoMatch(f"Range '{first}' to '{last}' not allowed")
+            raise NoMatch(f"Range {first!r} to {last!r} not allowed")
 
         chars = frozenset(chr(i) for i in range(firstIndex, lastIndex + 1))
         return chars, False, k
@@ -211,7 +212,7 @@ def match_charclass(string: str, i):
         pass
 
     # single non-special character, not contained inside square brackets
-    char, i = string[i], i+1
+    char, i = string[i], i + 1
     if char in Charclass.allSpecial:
         raise NoMatch
 
@@ -222,9 +223,9 @@ def match_multiplicand(string, i):
     # explicitly non-capturing "(?:...)" syntax. No special significance
     try:
         j = static(string, i, "(?")
-        j, st = select_static(string, j, ':', 'P<')
-        if st == 'P<':
-            j, group_name = read_until(string, j, '>')
+        j, st = select_static(string, j, ":", "P<")
+        if st == "P<":
+            j, group_name = read_until(string, j, ">")
         pattern, j = match_pattern(string, j)
         j = static(string, j, ")")
         return pattern, j
@@ -347,13 +348,11 @@ def match_pattern(string: str, i):
 
 
 def parse(string: str):
-    '''
-        Parse a full string and return a `Pattern` object. Fail if
-        the whole string wasn't parsed
-    '''
+    """
+    Parse a full string and return a `Pattern` object. Fail if
+    the whole string wasn't parsed
+    """
     obj, i = match_pattern(string, 0)
     if i != len(string):
-        raise Exception(
-            f"Could not parse '{string}' beyond index {str(i)}"
-        )
+        raise Exception(f"Could not parse {string!r} beyond index {i}")
     return obj

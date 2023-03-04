@@ -12,15 +12,16 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class Bound:
-    '''An integer but sometimes also possibly infinite (None)'''
+    """An integer but sometimes also possibly infinite (None)"""
+
     v: int | None
 
     def __post_init__(self):
         if self.v is not None and self.v < 0:
-            raise Exception(f"Invalid bound: {repr(self.v)}")
+            raise Exception(f"Invalid bound: {self.v!r}")
 
     def __repr__(self):
-        return f"Bound({repr(self.v)})"
+        return f"Bound({self.v!r})"
 
     def __str__(self):
         if self == INF:
@@ -45,7 +46,7 @@ class Bound:
         return not self < other
 
     def __mul__(self, other):
-        '''Multiply this bound by another'''
+        """Multiply this bound by another"""
         if self == Bound(0) or other == Bound(0):
             return Bound(0)
         if self == INF or other == INF:
@@ -53,20 +54,20 @@ class Bound:
         return Bound(self.v * other.v)
 
     def __add__(self, other):
-        '''Add this bound to another'''
+        """Add this bound to another"""
         if self == INF or other == INF:
             return INF
         return Bound(self.v + other.v)
 
     def __sub__(self, other):
-        '''
-            Subtract another bound from this one.
-            Caution: this operation is not meaningful for all bounds.
-        '''
+        """
+        Subtract another bound from this one.
+        Caution: this operation is not meaningful for all bounds.
+        """
         if other == INF:
             if self != INF:
                 raise Exception(
-                    f"Can't subtract {repr(other)} from {repr(self)}"
+                    f"Can't subtract {other!r} from {self!r}"
                 )
 
             # Infinity minus infinity is zero. This has to be true so that

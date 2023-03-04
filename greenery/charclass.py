@@ -26,14 +26,15 @@ from .fsm import ANYTHING_ELSE, Fsm
 
 @dataclass(frozen=True)
 class Charclass:
-    '''
-        A `Charclass` is basically a `frozenset` of symbols.
-        A `Charclass` with the `negated` flag set is assumed
-        to contain every symbol that is in the alphabet of all symbols but not
-        explicitly listed inside the frozenset. e.g. [^a]. This is very handy
-        if the full alphabet is extremely large, but also requires dedicated
-        combination functions.
-    '''
+    """
+    A `Charclass` is basically a `frozenset` of symbols.
+    A `Charclass` with the `negated` flag set is assumed
+    to contain every symbol that is in the alphabet of all symbols but not
+    explicitly listed inside the frozenset. e.g. [^a]. This is very handy
+    if the full alphabet is extremely large, but also requires dedicated
+    combination functions.
+    """
+
     chars: frozenset[str] | str
     negated: bool = False
 
@@ -42,13 +43,13 @@ class Charclass:
         # chars should consist only of chars
         if ANYTHING_ELSE in self.chars:
             raise Exception(
-                f"Can't put {repr(ANYTHING_ELSE)} in a `Charclass`"
+                f"Can't put {ANYTHING_ELSE!r} in a `Charclass`"
             )
 
     def __eq__(self, other):
         return isinstance(other, Charclass) \
-               and self.chars == other.chars \
-               and self.negated == other.negated
+            and self.chars == other.chars \
+            and self.negated == other.negated
 
     def __hash__(self):
         return hash((self.chars, self.negated))
@@ -108,7 +109,7 @@ class Charclass:
             # If char is an ASCII control character, don't print it directly,
             # return a hex escape sequence e.g. "\\x00". Note that this
             # includes tab and other characters already handled above
-            if 0 <= ord(char) <= 0x1F or ord(char) == 0x7f:
+            if 0 <= ord(char) <= 0x1F or ord(char) == 0x7F:
                 return "\\x" + "{0:02x}".format(ord(char))
 
             return char
@@ -126,7 +127,7 @@ class Charclass:
             # If char is an ASCII control character, don't print it directly,
             # return a hex escape sequence e.g. "\\x00". Note that this
             # includes tab and other characters already handled above
-            if 0 <= ord(char) <= 0x1F or ord(char) == 0x7f:
+            if 0 <= ord(char) <= 0x1F or ord(char) == 0x7F:
                 return "\\x" + "{0:02x}".format(ord(char))
 
             return char
@@ -139,9 +140,9 @@ class Charclass:
                 "".join(escapeChar(char) for char in currentRange),
                 # "a-b" or "a-c" or "a-d"
                 (
-                    escapeChar(currentRange[0]) +
-                    "-" +
-                    escapeChar(currentRange[-1])
+                    escapeChar(currentRange[0])
+                    + "-"
+                    + escapeChar(currentRange[-1])
                 ),
             ]
             return sorted(strs, key=lambda str: len(str))[0]
@@ -223,10 +224,10 @@ class Charclass:
 
     # set operations
     def negate(self):
-        '''
-            Negate the current `Charclass`. e.g. [ab] becomes [^ab]. Call
-            using "charclass2 = ~charclass1"
-        '''
+        """
+        Negate the current `Charclass`. e.g. [ab] becomes [^ab]. Call
+        using "charclass2 = ~charclass1"
+        """
         return Charclass(self.chars, negated=not self.negated)
 
     def __invert__(self):

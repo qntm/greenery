@@ -237,13 +237,13 @@ def test_crawl_reduction():
 def test_bug_28():
     # This is (ab*)* and it caused some defects.
     abstar = Fsm(
-        alphabet={'a', 'b'},
+        alphabet={"a", "b"},
         states={0, 1},
         initial=0,
         finals={1},
         map={
-            0: {'a': 1},
-            1: {'b': 1}
+            0: {"a": 1},
+            1: {"b": 1}
         }
     )
     assert abstar.accepts("a")
@@ -553,33 +553,33 @@ def test_equivalent(a, b):
 
 
 def test_dead_default():
-    '''
-        You may now omit a transition, or even an entire state, from the map.
-        This affects every usage of `Fsm.map`.
-    '''
+    """
+    You may now omit a transition, or even an entire state, from the map.
+    This affects every usage of `Fsm.map`.
+    """
     blockquote = Fsm(
         alphabet={"/", "*", ANYTHING_ELSE},
         states={0, 1, 2, 3, 4, 5},
         initial=0,
         finals={4},
         map={
-                0: {"/": 1},
-                1: {"*": 2},
-                2: {"/": 2, ANYTHING_ELSE: 2, "*": 3},
-                3: {"/": 4, ANYTHING_ELSE: 2, "*": 3},
+            0: {"/": 1},
+            1: {"*": 2},
+            2: {"/": 2, ANYTHING_ELSE: 2, "*": 3},
+            3: {"/": 4, ANYTHING_ELSE: 2, "*": 3},
         }
     )
     assert blockquote.accepts(["/", "*", "whatever", "*", "/"])
     assert not blockquote.accepts(["*", "*", "whatever", "*", "/"])
-    assert str(blockquote) == \
-        '  name final? * / ANYTHING_ELSE \n' + \
-        '--------------------------------\n' + \
-        '* 0    False    1               \n' + \
-        '  1    False  2                 \n' + \
-        '  2    False  3 2 2             \n' + \
-        '  3    False  3 4 2             \n' + \
-        '  4    True                     \n' + \
-        '  5    False                    \n'
+    assert str(blockquote) \
+        == "  name final? * / ANYTHING_ELSE \n" \
+        + "--------------------------------\n" \
+        + "* 0    False    1               \n" \
+        + "  1    False  2                 \n" \
+        + "  2    False  3 2 2             \n" \
+        + "  3    False  3 4 2             \n" \
+        + "  4    True                     \n" \
+        + "  5    False                    \n"
     blockquote | blockquote
     blockquote & blockquote
     blockquote ^ blockquote
@@ -747,16 +747,16 @@ def test_bug_36():
         }
     )
     etc2 = Fsm(
-        alphabet={'s', ANYTHING_ELSE},
+        alphabet={"s", ANYTHING_ELSE},
         states={0, 1},
         initial=0,
         finals={1},
         map={
             0: {
-                's': 1
+                "s": 1
             },
             1: {
-                's': 1,
+                "s": 1,
                 ANYTHING_ELSE: 1
             }
         }

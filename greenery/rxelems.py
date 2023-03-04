@@ -1,7 +1,7 @@
-'''
-    Because of the circularity between `Pattern`, `Conc` and `Mult`, all three
-    need to be in the same source file?
-'''
+"""
+Because of the circularity between `Pattern`, `Conc` and `Mult`, all three
+need to be in the same source file?
+"""
 
 from __future__ import annotations
 
@@ -28,12 +28,12 @@ from .multiplier import ONE, QM, STAR, ZERO, Multiplier
 
 @dataclass(frozen=True)
 class Conc():
-    '''
-        A `Conc` (short for "concatenation") is a tuple of `Mult`s i.e. an
-        unbroken string of mults occurring one after the other.
-        e.g. abcde[^fg]*h{4}[a-z]+(subpattern)(subpattern2)
-        To express the empty string, use an empty `Conc`, Conc().
-    '''
+    """
+    A `Conc` (short for "concatenation") is a tuple of `Mult`s i.e. an
+    unbroken string of mults occurring one after the other.
+    e.g. abcde[^fg]*h{4}[a-z]+(subpattern)(subpattern2)
+    To express the empty string, use an empty `Conc`, Conc().
+    """
 
     mults: tuple[Mult, ...]
 
@@ -68,6 +68,7 @@ class Conc():
                 # Conc contains "()" (i.e. a `Mult` containing only a `Pattern`
                 # containing the empty string)? That can be removed
                 # e.g. "a()b" -> "ab"
+
                 (
                     mult.multiplicand == Pattern(EMPTYSTRING)
                 ) \
@@ -75,6 +76,7 @@ class Conc():
                 # If a `Mult` has an empty multiplicand, we can only match it
                 # zero times => empty string => remove it entirely
                 # e.g. "a[]{0,3}b" -> "ab"
+
                 or (
                     mult.multiplicand.empty()
                     and mult.multiplier.min == Bound(0)
@@ -128,9 +130,9 @@ class Conc():
                             rm_pattern,
                             Multiplier(r.multiplier.min, r.multiplier.min)
                         )
-                        new = self.mults[:i] + \
-                            (trimmed, s) + \
-                            self.mults[i + 2:]
+                        new = self.mults[:i] \
+                            + (trimmed, s) \
+                            + self.mults[i + 2:]
                         return Conc(*new).reduce()
 
                 # Conversely, if R is superset of S, then R{c,}S{a,b} reduces
@@ -146,9 +148,9 @@ class Conc():
                             sm_pattern,
                             Multiplier(s.multiplier.min, s.multiplier.min)
                         )
-                        new = self.mults[:i] + \
-                            (r, trimmed) + \
-                            self.mults[i + 2:]
+                        new = self.mults[:i] \
+                            + (r, trimmed) \
+                            + self.mults[i + 2:]
                         return Conc(*new).reduce()
 
         # Conc contains (among other things) a *singleton* `Mult` containing
@@ -186,19 +188,19 @@ class Conc():
         return "".join(str(m) for m in self.mults)
 
     def common(self, other, suffix=False):
-        '''
-            Return the common prefix of these two `Conc`s; that is, the largest
-            `Conc` which can be safely beheaded() from the front of both. The
-            result could be `EMPTYSTRING`.
-            "ZYAA, ZYBB" -> "ZY"
-            "CZ, CZ" -> "CZ"
-            "YC, ZC" -> ""
+        """
+        Return the common prefix of these two `Conc`s; that is, the largest
+        `Conc` which can be safely beheaded() from the front of both. The
+        result could be `EMPTYSTRING`.
+        "ZYAA, ZYBB" -> "ZY"
+        "CZ, CZ" -> "CZ"
+        "YC, ZC" -> ""
 
-            With the "suffix" flag set, works from the end. E.g.:
-            "AAZY, BBZY" -> "ZY"
-            "CZ, CZ" -> "CZ"
-            "CY, CZ" -> ""
-        '''
+        With the "suffix" flag set, works from the end. E.g.:
+        "AAZY, BBZY" -> "ZY"
+        "CZ, CZ" -> "CZ"
+        "CY, CZ" -> ""
+        """
         mults = []
 
         indices = range(min(len(self.mults), len(other.mults)))
@@ -232,12 +234,12 @@ class Conc():
         return Conc(*mults)
 
     def dock(self, other):
-        '''
-            Subtract another `Conc` from this one.
-            This is the opposite of concatenation.
-            For example, if ABC + DEF = ABCDEF,
-            then logically ABCDEF - DEF = ABC.
-        '''
+        """
+        Subtract another `Conc` from this one.
+        This is the opposite of concatenation.
+        For example, if ABC + DEF = ABCDEF,
+        then logically ABCDEF - DEF = ABC.
+        """
 
         # e.g. self has mults at indices [0, 1, 2, 3, 4, 5, 6] len=7
         # e.g. other has mults at indices [0, 1, 2] len=3
@@ -258,16 +260,16 @@ class Conc():
             else:
                 if i != 0:
                     raise Exception(
-                        f"Can't subtract {repr(other)} from {repr(self)}"
+                        f"Can't subtract {other!r} from {self!r}"
                     )
 
         return Conc(*new)
 
     def behead(self, other):
-        '''
-            As with dock() but the other way around. For example, if
-            ABC + DEF = ABCDEF, then ABCDEF.behead(AB) = CDEF.
-        '''
+        """
+        As with dock() but the other way around. For example, if
+        ABC + DEF = ABCDEF, then ABCDEF.behead(AB) = CDEF.
+        """
         # Observe that FEDCBA - BA = FEDC.
         return self.reversed().dock(other.reversed()).reversed()
 
@@ -283,10 +285,10 @@ class _Outside(Enum):
 
 
 def from_fsm(f: Fsm) -> Pattern:
-    '''
-        Turn the supplied finite state machine into a `Pattern`. This is
-        accomplished using the Brzozowski algebraic method.
-    '''
+    """
+    Turn the supplied finite state machine into a `Pattern`. This is
+    accomplished using the Brzozowski algebraic method.
+    """
     # Make sure the supplied alphabet is kosher. It must contain only single-
     # character strings or `ANYTHING_ELSE`.
     for symbol in f.alphabet:
@@ -295,7 +297,7 @@ def from_fsm(f: Fsm) -> Pattern:
         if isinstance(symbol, str) and len(symbol) == 1:
             continue
         raise Exception(
-            f"Symbol {repr(symbol)} cannot be used in a regular expression"
+            f"Symbol {symbol!r} cannot be used in a regular expression"
         )
 
     outside = _Outside.TOKEN
@@ -400,37 +402,38 @@ def from_fsm(f: Fsm) -> Pattern:
 
 
 def call_fsm(method):
-    '''
-        Take a method which acts on 0 or more regular expression objects...
-        return a new method which simply converts them all to FSMs, calls the
-        FSM method on them instead, then converts the result back to a regular
-        expression. We do this for several of the more annoying operations.
-    '''
+    """
+    Take a method which acts on 0 or more regular expression objects...
+    return a new method which simply converts them all to FSMs, calls the
+    FSM method on them instead, then converts the result back to a regular
+    expression. We do this for several of the more annoying operations.
+    """
     fsm_method = getattr(Fsm, method.__name__)
 
     def new_method(*elems):
         alphabet = set().union(*[elem.alphabet() for elem in elems])
         return from_fsm(fsm_method(*[elem.to_fsm(alphabet) for elem in elems]))
+
     return new_method
 
 
 @dataclass(frozen=True)
 class Pattern:
-    '''
-        A `Pattern` (also known as an "alt", short for "alternation") is a
-        set of `Conc`s. A `Pattern` expresses multiple alternate possibilities.
-        When written out as a regex, these would separated by pipes. A
-        `Pattern` containing no possibilities is possible and represents a
-        regular expression matching no strings whatsoever (there is no
-        conventional string form for this).
+    """
+    A `Pattern` (also known as an "alt", short for "alternation") is a
+    set of `Conc`s. A `Pattern` expresses multiple alternate possibilities.
+    When written out as a regex, these would separated by pipes. A
+    `Pattern` containing no possibilities is possible and represents a
+    regular expression matching no strings whatsoever (there is no
+    conventional string form for this).
 
-        e.g. "abc|def(ghi|jkl)" is an alt containing two `Conc`s: "abc" and
-        "def(ghi|jkl)". The latter is a `Conc` containing four `Mult`s: "d",
-        "e", "f" and "(ghi|jkl)". The latter in turn is a `Mult` consisting of
-        an upper bound 1, a lower bound 1, and a multiplicand which is a new
-        subpattern, "ghi|jkl". This new subpattern again consists of two
-        `Conc`s: "ghi" and "jkl".
-    '''
+    e.g. "abc|def(ghi|jkl)" is an alt containing two `Conc`s: "abc" and
+    "def(ghi|jkl)". The latter is a `Conc` containing four `Mult`s: "d",
+    "e", "f" and "(ghi|jkl)". The latter in turn is a `Mult` consisting of
+    an upper bound 1, a lower bound 1, and a multiplicand which is a new
+    subpattern, "ghi|jkl". This new subpattern again consists of two
+    `Conc`s: "ghi" and "jkl".
+    """
 
     concs: frozenset[Conc]
 
@@ -467,10 +470,10 @@ class Pattern:
 
     @call_fsm
     def difference(*elems):
-        '''
-            Return a regular expression which matches any string which `self`
-            matches but none of the strings which `other` matches.
-        '''
+        """
+        Return a regular expression which matches any string which `self`
+        matches but none of the strings which `other` matches.
+        """
         pass
 
     def __sub__(self, other):
@@ -484,7 +487,7 @@ class Pattern:
 
     def __str__(self):
         if len(self.concs) == 0:
-            raise Exception(f"Can't serialise {repr(self)}")
+            raise Exception(f"Can't serialise {self!r}")
         return "|".join(sorted(str(conc) for conc in self.concs))
 
     def reduce(self) -> Pattern:
@@ -538,10 +541,10 @@ class Pattern:
                     continue
                 multiplier = multiplier1 | multiplier2
                 newconcs = \
-                    oldconcs[:i] + \
-                    oldconcs[i + 1:j] + \
-                    oldconcs[j + 1:] + \
-                    [Conc(Mult(multiplicand, multiplier))]
+                    oldconcs[:i] \
+                    + oldconcs[i + 1:j] \
+                    + oldconcs[j + 1:] \
+                    + [Conc(Mult(multiplicand, multiplier))]
                 return Pattern(*newconcs).reduce()
 
         # If this `Pattern` contains several `Conc`s each containing just 1
@@ -614,48 +617,48 @@ class Pattern:
 
     @call_fsm
     def symmetric_difference(*elems):
-        '''
-            Return a regular expression matching only the strings recognised by
-            `self` or `other` but not both.
-        '''
+        """
+        Return a regular expression matching only the strings recognised by
+        `self` or `other` but not both.
+        """
         pass
 
     def __xor__(self, other):
         return self.symmetric_difference(other)
 
     def dock(self, other):
-        '''
-            The opposite of concatenation. Remove a common suffix from the
-            present `Pattern`; that is, from each of its constituent concs.
+        """
+        The opposite of concatenation. Remove a common suffix from the
+        present `Pattern`; that is, from each of its constituent concs.
 
-            AYZ|BYZ|CYZ - YZ -> A|B|C.
-        '''
+        AYZ|BYZ|CYZ - YZ -> A|B|C.
+        """
         return Pattern(*[conc.dock(other) for conc in self.concs])
 
     def behead(self, other):
-        '''
-            Like dock() but the other way around. Remove a common prefix from
-            the present `Pattern`; that is, from each of its constituent concs.
+        """
+        Like dock() but the other way around. Remove a common prefix from
+        the present `Pattern`; that is, from each of its constituent concs.
 
-            ZA|ZB|ZC.behead(Z) -> A|B|C
-        '''
+        ZA|ZB|ZC.behead(Z) -> A|B|C
+        """
         return Pattern(*[conc.behead(other) for conc in self.concs])
 
     def _commonconc(self, suffix=False):
-        '''
-            Find the longest `Conc` which acts as prefix to every `Conc` in
-            this `Pattern`. This could be `EMPTYSTRING`. Return the common
-            prefix along with all the leftovers after truncating that common
-            prefix from each `Conc`.
+        """
+        Find the longest `Conc` which acts as prefix to every `Conc` in
+        this `Pattern`. This could be `EMPTYSTRING`. Return the common
+        prefix along with all the leftovers after truncating that common
+        prefix from each `Conc`.
 
-            "ZA|ZB|ZC" -> "Z", "(A|B|C)"
-            "ZA|ZB|ZC|Z" -> "Z", "(A|B|C|)"
-            "CZ|CZ" -> "CZ", "()"
+        "ZA|ZB|ZC" -> "Z", "(A|B|C)"
+        "ZA|ZB|ZC|Z" -> "Z", "(A|B|C|)"
+        "CZ|CZ" -> "CZ", "()"
 
-            If "suffix" is True, the same result but for suffixes.
-        '''
+        If "suffix" is True, the same result but for suffixes.
+        """
         if len(self.concs) == 0:
-            raise Exception(f"Can't call _commonconc on {repr(self)}")
+            raise Exception(f"Can't call _commonconc on {self!r}")
 
         return reduce(
             lambda x, y: x.common(y, suffix=suffix),
@@ -675,26 +678,26 @@ class Pattern:
         return Pattern(*(c.reversed() for c in self.concs))
 
     def copy(self):
-        '''
-            For completeness only, since `set.copy()` also exists. `Pattern`s
-            are immutable, so I can see only very odd reasons to need this
-        '''
+        """
+        For completeness only, since `set.copy()` also exists. `Pattern`s
+        are immutable, so I can see only very odd reasons to need this
+        """
         return Pattern(*self.concs)
 
     def equivalent(self, other):
-        '''
-            Two `Pattern`s are equivalent if they recognise the same strings.
-            Note that in the general case this is actually quite an intensive
-            calculation, but far from unsolvable, as we demonstrate here:
-        '''
+        """
+        Two `Pattern`s are equivalent if they recognise the same strings.
+        Note that in the general case this is actually quite an intensive
+        calculation, but far from unsolvable, as we demonstrate here:
+        """
         return self.to_fsm().equivalent(other.to_fsm())
 
     def times(self, multiplier):
-        '''
-            Equivalent to repeated concatenation. Multiplier consists of a
-            minimum and a maximum; maximum may be infinite (for Kleene star
-            closure). Call using "a = b * qm"
-        '''
+        """
+        Equivalent to repeated concatenation. Multiplier consists of a
+        minimum and a maximum; maximum may be infinite (for Kleene star
+        closure). Call using "a = b * qm"
+        """
         return Pattern(Conc(Mult(self, multiplier)))
 
     def __mul__(self, multiplier):
@@ -702,44 +705,44 @@ class Pattern:
 
     @call_fsm
     def everythingbut(self):
-        '''
-            Return a `Pattern` which will match any string not matched by
-            `self`, and which will not match any string matched by `self`.
-            Another task which is very difficult in general (and typically
-            returns utter garbage when actually printed), but becomes trivial
-            to code thanks to FSM routines.
-        '''
+        """
+        Return a `Pattern` which will match any string not matched by
+        `self`, and which will not match any string matched by `self`.
+        Another task which is very difficult in general (and typically
+        returns utter garbage when actually printed), but becomes trivial
+        to code thanks to FSM routines.
+        """
         pass
 
     def derive(self, string):
         return from_fsm(self.to_fsm().derive(string))
 
     def isdisjoint(self, other):
-        '''
-            Treat `self` and `other` as sets of strings and see if they are
-            disjoint
-        '''
+        """
+        Treat `self` and `other` as sets of strings and see if they are
+        disjoint
+        """
         return self.to_fsm().isdisjoint(other.to_fsm())
 
     def matches(self, string):
         return self.to_fsm().accepts(string)
 
     def __contains__(self, string):
-        '''
-            This lets you use the syntax `"a" in pattern` to see whether the
-            string "a" is in the set of strings matched by `pattern`.
-        '''
+        """
+        This lets you use the syntax `"a" in pattern` to see whether the
+        string "a" is in the set of strings matched by `pattern`.
+        """
         return self.matches(string)
 
     def __reversed__(self):
         return self.reversed()
 
     def cardinality(self):
-        '''
-            Consider the regular expression as a set of strings and return the
-            cardinality of that set, or raise an OverflowError if there are
-            infinitely many.
-        '''
+        """
+        Consider the regular expression as a set of strings and return the
+        cardinality of that set, or raise an OverflowError if there are
+        infinitely many.
+        """
         # There is no way to do this other than converting to an FSM, because
         # the `Pattern` may allow duplicate routes, such as "a|a".
         return self.to_fsm().cardinality()
@@ -748,12 +751,12 @@ class Pattern:
         return self.cardinality()
 
     def strings(self, otherchar=None):
-        '''
-            Each time next() is called on this iterator, a new string is
-            returned which this `Pattern` can match. `StopIteration`
-            is raised once all such strings have been returned, although a
-            regex with a * in may match infinitely many strings.
-        '''
+        """
+        Each time next() is called on this iterator, a new string is
+        returned which this `Pattern` can match. `StopIteration`
+        is raised once all such strings have been returned, although a
+        regex with a * in may match infinitely many strings.
+        """
 
         # In the case of a regex like "[^abc]", there are infinitely many
         # (well, a very large finite number of) single characters which will
@@ -774,58 +777,59 @@ class Pattern:
             yield "".join(string)
 
     def __iter__(self):
-        '''
-            This allows you to do `for string in pattern` as a list
-            comprehension!
-        '''
+        """
+        This allows you to do `for string in pattern` as a list
+        comprehension!
+        """
         return self.strings()
 
 
 @dataclass(frozen=True)
 class Mult:
-    '''
-        A `Mult` is a combination of a multiplicand with a multiplier (a min
-        and a max). The vast majority of characters in regular expressions
-        occur without a specific multiplier, which is implicitly equivalent to
-        a min of 1 and a max of 1, but many more have explicit multipliers like
-        "*" (min = 0, max = INF) and so on.
+    """
+    A `Mult` is a combination of a multiplicand with a multiplier (a min
+    and a max). The vast majority of characters in regular expressions
+    occur without a specific multiplier, which is implicitly equivalent to
+    a min of 1 and a max of 1, but many more have explicit multipliers like
+    "*" (min = 0, max = INF) and so on.
 
-        e.g. a, b{2}, c?, d*, [efg]{2,5}, f{2,}, (anysubpattern)+, .*, ...
-    '''
+    e.g. a, b{2}, c?, d*, [efg]{2,5}, f{2,}, (anysubpattern)+, .*, ...
+    """
+
     multiplicand: Charclass | Pattern
     multiplier: Multiplier
 
     def __eq__(self, other):
         return isinstance(other.multiplicand, type(self.multiplicand)) \
-               and self.multiplicand == other.multiplicand \
-               and self.multiplier == other.multiplier
+            and self.multiplicand == other.multiplicand \
+            and self.multiplier == other.multiplier
 
     def __hash__(self):
         return hash((self.multiplicand, self.multiplier))
 
     def __repr__(self):
-        return f"Mult({repr(self.multiplicand)}, {repr(self.multiplier)})"
+        return f"Mult({self.multiplicand!r}, {self.multiplier!r})"
 
     def dock(self, other):
-        '''
-            "Dock" another `Mult` from this one (i.e. remove part of the tail)
-            and return the result. The reverse of concatenation. This is a lot
-            trickier.
-            e.g. a{4,5} - a{3} = a{1,2}
-        '''
+        """
+        "Dock" another `Mult` from this one (i.e. remove part of the tail)
+        and return the result. The reverse of concatenation. This is a lot
+        trickier.
+        e.g. a{4,5} - a{3} = a{1,2}
+        """
         if other.multiplicand != self.multiplicand:
             raise Exception(
-                f"Can't subtract {repr(other)} from {repr(self)}"
+                f"Can't subtract {other!r} from {self!r}"
             )
         return Mult(self.multiplicand, self.multiplier - other.multiplier)
 
     def common(self, other):
-        '''
-            Return the common part of these two mults. This is the largest
-            `Mult` which can be safely subtracted from both the originals. The
-            multiplier on this `Mult` could be `ZERO`: this is the case if, for
-            example, the multiplicands disagree.
-        '''
+        """
+        Return the common part of these two mults. This is the largest
+        `Mult` which can be safely subtracted from both the originals. The
+        multiplier on this `Mult` could be `ZERO`: this is the case if, for
+        example, the multiplicands disagree.
+        """
         if self.multiplicand == other.multiplicand:
             return Mult(
                 self.multiplicand,
@@ -894,10 +898,10 @@ class Mult:
 
     def __str__(self):
         if isinstance(self.multiplicand, Pattern):
-            return f"({str(self.multiplicand)}){str(self.multiplier)}"
+            return f"({self.multiplicand}){self.multiplier}"
         if isinstance(self.multiplicand, Charclass):
-            return f"{str(self.multiplicand)}{str(self.multiplier)}"
-        raise Exception(f"Unknown type {str(type(self.multiplicand))}")
+            return f"{self.multiplicand}{self.multiplier}"
+        raise Exception(f"Unknown type {type(self.multiplicand)}")
 
     def to_fsm(self, alphabet=None):
         if alphabet is None:
