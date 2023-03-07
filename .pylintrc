@@ -91,7 +91,6 @@ confidence=
 # no Warning level messages displayed, use "--disable=all --enable=classes
 # --disable=W".
 disable=
-        bad-inline-option,
         broad-exception-raised,
         comparison-with-itself,
         consider-iterating-dictionary,
@@ -100,7 +99,6 @@ disable=
         consider-using-enumerate,
         consider-using-f-string,
         consider-using-in,
-        deprecated-pragma,
         expression-not-assigned,
         file-ignored,
         fixme,
@@ -112,7 +110,6 @@ disable=
         no-self-argument,
         pointless-statement,
         protected-access,
-        raw-checker-failed,
         redefined-builtin,
         redefined-outer-name,
         similarities,
@@ -132,14 +129,18 @@ disable=
         unused-variable,
         use-implicit-booleaness-not-comparison,
         use-list-literal,
-        use-symbolic-message-instead,
         useless-suppression,
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option
 # multiple time (only on the command line, not in the configuration file where
 # it should appear only once). See also the "--disable" option for examples.
-enable=c-extension-no-member
+enable=
+        bad-inline-option,
+        c-extension-no-member,
+        deprecated-pragma,
+        raw-checker-failed,
+        use-symbolic-message-instead,
 
 
 [REPORTS]
