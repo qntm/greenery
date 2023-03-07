@@ -44,7 +44,10 @@ ignore-patterns=
 
 # Python code to execute, usually for sys.path manipulation such as
 # pygtk.require().
-#init-hook=
+init-hook=
+  import os, sys, pylint.config as plc
+  sys.path.append(os.path.dirname(plc.PYLINTRC))
+
 
 # Use multiple processes to speed up Pylint. Specifying 0 will auto-detect the
 # number of processors available to use.
@@ -58,6 +61,8 @@ limit-inference-results=100
 # List of plugins (as comma separated values of python module names) to load,
 # usually to register additional checkers.
 load-plugins=
+        # see sibling file: ./_pylint_plugin.py
+        _pylint_plugin,
         pylint.extensions.bad_builtin,
         pylint.extensions.broad_try_clause,
         pylint.extensions.check_elif,
