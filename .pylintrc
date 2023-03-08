@@ -119,7 +119,6 @@ confidence=
 # no Warning level messages displayed, use "--disable=all --enable=classes
 # --disable=W".
 disable=
-        broad-exception-raised,
         consider-using-assignment-expr,
         consider-using-augmented-assign,
         docstring-first-line-empty,

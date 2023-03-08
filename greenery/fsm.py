@@ -136,21 +136,21 @@ class Fsm:
         # Validation. Thanks to immutability, this only needs to be carried out
         # once.
         if initial not in states:
-            raise Exception(f"Initial state {initial!r} must be one of {states!r}")
+            raise ValueError(f"Initial state {initial!r} must be one of {states!r}")
         if not finals.issubset(states):
-            raise Exception(f"Final states {finals!r} must be a subset of {states!r}")
+            raise ValueError(f"Final states {finals!r} must be a subset of {states!r}")
         for state, state_trans in map.items():
             if state not in states:
-                raise Exception(f"Transition from unknown state {state!r}")
+                raise ValueError(f"Transition from unknown state {state!r}")
             for symbol, dest in state_trans.items():
                 if symbol not in alphabet:
-                    raise Exception(
+                    raise ValueError(
                         f"Invalid symbol {symbol!r}"
                         f" in transition from {state!r}"
                         f" to {dest!r}"
                     )
                 if dest not in states:
-                    raise Exception(
+                    raise ValueError(
                         f"Transition for state {state!r}"
                         f" and symbol {symbol!r}"
                         f" leads to {dest!r},"
@@ -386,7 +386,7 @@ class Fsm:
         Given an FSM and a multiplier, return the multiplied FSM.
         """
         if multiplier < 0:
-            raise Exception(f"Can't multiply an FSM by {multiplier!r}")
+            raise ArithmeticError(f"Can't multiply an FSM by {multiplier!r}")
 
         alphabet = self.alphabet
 

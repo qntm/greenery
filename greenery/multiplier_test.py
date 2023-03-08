@@ -121,5 +121,5 @@ def test_multiplier_union() -> None:
     assert not ONE.canunion(Multiplier(Bound(3), Bound(4)))
     assert not Multiplier(Bound(8), INF).canunion(Multiplier(Bound(3), Bound(4)))
 
-    with pytest.raises(Exception, match="Can't compute the union"):
+    with pytest.raises(ArithmeticError, match="Can't compute the union"):
         _ = ZERO | Multiplier(Bound(7), Bound(8))

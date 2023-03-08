@@ -422,23 +422,23 @@ def test_binary_3() -> None:
 
 def test_invalid_fsms() -> None:
     # initial state 1 is not a state
-    with pytest.raises(Exception, match="Initial state"):
+    with pytest.raises(ValueError, match="Initial state"):
         Fsm(alphabet={}, states={}, initial=1, finals=(), map={})
 
     # final state 2 not a state
-    with pytest.raises(Exception, match="Final states"):
+    with pytest.raises(ValueError, match="Final states"):
         Fsm(alphabet={}, states={1}, initial=1, finals={2}, map={})
 
     # invalid transition for state 1, symbol "a"
-    with pytest.raises(Exception, match="Transition.+leads to.+not a state"):
+    with pytest.raises(ValueError, match="Transition.+leads to.+not a state"):
         Fsm(alphabet={"a"}, states={1}, initial=1, finals=(), map={1: {"a": 2}})
 
     # invalid transition from unknown state
-    with pytest.raises(Exception, match="Transition.+unknown state"):
+    with pytest.raises(ValueError, match="Transition.+unknown state"):
         Fsm(alphabet={"a"}, states={1, 2}, initial=1, finals=(), map={3: {"a": 2}})
 
     # invalid transition table includes symbol outside of alphabet
-    with pytest.raises(Exception, match="Invalid symbol"):
+    with pytest.raises(ValueError, match="Invalid symbol"):
         Fsm(
             alphabet={"a"},
             states={1, 2},
@@ -449,7 +449,7 @@ def test_invalid_fsms() -> None:
 
 
 def test_bad_multiplier(a: FixtureA) -> None:
-    with pytest.raises(Exception, match="Can't multiply"):
+    with pytest.raises(ArithmeticError, match="Can't multiply"):
         _ = a * -1
 
 

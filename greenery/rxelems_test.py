@@ -16,7 +16,9 @@ from .rxelems import from_fsm
 # pylint: disable=too-many-lines
 
 if __name__ == "__main__":
-    raise Exception("Test files can't be run directly. Use `python -m pytest greenery`")
+    raise RuntimeError(
+        "Test files can't be run directly. Use `python -m pytest greenery`"
+    )
 
 
 ###############################################################################
@@ -472,7 +474,7 @@ def test_bad_alphabet() -> None:
             map={0: {bad_symbol: 0}},
         )
 
-        with pytest.raises(Exception, match="Symbol.*cannot be used"):
+        with pytest.raises(TypeError, match="Symbol.*cannot be used"):
             from_fsm(f)
 
 

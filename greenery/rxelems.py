@@ -245,7 +245,7 @@ class Conc:
             # subtracts the C successfully but leaves something behind,
             # then tries to subtract the B too, which isn't possible
             elif i:
-                raise Exception(f"Can't subtract {other!r} from {self!r}")
+                raise ArithmeticError(f"Can't subtract {other!r} from {self!r}")
 
         return Conc(*new)
 
@@ -282,7 +282,7 @@ def from_fsm(f: Fsm) -> Pattern:
             continue
         if isinstance(symbol, str) and len(symbol) == 1:
             continue
-        raise Exception(f"Symbol {symbol!r} cannot be used in a regular expression")
+        raise TypeError(f"Symbol {symbol!r} cannot be used in a regular expression")
 
     outside = _Outside.TOKEN
 
@@ -447,7 +447,7 @@ class Pattern:
 
     def __str__(self, /) -> str:
         if not self.concs:
-            raise Exception(f"Can't serialise {self!r}")
+            raise ValueError(f"Can't serialise {self!r}")
         return "|".join(sorted(str(conc) for conc in self.concs))
 
     def reduce(self, /) -> Pattern:
@@ -623,7 +623,7 @@ class Pattern:
         If "suffix" is True, the same result but for suffixes.
         """
         if not self.concs:
-            raise Exception(f"Can't call _commonconc on {self!r}")
+            raise ValueError(f"Can't call _commonconc on {self!r}")
 
         return reduce(lambda x, y: x.common(y, suffix=suffix), self.concs)
 
@@ -783,7 +783,7 @@ class Mult:
         e.g. a{4,5} - a{3} = a{1,2}
         """
         if other.multiplicand != self.multiplicand:
-            raise Exception(f"Can't subtract {other!r} from {self!r}")
+            raise ArithmeticError(f"Can't subtract {other!r} from {self!r}")
         return Mult(self.multiplicand, self.multiplier - other.multiplier)
 
     def common(self, other: Mult, /) -> Mult:
@@ -859,7 +859,7 @@ class Mult:
             return f"({self.multiplicand}){self.multiplier}"
         if isinstance(self.multiplicand, Charclass):
             return f"{self.multiplicand}{self.multiplier}"
-        raise Exception(f"Unknown type {type(self.multiplicand)}")
+        raise TypeError(f"Unknown type {type(self.multiplicand)}")
 
     def to_fsm(self, /, alphabet: Iterable[str | AnythingElse] | None = None) -> Fsm:
         if alphabet is None:

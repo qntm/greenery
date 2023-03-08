@@ -356,5 +356,5 @@ def parse(string: str) -> Pattern:
     """
     obj, i = match_pattern(string, 0)
     if i != len(string):
-        raise Exception(f"Could not parse {string!r} beyond index {i}")
+        raise NoMatch(f"Could not parse {string!r} beyond index {i}")
     return obj

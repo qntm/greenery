@@ -64,7 +64,7 @@ def test_conc_dock() -> None:
     assert Conc(a, b, x, yplus, z).behead(Conc(a, b, x, yplus)) == Conc(z)
     assert Conc(a).dock(Conc()) == Conc(a)
 
-    with pytest.raises(Exception, match="Can't subtract"):
+    with pytest.raises(ArithmeticError, match="Can't subtract"):
         Conc(x_twice, yplus, z).behead(Conc(x, yplus))
 
 
