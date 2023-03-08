@@ -18,7 +18,7 @@ from dataclasses import dataclass
 
 from .fsm import ANYTHING_ELSE, Fsm
 
-# This class currently has broken types due to its "frozenset[str] | str" member.
+# This class currently has broken types due to its frozenset[str] | str member.
 # mypy: allow-untyped-calls
 # mypy: allow-untyped-defs
 # mypy: no-check-untyped-defs
