@@ -554,6 +554,41 @@ def test_equivalent(a, b):
     assert (a | b).equivalent(b | a)
 
 
+def test_eq_ne(a, b):
+    # pylint: disable=comparison-with-itself
+
+    assert a == a
+    assert b == b
+    assert a != b
+    assert b != a
+    assert (a | b) == (b | a)
+
+
+@pytest.mark.xfail(reason="BUG: __eq__ does not check type")
+@pytest.mark.parametrize(
+    argnames="other",
+    argvalues=(
+        17,
+        (14,),
+        "blenny",
+        "a",
+        ("a",),
+    ),
+)
+def test_eq_ne_het(a, other):
+    # pylint: disable=comparison-with-itself
+
+    # eq
+    assert not a == other
+    # eq, symmetric
+    assert not other == a
+
+    # neq
+    assert a != other
+    # neq, symmetric
+    assert other != a
+
+
 def test_dead_default():
     """
     You may now omit a transition, or even an entire state, from the map.
