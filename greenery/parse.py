@@ -191,9 +191,9 @@ def match_charclass(string: str, i):
         pass
 
     # e.g. if seeing "\\t", return "\t"
-    for key in escapes.keys():
+    for ekey in escapes.keys():
         try:
-            return Charclass(key), static(string, i, escapes[key])
+            return Charclass(ekey), static(string, i, escapes[ekey])
         except NoMatch:
             pass
 
