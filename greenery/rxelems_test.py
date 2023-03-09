@@ -297,7 +297,7 @@ def test_dot():
 
 def test_abstar():
     # Buggggs.
-    abstar = Fsm(
+    abstar = Fsm.via_symbols(
         alphabet={"a", ANYTHING_ELSE, "b"},
         states={0, 1},
         initial=0,
@@ -311,7 +311,7 @@ def test_abstar():
 
 
 def test_adotb():
-    adotb = Fsm(
+    adotb = Fsm.via_symbols(
         alphabet={"a", ANYTHING_ELSE, "b"},
         states={0, 1, 2, 3, 4},
         initial=0,
@@ -329,7 +329,7 @@ def test_adotb():
 
 def test_rxelems_recursion_error():
     # Catch a recursion error
-    assert str(from_fsm(Fsm(
+    assert str(from_fsm(Fsm.via_symbols(
         alphabet={"0", "1"},
         states={0, 1, 2, 3},
         initial=3,
@@ -347,7 +347,7 @@ def test_even_star_bug1():
     # Bug fix. This is a(a{2})* (i.e. accepts an odd number of "a" chars in a
     # row), but when from_fsm() is called, the result is "a+". Turned out to be
     # a fault in the rxelems.multiplier.__mul__() routine
-    elesscomplex = Fsm(
+    elesscomplex = Fsm.via_symbols(
         alphabet={"a"},
         states={0, 1},
         initial=0,
@@ -379,7 +379,7 @@ def test_binary_3():
     # Binary numbers divisible by 3.
     # Disallows the empty string
     # Allows "0" on its own, but not leading zeroes.
-    div3 = from_fsm(Fsm(
+    div3 = from_fsm(Fsm.via_symbols(
         alphabet={"0", "1"},
         states={"initial", "zero", 0, 1, 2, None},
         initial="initial",
@@ -412,7 +412,7 @@ def test_base_N():
     base = 2
     N = 3
     assert base <= 10
-    divN = from_fsm(Fsm(
+    divN = from_fsm(Fsm.via_symbols(
         alphabet=set(str(i) for i in range(base)),
         states=set(range(N)) | {"initial", "zero", None},
         initial="initial",
@@ -463,7 +463,7 @@ def test_bad_alphabet():
     # convert it to an `rxelems` object then the only acceptable symbols are
     # single characters or `ANYTHING_ELSE`.
     for bad_symbol in [None, (), 0, ("a",), "", "aa", "ab", True]:
-        f = Fsm(
+        f = Fsm.via_symbols(
             alphabet={bad_symbol},
             states={0},
             initial=0,
@@ -478,7 +478,7 @@ def test_bad_alphabet():
 
 
 def test_dead_default():
-    blockquote = from_fsm(Fsm(
+    blockquote = from_fsm(Fsm.via_symbols(
         alphabet={"/", "*", ANYTHING_ELSE},
         states={0, 1, 2, 3, 4},
         initial=0,
@@ -953,7 +953,7 @@ def test_isdisjoint():
 
 def test_bug_slow():
     # issue #43
-    m = Fsm(
+    m = Fsm.via_symbols(
         alphabet={"R", "L", "U", "D"},
         states={
             0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
@@ -992,7 +992,7 @@ def test_bug_slow():
 
 
 def test_bug_48_simpler():
-    assert str(from_fsm(Fsm(
+    assert str(from_fsm(Fsm.via_symbols(
         alphabet={"d"},
         states={0, 1},
         initial=0,
@@ -1009,7 +1009,7 @@ def test_bug_48():
     char0, char1, char2, char3, char4, char5, char6, char7, char8 = \
         "_", "a", "d", "e", "g", "m", "n", "o", "p"
 
-    machine = Fsm(
+    machine = Fsm.via_symbols(
         alphabet={
             char0, char1, char2, char3, char4,
             char5, char6, char7, char8

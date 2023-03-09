@@ -193,7 +193,7 @@ class Charclass:
                 0: dict([(symbol, 1) for symbol in self.chars]),
             }
 
-        return Fsm(
+        return Fsm.via_symbols(
             alphabet=alphabet,
             states={0, 1},
             initial=0,

@@ -13,7 +13,7 @@ from .fsm import ANYTHING_ELSE, AnythingElse, Fsm, epsilon, null
 
 def test_addbug():
     # Odd bug with Fsm.__add__(), exposed by "[bc]*c"
-    int5A = Fsm(
+    int5A = Fsm.via_symbols(
         alphabet={"a", "b", "c", ANYTHING_ELSE},
         states={0, 1},
         initial=1,
@@ -25,7 +25,7 @@ def test_addbug():
     )
     assert int5A.accepts("")
 
-    int5B = Fsm(
+    int5B = Fsm.via_symbols(
         alphabet={"a", "b", "c", ANYTHING_ELSE},
         states={0, 1, 2},
         initial=1,
@@ -51,7 +51,7 @@ def test_builtins():
 
 @pytest.fixture
 def a():
-    a = Fsm(
+    a = Fsm.via_symbols(
         alphabet={"a", "b"},
         states={0, 1, "ob"},
         initial=0,
@@ -73,7 +73,7 @@ def test_a(a):
 
 @pytest.fixture
 def b():
-    b = Fsm(
+    b = Fsm.via_symbols(
         alphabet={"a", "b"},
         states={0, 1, "ob"},
         initial=0,
@@ -218,7 +218,7 @@ def test_crawl_reduction():
     # states 1 and 2&3 also behave identically, so they, too should be resolved
     # (this is impossible to spot before 2 and 3 have been combined).
     # Finally, the oblivion state should be omitted.
-    merged = Fsm(
+    merged = Fsm.via_symbols(
         alphabet={"0", "1"},
         states={1, 2, 3, 4, "oblivion"},
         initial=1,
@@ -236,7 +236,7 @@ def test_crawl_reduction():
 
 def test_bug_28():
     # This is (ab*)* and it caused some defects.
-    abstar = Fsm(
+    abstar = Fsm.via_symbols(
         alphabet={"a", "b"},
         states={0, 1},
         initial=0,
@@ -260,7 +260,7 @@ def test_bug_28():
 def test_star_advanced():
     # This is (a*ba)*. Naively connecting the final states to the initial state
     # gives the incorrect result here.
-    starred = Fsm(
+    starred = Fsm.via_symbols(
         alphabet={"a", "b"},
         states={0, 1, 2, "oblivion"},
         initial=0,
@@ -286,7 +286,7 @@ def test_star_advanced():
 
 def test_reduce():
     # FSM accepts no strings but has 3 states, needs only 1
-    asdf = Fsm(
+    asdf = Fsm.via_symbols(
         alphabet={None},
         states={0, 1, 2},
         initial=0,
@@ -302,7 +302,7 @@ def test_reduce():
 
 
 def test_reverse_abc():
-    abc = Fsm(
+    abc = Fsm.via_symbols(
         alphabet={"a", "b", "c"},
         states={0, 1, 2, 3, None},
         initial=0,
@@ -321,7 +321,7 @@ def test_reverse_abc():
 
 def test_reverse_brzozowski():
     # This is (a|b)*a(a|b)
-    brzozowski = Fsm(
+    brzozowski = Fsm.via_symbols(
         alphabet={"a", "b"},
         states={"A", "B", "C", "D", "E"},
         initial="A",
@@ -380,7 +380,7 @@ def test_binary_3():
     # Binary numbers divisible by 3.
     # Disallows the empty string
     # Allows "0" on its own, but not leading zeroes.
-    div3 = Fsm(
+    div3 = Fsm.via_symbols(
         alphabet={"0", "1"},
         states={"initial", "zero", 0, 1, 2, None},
         initial="initial",
@@ -424,7 +424,7 @@ def test_binary_3():
 def test_invalid_fsms():
     # initial state 1 is not a state
     with pytest.raises(Exception, match="Initial state"):
-        Fsm(
+        Fsm.via_symbols(
             alphabet={},
             states={},
             initial=1,
@@ -434,7 +434,7 @@ def test_invalid_fsms():
 
     # final state 2 not a state
     with pytest.raises(Exception, match="Final states"):
-        Fsm(
+        Fsm.via_symbols(
             alphabet={},
             states={1},
             initial=1,
@@ -444,7 +444,7 @@ def test_invalid_fsms():
 
     # invalid transition for state 1, symbol "a"
     with pytest.raises(Exception, match="Transition.+leads to.+not a state"):
-        Fsm(
+        Fsm.via_symbols(
             alphabet={"a"},
             states={1},
             initial=1,
@@ -456,7 +456,7 @@ def test_invalid_fsms():
 
     # invalid transition from unknown state
     with pytest.raises(Exception, match="Transition.+unknown state"):
-        Fsm(
+        Fsm.via_symbols(
             alphabet={"a"},
             states={1, 2},
             initial=1,
@@ -468,7 +468,7 @@ def test_invalid_fsms():
 
     # invalid transition table includes symbol outside of alphabet
     with pytest.raises(Exception, match="Invalid symbol"):
-        Fsm(
+        Fsm.via_symbols(
             alphabet={"a"},
             states={1, 2},
             initial=1,
@@ -483,7 +483,7 @@ def test_bad_multiplier(a):
 
 
 def test_anything_else_acceptance():
-    a = Fsm(
+    a = Fsm.via_symbols(
         alphabet={"a", "b", "c", ANYTHING_ELSE},
         states={1},
         initial=1,
@@ -496,7 +496,7 @@ def test_anything_else_acceptance():
 
 
 def test_difference(a, b):
-    aorb = Fsm(
+    aorb = Fsm.via_symbols(
         alphabet={"a", "b"},
         states={0, 1, None},
         initial=0,
@@ -518,7 +518,7 @@ def test_empty(a, b):
     assert not a.empty()
     assert not b.empty()
 
-    assert Fsm(
+    assert Fsm.via_symbols(
         alphabet={},
         states={0, 1},
         initial=0,
@@ -526,7 +526,7 @@ def test_empty(a, b):
         map={0: {}, 1: {}},
     ).empty()
 
-    assert not Fsm(
+    assert not Fsm.via_symbols(
         alphabet={},
         states={0},
         initial=0,
@@ -534,7 +534,7 @@ def test_empty(a, b):
         map={0: {}},
     ).empty()
 
-    assert Fsm(
+    assert Fsm.via_symbols(
         alphabet={"a", "b"},
         states={0, 1, None, 2},
         initial=0,
@@ -557,7 +557,7 @@ def test_dead_default():
     You may now omit a transition, or even an entire state, from the map.
     This affects every usage of `Fsm.map`.
     """
-    blockquote = Fsm(
+    blockquote = Fsm.via_symbols(
         alphabet={"/", "*", ANYTHING_ELSE},
         states={0, 1, 2, 3, 4, 5},
         initial=0,
@@ -600,7 +600,7 @@ def test_dead_default():
 def test_alphabet_unions():
     # Thanks to sparse maps it should now be possible to compute the union of
     # FSMs with disagreeing alphabets!
-    a = Fsm(
+    a = Fsm.via_symbols(
         alphabet={"a"},
         states={0, 1},
         initial=0,
@@ -610,7 +610,7 @@ def test_alphabet_unions():
         },
     )
 
-    b = Fsm(
+    b = Fsm.via_symbols(
         alphabet={"b"},
         states={0, 1},
         initial=0,
@@ -695,7 +695,7 @@ def test_new_set_methods(a, b):
 def test_oblivion_crawl(a):
     # When crawling a new FSM, we should avoid generating an oblivion state.
     # `abc` has no oblivion state... all the results should not as well!
-    abc = Fsm(
+    abc = Fsm.via_symbols(
         alphabet={"a", "b", "c"},
         states={0, 1, 2, 3},
         initial=0,
@@ -735,7 +735,7 @@ def test_derive(a, b):
 
 
 def test_bug_36():
-    etc1 = Fsm(
+    etc1 = Fsm.via_symbols(
         alphabet={ANYTHING_ELSE},
         states={0},
         initial=0,
@@ -746,7 +746,7 @@ def test_bug_36():
             }
         }
     )
-    etc2 = Fsm(
+    etc2 = Fsm.via_symbols(
         alphabet={"s", ANYTHING_ELSE},
         states={0, 1},
         initial=0,
@@ -770,7 +770,7 @@ def test_bug_36():
 
 def test_add_anything_else():
     # [^a]
-    fsm1 = Fsm(
+    fsm1 = Fsm.via_symbols(
         alphabet={"a", ANYTHING_ELSE},
         states={0, 1},
         initial=0,
@@ -779,7 +779,7 @@ def test_add_anything_else():
     )
 
     # [^b]
-    fsm2 = Fsm(
+    fsm2 = Fsm.via_symbols(
         alphabet={"b", ANYTHING_ELSE},
         states={0, 1},
         initial=0,
@@ -839,7 +839,7 @@ def test_anything_else_sorts_after(val):
 
 def test_anything_else_pickle():
     # [^z]
-    fsm1 = Fsm(
+    fsm1 = Fsm.via_symbols(
         alphabet={"z", ANYTHING_ELSE},
         states={0, 1},
         initial=0,

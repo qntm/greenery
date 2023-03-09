@@ -14,7 +14,7 @@ __all__ = (
 )
 
 from dataclasses import dataclass
-from typing import Union
+from typing import Union, Iterable
 from .alphabet import ANYTHING_ELSE, Alphabet, AnythingElse, alpha_type, event_type
 
 
@@ -71,17 +71,10 @@ class Fsm:
         omitted transitions, a non-final "oblivion" state is simulated.
         """
 
-        # Initialise the hard way due to immutability.
-        if not isinstance(self.alphabet, Alphabet):
-            object.__setattr__(self, "alphabet", Alphabet.distinct(self.alphabet))
-            translate_symbols = True
-        else:
-            translate_symbols = False
-        object.__setattr__(self, "states", set(self.states))
-
-        object.__setattr__(self, "finals", set(self.finals))
         # Validation. Thanks to immutability, this only needs to be carried out
         # once.
+        if not isinstance(self.alphabet, Alphabet):
+            raise TypeError("FSM instances require an Alphabet instance. Use FSM.via_symbols to get a simpler interface")
         if self.initial not in self.states:
             raise Exception(
                 f"Initial state {self.initial!r}"
@@ -95,39 +88,59 @@ class Fsm:
         for state, _state_trans in self.map.items():
             if state not in self.states:
                 raise Exception(f"Transition from unknown state {state!r}")
-            if not translate_symbols:
-                for event in self.map[state]:
-                    if event not in self.alphabet.events:
-                        raise Exception(
-                            f"Invalid event {event!r}"
-                            f" in transition from {state!r}"
-                            f" to {self.map[state][event]!r}"
-                        )
-                    if not self.map[state][event] in self.states:
-                        raise Exception(
-                            f"Transition for state {state!r}"
-                            f" and transition {event!r}"
-                            f" leads to {self.map[state][event]!r},"
-                            " which is not a state"
-                        )
-            else:
-                new_transition = {}
-                for symbol in self.map[state]:
-                    if symbol not in self.alphabet:
-                        raise Exception(
-                            f"Invalid symbol {symbol!r}"
-                            f" in transition from {state!r}"
-                            f" to {self.map[state][symbol]!r}"
-                        )
-                    if not self.map[state][symbol] in self.states:
-                        raise Exception(
-                            f"Transition for state {state!r}"
-                            f" and transition {symbol!r}"
-                            f" leads to {self.map[state][symbol]!r},"
-                            " which is not a state"
-                        )
-                    new_transition[self.alphabet[symbol]] = self.map[state][symbol]
-                self.map[state] = new_transition
+            for event in self.map[state]:
+                if event not in self.alphabet.events:
+                    raise Exception(
+                        f"Invalid event {event!r}"
+                        f" in transition from {state!r}"
+                        f" to {self.map[state][event]!r}"
+                    )
+                if not self.map[state][event] in self.states:
+                    raise Exception(
+                        f"Transition for state {state!r}"
+                        f" and transition {event!r}"
+                        f" leads to {self.map[state][event]!r},"
+                        " which is not a state"
+                    )
+        # Initialise the hard way due to immutability.
+        object.__setattr__(self, "states", set(self.states))
+
+        object.__setattr__(self, "finals", set(self.finals))
+
+    @classmethod
+    def via_symbols(cls,
+        initial: state_type,
+        finals: Iterable[state_type],
+        alphabet: Iterable[alpha_type],
+        states: Iterable[state_type],
+        map: dict[state_type, dict[alpha_type, state_type]],
+    ):
+        alphabet = Alphabet.distinct(set(alphabet))
+        for state, state_trans in map.items():
+            new_transition = {}
+            for symbol in state_trans:
+                if symbol not in alphabet:
+                    raise Exception(
+                        f"Invalid symbol {symbol!r}"
+                        f" in transition from {state!r}"
+                        f" to {map[state][symbol]!r}"
+                    )
+                if not map[state][symbol] in states:
+                    raise Exception(
+                        f"Transition for state {state!r}"
+                        f" and transition {symbol!r}"
+                        f" leads to {map[state][symbol]!r},"
+                        " which is not a state"
+                    )
+                new_transition[alphabet[symbol]] = map[state][symbol]
+            map[state] = new_transition
+        return cls(
+            initial=initial,
+            finals=finals,
+            alphabet=alphabet,
+            states=states,
+            map=map
+        )
 
     def accepts(self, input):
         """
@@ -786,6 +799,8 @@ def epsilon(alphabet):
     Return an FSM matching an empty string, "", only.
     This is very useful in many situations
     """
+    if not isinstance(alphabet, Alphabet):
+        alphabet = Alphabet.distinct(alphabet)
     return Fsm(
         alphabet=alphabet,
         states={0},

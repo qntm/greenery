@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from dataclasses import dataclass, field
 from typing import Mapping, Union, Any, Iterator
 from enum import Enum, auto
 from functools import total_ordering
@@ -45,18 +46,20 @@ alpha_type = Union[str, AnythingElse]
 event_type = int
 
 
+@dataclass(frozen=True)
 class Alphabet(Mapping[alpha_type, event_type]):
     """ Represents an Alphabet for an FSM. It maps symbols to events."""
+    _symbol_to_event: dict[alpha_type, event_type]
+    _event_to_symbol: dict[event_type, tuple[alpha_type]] = field(init=False, repr=False, compare=False)
 
-    def __init__(self, symbol_to_event: dict[alpha_type, int]):
-        self._symbol_to_event = symbol_to_event
+    def __post_init__(self):
         event_to_symbol = defaultdict(list)
-        for s, t in symbol_to_event.items():
+        for s, t in self._symbol_to_event.items():
             event_to_symbol[t].append(s)
-        self._event_to_symbol = {t: tuple(s) for t, s in event_to_symbol.items()}
+        object.__setattr__(self, '_event_to_symbol', {t: tuple(s) for t, s in event_to_symbol.items()})
 
-    def __repr__(self):
-        return f"{type(self).__name__}({self._symbol_to_event!r})"
+    def __hash__(self):
+        return hash(frozenset(self._symbol_to_event.items()))
 
     def __getitem__(self, k: alpha_type) -> event_type:
         if k in self._symbol_to_event:
@@ -72,10 +75,6 @@ class Alphabet(Mapping[alpha_type, event_type]):
     def __iter__(self) -> Iterator[alpha_type]:
         return iter(self._symbol_to_event)
 
-    def __eq__(self, other):
-        if isinstance(other, Alphabet):
-            return self._symbol_to_event == other._symbol_to_event
-
     @property
     def events(self):
         return self._event_to_symbol
@@ -85,7 +84,7 @@ class Alphabet(Mapping[alpha_type, event_type]):
         """ For convenience, the resulting instance behaves like an old-style alphabet"""
         return cls(dict(zip(s, range(len(s)))))
 
-    def union(*alphabets: Alphabet) -> tuple[Alphabet, tuple[dict[event_type, event_type | None]]]:
+    def union(*alphabets: Alphabet) -> tuple[Alphabet, tuple[dict[event_type, Union[event_type, None]], ...]]:
         """
         Creates the union Alphabet from two alphabets.
         Also returns a mapping for each input alphabet mapping new event to old event (many-to-one)
@@ -96,9 +95,15 @@ class Alphabet(Mapping[alpha_type, event_type]):
         # new_event        - The new event that the symbol(s) got mapped to
         # old_event        - The old event that the events belongs to
 
-        all_symbols = set().union(*(a._symbol_to_event.keys() for a in alphabets))
+        # Deduplicate alphabets
+        unique_alphabets = tuple(set(alphabets))
+        if len(unique_alphabets) == 1:
+            res = unique_alphabets[0]
+            return res, (dict(zip(res.events, res.events)),) * len(alphabets)
 
-        symbol_to_events = {symbol: tuple(a.get(symbol) for a in alphabets) for symbol in all_symbols}
+        all_symbols = set().union(*(a._symbol_to_event.keys() for a in unique_alphabets))
+
+        symbol_to_events = {symbol: tuple(a.get(symbol) for a in unique_alphabets) for symbol in all_symbols}
 
         events_to_symbols = defaultdict(list)
         for symbol, events in symbol_to_events.items():
@@ -108,8 +113,8 @@ class Alphabet(Mapping[alpha_type, event_type]):
                            for events, symbols in events_to_symbols.items()
                            for symbol in symbols})
 
-        new_to_old_mappings = [{} for _ in alphabets]
+        new_to_old_mappings = [{} for _ in unique_alphabets]
         for events, new_event in events_to_new_event.items():
             for old_event, new_to_old in zip(events, new_to_old_mappings):
                 new_to_old[new_event] = old_event
-        return result, tuple(new_to_old_mappings)
+        return result, tuple(new_to_old_mappings[unique_alphabets.index(a)] for a in alphabets)
