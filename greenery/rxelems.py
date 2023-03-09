@@ -322,8 +322,8 @@ def from_fsm(f: Fsm) -> Pattern:
     while i < len(states):
         current = states[i]
         if current in f.map:
-            for symbol in sorted(f.map[current]):
-                next = f.map[current][symbol]
+            for event in sorted(f.map[current]):
+                next = f.map[current][event]
                 if next not in states:
                     states.append(next)
         i += 1
@@ -343,14 +343,14 @@ def from_fsm(f: Fsm) -> Pattern:
 
     # Populate it with some initial data.
     for a in f.map:
-        for symbol in f.map[a]:
-            b = f.map[a][symbol]
-            if symbol is ANYTHING_ELSE:
+        for event in f.map[a]:
+            b = f.map[a][event]
+            if ANYTHING_ELSE in f.alphabet.events[event]:
                 charclass = ~Charclass(
-                    frozenset(s for s in f.alphabet if s is not ANYTHING_ELSE)
+                    frozenset(s for s in f.alphabet if s not in f.alphabet.events[event])
                 )
             else:
-                charclass = Charclass(frozenset((symbol,)))
+                charclass = Charclass(frozenset(f.alphabet.events[event]))
 
             brz[a][b] = Pattern(
                 *brz[a][b].concs,

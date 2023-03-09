@@ -272,7 +272,7 @@ def test_star_advanced():
             "oblivion": {"a": "oblivion", "b": "oblivion"},
         }
     ).star()
-    assert starred.alphabet == frozenset(["a", "b"])
+    assert frozenset(starred.alphabet.keys()) == frozenset(["a", "b"])
     assert starred.accepts("")
     assert not starred.accepts("a")
     assert not starred.accepts("b")
@@ -764,7 +764,7 @@ def test_bug_36():
     both = etc1 & etc2
     assert etc1.accepts(["s"])
     assert etc2.accepts(["s"])
-    assert both.alphabet == {ANYTHING_ELSE, "s"}
+    assert set(both.alphabet) == {ANYTHING_ELSE, "s"}
     assert both.accepts(["s"])
 
 

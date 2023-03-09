@@ -69,7 +69,7 @@ def test_charclass_str():
 def test_charclass_fsm():
     # "[^a]"
     nota = (~Charclass("a")).to_fsm()
-    assert nota.alphabet == {"a", ANYTHING_ELSE}
+    assert set(nota.alphabet) == {"a", ANYTHING_ELSE}
     assert nota.accepts("b")
     assert nota.accepts(["b"])
     assert nota.accepts([ANYTHING_ELSE])
