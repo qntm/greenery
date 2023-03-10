@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Mapping, Union, Any, Iterator
+from typing import Mapping, Union, Any, Iterator, Iterable, Sequence
 from enum import Enum, auto
 from functools import total_ordering
 
@@ -80,9 +80,16 @@ class Alphabet(Mapping[alpha_type, event_type]):
         return self._event_to_symbol
 
     @classmethod
-    def distinct(cls, s: set):
+    def distinct(cls, s: Iterable[alpha_type]):
         """ For convenience, the resulting instance behaves like an old-style alphabet"""
-        return cls(dict(zip(s, range(len(s)))))
+        return cls({sym: i for i, sym in enumerate(s)})
+
+    @classmethod
+    def groups(cls, *equal_groups: Iterable[alpha_type] | AnythingElse):
+        """ Each parameter gets turned into its own event"""
+        return cls({sym: i
+                    for i, group in enumerate(equal_groups)
+                    for sym in (group if group != ANYTHING_ELSE else (group,))})
 
     def union(*alphabets: Alphabet) -> tuple[Alphabet, tuple[dict[event_type, Union[event_type, None]], ...]]:
         """
