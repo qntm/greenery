@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from .charclass import (
     DIGIT,
     DOT,
@@ -13,22 +15,33 @@ from .charclass import (
 )
 from .fsm import ANYTHING_ELSE
 
-# mypy: allow-untyped-calls
-# mypy: allow-untyped-defs
 
-
-def test_charclass_equality():
+def test_charclass_equality() -> None:
     assert Charclass("a") == Charclass("a")
     assert ~Charclass("a") == ~Charclass("a")
     assert ~Charclass("a") != Charclass("a")
     assert Charclass("ab") == Charclass("ba")
 
 
-def test_repr():
+def test_charclass_ctor() -> None:
+    with pytest.raises(TypeError):
+        Charclass(frozenset({"a", ANYTHING_ELSE}))  # type: ignore
+
+    with pytest.raises(ValueError):
+        Charclass(frozenset({"a", "aa"}))
+
+    assert Charclass("ab") == Charclass(frozenset({"a", "b"}))
+
+    assert not Charclass("ab").negated
+    assert not Charclass("ab", negated=False).negated
+    assert Charclass("ab", negated=True).negated
+
+
+def test_repr() -> None:
     assert repr(~Charclass("a")) == "~Charclass('a')"
 
 
-def test_charclass_str():
+def test_charclass_str() -> None:
     assert str(WORDCHAR) == "\\w"
     assert str(DIGIT) == "\\d"
     assert str(SPACECHAR) == "\\s"
@@ -66,20 +79,22 @@ def test_charclass_str():
     assert str(~Charclass("^")) == "[^\\^]"
 
 
-def test_charclass_fsm():
+def test_charclass_fsm() -> None:
     # "[^a]"
     nota = (~Charclass("a")).to_fsm()
     assert nota.alphabet == {"a", ANYTHING_ELSE}
-    assert nota.accepts("b")
-    assert nota.accepts(["b"])
-    assert nota.accepts([ANYTHING_ELSE])
+
+    # Fsm methods are not yet typed.
+    assert nota.accepts("b")  # type: ignore
+    assert nota.accepts(["b"])  # type: ignore
+    assert nota.accepts([ANYTHING_ELSE])  # type: ignore
 
 
-def test_charclass_negation():
+def test_charclass_negation() -> None:
     assert ~~Charclass("a") == Charclass("a")
     assert Charclass("a") == ~~Charclass("a")
 
 
-def test_empty():
+def test_empty() -> None:
     assert NULLCHARCLASS.empty()
     assert not DOT.empty()

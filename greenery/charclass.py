@@ -15,16 +15,12 @@ __all__ = (
 )
 
 from dataclasses import dataclass
+from typing import ClassVar, Iterable, Mapping
 
-from .fsm import ANYTHING_ELSE, Fsm
-
-# This class currently has broken types due to its "frozenset[str] | str" member.
-# mypy: allow-untyped-calls
-# mypy: allow-untyped-defs
-# mypy: no-check-untyped-defs
+from .fsm import ANYTHING_ELSE, AnythingElse, Fsm
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, init=False)
 class Charclass:
     """
     A `Charclass` is basically a `frozenset` of symbols.
@@ -35,57 +31,61 @@ class Charclass:
     combination functions.
     """
 
-    chars: frozenset[str] | str
-    negated: bool = False
+    chars: frozenset[str]
+    negated: bool
 
-    def __post_init__(self):
-        object.__setattr__(self, "chars", frozenset(self.chars))
+    def __init__(self, chars: Iterable[str] = (), negated: bool = False):
+        chars = frozenset(chars)
         # chars should consist only of chars
-        if ANYTHING_ELSE in self.chars:
-            raise Exception(
-                f"Can't put {ANYTHING_ELSE!r} in a `Charclass`"
-            )
+        for c in chars:
+            if not isinstance(c, str):
+                raise TypeError(f"Can't put {c!r} in a `Charclass`", c)
+            if len(c) != 1:
+                raise ValueError("`Charclass` can only contain single chars", c)
 
-    def __eq__(self, other):
+        object.__setattr__(self, "chars", chars)
+        object.__setattr__(self, "negated", negated)
+
+    def __eq__(self, other: object, /) -> bool:
         return isinstance(other, Charclass) \
             and self.chars == other.chars \
             and self.negated == other.negated
 
-    def __hash__(self):
+    def __hash__(self, /) -> int:
         return hash((self.chars, self.negated))
 
     # These are the characters carrying special meanings when they appear
     # "outdoors" within a regular expression. To be interpreted literally, they
     # must be escaped with a backslash.
-    allSpecial = set("\\[]|().?*+{}")
+    allSpecial: ClassVar[frozenset[str]] = frozenset("\\[]|().?*+{}")
 
     # These are the characters carrying special meanings when they appear
     # INSIDE a character class (delimited by square brackets) within a regular
     # expression. To be interpreted literally, they must be escaped with a
     # backslash. Notice how much smaller this class is than the one above; note
     # also that the hyphen and caret do NOT appear above.
-    classSpecial = set("\\[]^-")
+    classSpecial: ClassVar[frozenset[str]] = frozenset("\\[]^-")
 
     # Shorthand codes for use inside `Charclass`es e.g. [abc\d]
-    w = frozenset(
+    w: ClassVar[frozenset[str]] = frozenset(
         "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz"
     )
-    d = frozenset("0123456789")
-    s = frozenset("\t\n\v\f\r ")
+    d: ClassVar[frozenset[str]] = frozenset("0123456789")
+    s: ClassVar[frozenset[str]] = frozenset("\t\n\v\f\r ")
 
-    shorthand = {
+    shorthand: ClassVar[Mapping[frozenset[str], str]] = {
         w: "\\w",
         d: "\\d",
         s: "\\s",
     }
 
-    negated_shorthand = {
+    negated_shorthand: ClassVar[Mapping[frozenset[str], str]] = {
         w: "\\W",
         d: "\\D",
         s: "\\S",
     }
 
-    def __str__(self):
+    def __str__(self, /) -> str:
         # e.g. \w
         if self in shorthand.keys():
             return shorthand[self]
@@ -117,8 +117,8 @@ class Charclass:
         # multiple characters (or possibly 0 characters)
         return "[" + self.escape() + "]"
 
-    def escape(self):
-        def escapeChar(char):
+    def escape(self, /) -> str:
+        def escapeChar(char: str, /) -> str:
             if char in Charclass.classSpecial:
                 return "\\" + char
             if char in escapes.keys():
@@ -132,7 +132,7 @@ class Charclass:
 
             return char
 
-        def recordRange():
+        def recordRange() -> str:
             # there's no point in putting a range when the whole thing is
             # 3 characters or fewer. "abc" -> "abc" but "abcd" -> "a-d"
             strs = [
@@ -175,9 +175,14 @@ class Charclass:
 
         return output
 
-    def to_fsm(self, alphabet=None):
-        if alphabet is None:
-            alphabet = self.alphabet()
+    def to_fsm(
+        self,
+        /,
+        alphabet: Iterable[str | AnythingElse] | None = None,
+    ) -> Fsm:
+        alphabet = self.alphabet() if alphabet is None else frozenset(alphabet)
+
+        map: dict[int | str | None, dict[str | AnythingElse, int | str | None]]
 
         # 0 is initial, 1 is final
 
@@ -194,14 +199,14 @@ class Charclass:
             }
 
         return Fsm(
-            alphabet=alphabet,
+            alphabet=set(alphabet),
             states={0, 1},
             initial=0,
             finals={1},
             map=map,
         )
 
-    def __repr__(self):
+    def __repr__(self, /) -> str:
         string = ""
         if self.negated is True:
             string += "~"
@@ -212,31 +217,31 @@ class Charclass:
         string += ")"
         return string
 
-    def reduce(self):
+    def reduce(self, /) -> Charclass:
         # `Charclass`es cannot be reduced.
         return self
 
-    def alphabet(self):
-        return {ANYTHING_ELSE} | self.chars
+    def alphabet(self, /) -> frozenset[str | AnythingElse]:
+        return self.chars | {ANYTHING_ELSE}
 
-    def empty(self):
+    def empty(self, /) -> bool:
         return len(self.chars) == 0 and not self.negated
 
     # set operations
-    def negate(self):
+    def negate(self, /) -> Charclass:
         """
         Negate the current `Charclass`. e.g. [ab] becomes [^ab]. Call
         using "charclass2 = ~charclass1"
         """
         return Charclass(self.chars, negated=not self.negated)
 
-    def __invert__(self):
+    def __invert__(self, /) -> Charclass:
         return self.negate()
 
-    def reversed(self):
+    def reversed(self, /) -> Charclass:
         return self
 
-    def __or__(self, other):
+    def __or__(self, other: Charclass, /) -> Charclass:
         # ¬A OR ¬B = ¬(A AND B)
         # ¬A OR B = ¬(A - B)
         # A OR ¬B = ¬(B - A)
@@ -262,7 +267,7 @@ SPACECHAR = Charclass("\t\n\v\f\r ")
 
 # This `Charclass` expresses "no possibilities at all"
 # and can never match anything.
-NULLCHARCLASS = Charclass("")
+NULLCHARCLASS = Charclass()
 
 NONWORDCHAR = ~WORDCHAR
 NONDIGITCHAR = ~DIGIT
@@ -270,7 +275,7 @@ NONSPACECHAR = ~SPACECHAR
 DOT = ~NULLCHARCLASS
 
 # Textual representations of standard character classes
-shorthand = {
+shorthand: Mapping[Charclass, str] = {
     WORDCHAR: "\\w",
     DIGIT: "\\d",
     SPACECHAR: "\\s",
@@ -282,7 +287,7 @@ shorthand = {
 
 # Characters which users may escape in a regex instead of inserting them
 # literally. In ASCII order:
-escapes = {
+escapes: Mapping[str, str] = {
     "\t": "\\t",  # tab
     "\n": "\\n",  # line feed
     "\v": "\\v",  # vertical tab
