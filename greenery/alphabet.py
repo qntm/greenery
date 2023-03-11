@@ -91,6 +91,12 @@ class Alphabet(Mapping[alpha_type, event_type]):
                     for i, group in enumerate(equal_groups)
                     for sym in (group if group != ANYTHING_ELSE else (group,))})
 
+    def with_anything_else(self):
+        if ANYTHING_ELSE in self._symbol_to_event:
+            return self
+        else:
+            return Alphabet({**self._symbol_to_event, ANYTHING_ELSE: 1 + max(self._symbol_to_event.values(), default=-1)})
+
     def union(*alphabets: Alphabet) -> tuple[Alphabet, tuple[dict[event_type, Union[event_type, None]], ...]]:
         """
         Creates the union Alphabet from two alphabets.

@@ -16,6 +16,7 @@ __all__ = (
 
 from dataclasses import dataclass
 
+from .alphabet import Alphabet
 from .fsm import ANYTHING_ELSE, Fsm
 
 # This class currently has broken types due to its "frozenset[str] | str" member.
@@ -178,22 +179,24 @@ class Charclass:
     def to_fsm(self, alphabet=None):
         if alphabet is None:
             alphabet = self.alphabet()
+        elif not isinstance(alphabet, Alphabet):
+            alphabet = Alphabet.distinct(alphabet)
 
         # 0 is initial, 1 is final
 
         # If negated, make a singular FSM accepting any other characters
         if self.negated:
             map = {
-                0: dict([(symbol, 1) for symbol in alphabet - self.chars]),
+                0: {alphabet[symbol]: 1 for symbol in set(alphabet) - self.chars},
             }
 
         # If normal, make a singular FSM accepting only these characters
         else:
             map = {
-                0: dict([(symbol, 1) for symbol in self.chars]),
+                0: {alphabet[symbol]: 1 for symbol in self.chars},
             }
 
-        return Fsm.via_symbols(
+        return Fsm(
             alphabet=alphabet,
             states={0, 1},
             initial=0,
@@ -217,7 +220,7 @@ class Charclass:
         return self
 
     def alphabet(self):
-        return {ANYTHING_ELSE} | self.chars
+        return Alphabet.groups(self.chars, ANYTHING_ELSE)
 
     def empty(self):
         return len(self.chars) == 0 and not self.negated

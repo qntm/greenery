@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from functools import reduce
 
+from .alphabet import Alphabet
 from .bound import INF, Bound
 from .charclass import NULLCHARCLASS, Charclass
 from .fsm import ANYTHING_ELSE, Fsm, epsilon, null, state_type
@@ -171,6 +172,8 @@ class Conc():
     def to_fsm(self, alphabet=None):
         if alphabet is None:
             alphabet = self.alphabet()
+        elif not isinstance(alphabet, Alphabet):
+            alphabet = Alphabet.distinct(alphabet)
 
         # start with a component accepting only the empty string
         fsm1 = epsilon(alphabet)
@@ -179,7 +182,7 @@ class Conc():
         return fsm1
 
     def alphabet(self):
-        return {ANYTHING_ELSE}.union(*[mult.alphabet() for mult in self.mults])
+        return Alphabet.union(*[mult.alphabet() for mult in self.mults])[0].with_anything_else()
 
     def empty(self):
         return any(mult.empty() for mult in self.mults)
@@ -411,7 +414,7 @@ def call_fsm(method):
     fsm_method = getattr(Fsm, method.__name__)
 
     def new_method(*elems):
-        alphabet = set().union(*[elem.alphabet() for elem in elems])
+        alphabet = Alphabet.union(*[elem.alphabet() for elem in elems])[0]
         return from_fsm(fsm_method(*[elem.to_fsm(alphabet) for elem in elems]))
 
     return new_method
@@ -451,14 +454,14 @@ class Pattern:
         return f"Pattern({args})"
 
     def alphabet(self):
-        return {ANYTHING_ELSE}.union(*[c.alphabet() for c in self.concs])
+        return Alphabet.union(*[c.alphabet() for c in self.concs])[0].with_anything_else()
 
     def empty(self):
         return all(conc.empty() for conc in self.concs)
 
     def intersection(self, other):
         # A deceptively simple method for an astoundingly difficult operation
-        alphabet = self.alphabet() | other.alphabet()
+        alphabet = self.alphabet().union(other.alphabet())[0]
 
         # Which means that we can build finite state machines sharing that
         # alphabet
@@ -668,6 +671,8 @@ class Pattern:
     def to_fsm(self, alphabet=None):
         if alphabet is None:
             alphabet = self.alphabet()
+        elif not isinstance(alphabet, Alphabet):
+            alphabet = Alphabet.distinct(alphabet)
 
         fsm1 = null(alphabet)
         for conc in self.concs:
@@ -840,7 +845,7 @@ class Mult:
         return Mult(NULLCHARCLASS, ZERO)
 
     def alphabet(self):
-        return {ANYTHING_ELSE} | self.multiplicand.alphabet()
+        return self.multiplicand.alphabet().with_anything_else()
 
     def empty(self):
         return self.multiplicand.empty() and self.multiplier.min > Bound(0)
@@ -906,6 +911,8 @@ class Mult:
     def to_fsm(self, alphabet=None):
         if alphabet is None:
             alphabet = self.alphabet()
+        elif not isinstance(alphabet, Alphabet):
+            alphabet = Alphabet.distinct(alphabet)
 
         # worked example: (min, max) = (5, 7) or (5, INF)
         # (mandatory, optional) = (5, 2) or (5, INF)

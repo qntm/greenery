@@ -49,7 +49,7 @@ def test_parse_str_round_trip():
 
 def test_alphabet():
     # `.alphabet()` should include `ANYTHING_ELSE`
-    assert parse("").alphabet() == {ANYTHING_ELSE}
+    assert set(parse("").alphabet()) == {ANYTHING_ELSE}
 
 
 def test_pattern_fsm():
