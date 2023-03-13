@@ -268,7 +268,10 @@ class Fsm:
         """
         alphabet = set().union(*[fsm.alphabet for fsm in fsms])
 
-        def connect_all(i: int, substate: state_type) -> Iterable[tuple[int, state_type]]:
+        def connect_all(
+            i: int,
+            substate: state_type,
+        ) -> Iterable[tuple[int, state_type]]:
             """
             Take a state in the numbered FSM and return a set containing
             it, plus (if it's final) the first state from the next FSM,
