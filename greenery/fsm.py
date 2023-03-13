@@ -136,15 +136,9 @@ class Fsm:
         # Validation. Thanks to immutability, this only needs to be carried out
         # once.
         if initial not in states:
-            raise Exception(
-                f"Initial state {initial!r}"
-                f" must be one of {states!r}"
-            )
+            raise Exception(f"Initial state {initial!r} must be one of {states!r}")
         if not finals.issubset(states):
-            raise Exception(
-                f"Final states {finals!r}"
-                f" must be a subset of {states!r}"
-            )
+            raise Exception(f"Final states {finals!r} must be a subset of {states!r}")
         for state, _state_trans in map.items():
             if state not in states:
                 raise Exception(f"Transition from unknown state {state!r}")
@@ -207,13 +201,15 @@ class Fsm:
         return self.reversed().reversed()
 
     def __repr__(self, /) -> str:
-        args = ", ".join([
-            f"alphabet={self.alphabet!r}",
-            f"states={self.states!r}",
-            f"initial={self.initial!r}",
-            f"finals={self.finals!r}",
-            f"map={self.map!r}",
-        ])
+        args = ", ".join(
+            [
+                f"alphabet={self.alphabet!r}",
+                f"states={self.states!r}",
+                f"initial={self.initial!r}",
+                f"finals={self.finals!r}",
+                f"map={self.map!r}",
+            ]
+        )
         return f"Fsm({args})"
 
     def __str__(self, /) -> str:
@@ -248,9 +244,7 @@ class Fsm:
         # column widths
         colwidths = []
         for x in range(len(rows[0])):
-            colwidths.append(max(
-                len(str(rows[y][x])) for y in range(len(rows))
-            ) + 1)
+            colwidths.append(max(len(str(rows[y][x])) for y in range(len(rows))) + 1)
 
         # apply padding
         for y in range(len(rows)):
@@ -296,7 +290,7 @@ class Fsm:
 
         def final(state: frozenset[tuple[int, state_type]]) -> bool:
             """If you're in a final state of the final FSM, it's final"""
-            for (i, substate) in state:
+            for i, substate in state:
                 if i == len(fsms) - 1 and substate in fsms[i].finals:
                     return True
             return False
@@ -312,7 +306,7 @@ class Fsm:
             metastates?
             """
             next: set[tuple[int, state_type]] = set()
-            for (i, substate) in current:
+            for i, substate in current:
                 fsm = fsms[i]
                 if substate in fsm.map:
                     if symbol in fsm.map[substate]:
@@ -321,10 +315,7 @@ class Fsm:
                         ANYTHING_ELSE in fsm.map[substate]
                         and symbol not in fsm.alphabet
                     ):
-                        next.update(connect_all(
-                            i,
-                            fsm.map[substate][ANYTHING_ELSE]
-                        ))
+                        next.update(connect_all(i, fsm.map[substate][ANYTHING_ELSE]))
             if len(next) == 0:
                 raise OblivionError
             return frozenset(next)
@@ -363,9 +354,11 @@ class Fsm:
 
                 # If one of our substates is final, then we can also consider
                 # transitions from the initial state of the original FSM.
-                if substate in self.finals \
-                   and self.initial in self.map \
-                   and symbol in self.map[self.initial]:
+                if (
+                    substate in self.finals
+                    and self.initial in self.map
+                    and symbol in self.map[self.initial]
+                ):
                     next.add(self.map[self.initial][symbol])
 
             if len(next) == 0:
@@ -395,12 +388,10 @@ class Fsm:
             If the initial state is final then multiplying doesn't alter
             that
             """
-            for (substate, iteration) in state:
-                if substate == self.initial \
-                   and (
-                       self.initial in self.finals
-                       or iteration == multiplier
-                   ):
+            for substate, iteration in state:
+                if substate == self.initial and (
+                    self.initial in self.finals or iteration == multiplier
+                ):
                     return True
             return False
 
@@ -409,10 +400,12 @@ class Fsm:
             symbol: alpha_type,
         ) -> Collection[tuple[state_type, int]]:
             next = []
-            for (substate, iteration) in current:
-                if iteration < multiplier \
-                   and substate in self.map \
-                   and symbol in self.map[substate]:
+            for substate, iteration in current:
+                if (
+                    iteration < multiplier
+                    and substate in self.map
+                    and symbol in self.map[substate]
+                ):
                     next.append((self.map[substate][symbol], iteration))
                     # final of self? merge with initial on next iteration
                     if self.map[substate][symbol] in self.finals:
@@ -497,9 +490,11 @@ class Fsm:
             symbol: alpha_type,
         ) -> Mapping[int, state_type]:
             next = {}
-            if 0 in current \
-               and current[0] in self.map \
-               and symbol in self.map[current[0]]:
+            if (
+                0 in current
+                and current[0] in self.map
+                and symbol in self.map[current[0]]
+            ):
                 next[0] = self.map[current[0]][symbol]
             return next
 
@@ -527,12 +522,14 @@ class Fsm:
             current: frozenset[state_type],
             symbol: alpha_type,
         ) -> frozenset[state_type]:
-            next = frozenset([
-                prev
-                for prev in self.map
-                for state in current
-                if symbol in self.map[prev] and self.map[prev][symbol] == state
-            ])
+            next = frozenset(
+                [
+                    prev
+                    for prev in self.map
+                    for state in current
+                    if symbol in self.map[prev] and self.map[prev][symbol] == state
+                ]
+            )
             if len(next) == 0:
                 raise OblivionError
             return next
@@ -612,7 +609,7 @@ class Fsm:
         # Fixed point calculation
         i = 0
         while i < len(strings):
-            (cstring, cstate) = strings[i]
+            cstring, cstate = strings[i]
             if cstate in self.map:
                 for symbol in sorted(self.map[cstate]):
                     nstate = self.map[cstate][symbol]
@@ -665,10 +662,7 @@ class Fsm:
         Difference. Returns an FSM which recognises only the strings
         recognised by the first FSM in the list, but none of the others.
         """
-        return parallel(
-            fsms,
-            lambda accepts: accepts[0] and not any(accepts[1:])
-        )
+        return parallel(fsms, lambda accepts: accepts[0] and not any(accepts[1:]))
 
     def __sub__(self, other: Fsm, /) -> Fsm:
         return self.difference(other)
@@ -871,7 +865,8 @@ def parallel(
     alphabet = set().union(*[fsm.alphabet for fsm in fsms])
 
     initial: Mapping[int, state_type] = dict(
-        [(i, fsm.initial) for (i, fsm) in enumerate(fsms)])
+        [(i, fsm.initial) for i, fsm in enumerate(fsms)]
+    )
 
     # dedicated function accepts a "superset" and returns the next "superset"
     # obtained by following this transition in the new FSM
@@ -882,14 +877,15 @@ def parallel(
         next = {}
         for i in range(len(fsms)):
             actual_symbol: alpha_type
-            if symbol not in fsms[i].alphabet \
-               and ANYTHING_ELSE in fsms[i].alphabet:
+            if symbol not in fsms[i].alphabet and ANYTHING_ELSE in fsms[i].alphabet:
                 actual_symbol = ANYTHING_ELSE
             else:
                 actual_symbol = symbol
-            if i in current \
-               and current[i] in fsms[i].map \
-               and actual_symbol in fsms[i].map[current[i]]:
+            if (
+                i in current
+                and current[i] in fsms[i].map
+                and actual_symbol in fsms[i].map[current[i]]
+            ):
                 next[i] = fsms[i].map[current[i]][actual_symbol]
         if len(next.keys()) == 0:
             raise OblivionError
@@ -898,10 +894,7 @@ def parallel(
     # Determine the "is final?" condition of each substate, then pass it to the
     # test to determine finality of the overall FSM.
     def final(state: Mapping[int, state_type]) -> bool:
-        accepts = [
-            i in state and state[i] in fsm.finals
-            for (i, fsm) in enumerate(fsms)
-        ]
+        accepts = [i in state and state[i] in fsm.finals for i, fsm in enumerate(fsms)]
         return test(accepts)
 
     return crawl(alphabet, initial, final, follow).reduce()

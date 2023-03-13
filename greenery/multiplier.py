@@ -39,14 +39,9 @@ class Multiplier:
 
     def __post_init__(self):
         if self.min == INF:
-            raise Exception(
-                f"Minimum bound of a multiplier can't be {INF!r}"
-            )
+            raise Exception(f"Minimum bound of a multiplier can't be {INF!r}")
         if self.min > self.max:
-            raise Exception(
-                "Invalid multiplier bounds:"
-                f" {self.min!r} and {self.max!r}"
-            )
+            raise Exception(f"Invalid multiplier bounds: {self.min!r} and {self.max!r}")
 
         # More useful than "min" and "max" in many situations
         # are "mandatory" and "optional".
@@ -64,9 +59,7 @@ class Multiplier:
 
     def __str__(self):
         if self.max == Bound(0):
-            raise Exception(
-                f"Can't serialise a multiplier with bound {self.max!r}"
-            )
+            raise Exception(f"Can't serialise a multiplier with bound {self.max!r}")
         if self in symbolic.keys():
             return symbolic[self]
         if self.min == self.max:
@@ -89,15 +82,15 @@ class Multiplier:
         at least one gap appears in the range. The first inaccessible
         number is (p+q)r+1. And no, multiplication is not commutative
         """
-        return other.optional == Bound(0) \
+        return (
+            other.optional == Bound(0)
             or self.optional * other.mandatory + Bound(1) >= self.mandatory
+        )
 
     def __mul__(self, other):
         """Multiply this multiplier by another"""
         if not self.canmultiplyby(other):
-            raise Exception(
-                f"Can't multiply {self!r} by {other!r}"
-            )
+            raise Exception(f"Can't multiply {self!r} by {other!r}")
         return Multiplier(self.min * other.min, self.max * other.max)
 
     def __add__(self, other):
@@ -131,9 +124,7 @@ class Multiplier:
         This is not defined for all multipliers since they may not overlap.
         """
         if not self.canintersect(other):
-            raise Exception(
-                f"Can't compute intersection of {self!r} and {other!r}"
-            )
+            raise Exception(f"Can't compute intersection of {self!r} and {other!r}")
         a = max(self.min, other.min)
         b = min(self.max, other.max)
         return Multiplier(a, b)
@@ -143,10 +134,7 @@ class Multiplier:
         Union is not defined for all pairs of multipliers.
         E.g. {0,1} | {3,4} -> nope
         """
-        return not (
-            self.max + Bound(1) < other.min
-            or other.max + Bound(1) < self.min
-        )
+        return not (self.max + Bound(1) < other.min or other.max + Bound(1) < self.min)
 
     def __or__(self, other):
         """
@@ -155,9 +143,7 @@ class Multiplier:
         not defined for all multipliers since they may not intersect.
         """
         if not self.canunion(other):
-            raise Exception(
-                f"Can't compute the union of {self!r} and {other!r}"
-            )
+            raise Exception(f"Can't compute the union of {self!r} and {other!r}")
         a = min(self.min, other.min)
         b = max(self.max, other.max)
         return Multiplier(a, b)

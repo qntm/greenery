@@ -1,5 +1,9 @@
 [flake8]
-max-line-length = 80
+max-line-length = 88
 ignore =
+  # "black" formatter has slightly different operator spacing rules than
+  # flake8's defaults.
+  # whitespace before ‘,’, ‘;’, or ‘:’
+  E203,
   # line break before binary operator
   W503,

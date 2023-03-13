@@ -16,24 +16,26 @@ def test_conc_equality():
     assert a == Conc(Mult(Charclass("a"), ONE))
     assert a != Conc(Mult(Charclass("b"), ONE))
     assert a != Conc(Mult(Charclass("a"), QM))
-    assert a != Conc(Mult(
-        Charclass("a"),
-        Multiplier(Bound(1), Bound(2)))
-    )
+    assert a != Conc(Mult(Charclass("a"), Multiplier(Bound(1), Bound(2))))
     assert a != Conc()
 
 
 def test_conc_str():
-    assert str(Conc(
-        Mult(Charclass("a"), ONE),
-        Mult(Charclass("b"), ONE),
-        Mult(Charclass("c"), ONE),
-        Mult(Charclass("d"), ONE),
-        Mult(Charclass("e"), ONE),
-        Mult(~Charclass("fg"), STAR),
-        Mult(Charclass("h"), Multiplier(Bound(5), Bound(5))),
-        Mult(Charclass("abcdefghijklmnopqrstuvwxyz"), PLUS),
-    )) == "abcde[^fg]*h{5}[a-z]+"
+    assert (
+        str(
+            Conc(
+                Mult(Charclass("a"), ONE),
+                Mult(Charclass("b"), ONE),
+                Mult(Charclass("c"), ONE),
+                Mult(Charclass("d"), ONE),
+                Mult(Charclass("e"), ONE),
+                Mult(~Charclass("fg"), STAR),
+                Mult(Charclass("h"), Multiplier(Bound(5), Bound(5))),
+                Mult(Charclass("abcdefghijklmnopqrstuvwxyz"), PLUS),
+            )
+        )
+        == "abcde[^fg]*h{5}[a-z]+"
+    )
 
 
 def test_conc_common():
@@ -70,7 +72,4 @@ def test_conc_dock():
 
 
 def test_mult_reduction_easy():
-    assert Conc(Mult(
-        Charclass("a"),
-        ZERO
-    )).reduce() == Conc()
+    assert Conc(Mult(Charclass("a"), ZERO)).reduce() == Conc()

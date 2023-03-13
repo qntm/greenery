@@ -14,9 +14,7 @@ from .rxelems import Conc, Mult, Pattern
 # mypy: allow-untyped-defs
 
 if __name__ == "__main__":
-    raise Exception(
-        "Test files can't be run directly. Use `python -m pytest greenery`"
-    )
+    raise Exception("Test files can't be run directly. Use `python -m pytest greenery`")
 
 
 def test_charclass_matching():
@@ -69,21 +67,18 @@ def test_negated_negatives_inside_charclasses():
 
 
 def test_mult_matching():
-    assert match_mult("abcde[^fg]*", 5) == (
-        Mult(~Charclass("fg"), STAR),
-        11
-    )
+    assert match_mult("abcde[^fg]*", 5) == (Mult(~Charclass("fg"), STAR), 11)
     assert match_mult("abcde[^fg]*h{5}[a-z]+", 11) == (
         Mult(Charclass("h"), Multiplier(Bound(5), Bound(5))),
-        15
+        15,
     )
     assert match_mult("abcde[^fg]*h{5}[a-z]+T{1,}", 15) == (
         Mult(Charclass("abcdefghijklmnopqrstuvwxyz"), PLUS),
-        21
+        21,
     )
     assert match_mult("abcde[^fg]*h{5}[a-z]+T{2,}", 21) == (
         Mult(Charclass("T"), Multiplier(Bound(2), INF)),
-        26
+        26,
     )
 
 
@@ -111,29 +106,12 @@ def test_w_d_s():
 
 
 def test_mult_parsing():
-    assert parse("[a-g]+") == Pattern(
-        Conc(
-            Mult(
-                Charclass("abcdefg"),
-                PLUS
-            )
-        )
-    )
+    assert parse("[a-g]+") == Pattern(Conc(Mult(Charclass("abcdefg"), PLUS)))
     assert parse("[a-g0-8$%]+") == Pattern(
-        Conc(
-            Mult(
-                Charclass("abcdefg012345678$%"),
-                PLUS
-            )
-        )
+        Conc(Mult(Charclass("abcdefg012345678$%"), PLUS))
     )
     assert parse("[a-g0-8$%\\^]+") == Pattern(
-        Conc(
-            Mult(
-                Charclass("abcdefg012345678$%^"),
-                PLUS
-            )
-        )
+        Conc(Mult(Charclass("abcdefg012345678$%^"), PLUS))
     )
 
 

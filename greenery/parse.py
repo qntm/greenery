@@ -135,7 +135,7 @@ def match_class_interior_1(string, i):
         pass
 
     # Attempt 3: just a character on its own
-    (char, j) = match_internal_char(string, i)
+    char, j = match_internal_char(string, i)
     return frozenset(char), False, j
 
 

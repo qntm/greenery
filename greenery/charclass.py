@@ -47,9 +47,11 @@ class Charclass:
         object.__setattr__(self, "negated", negated)
 
     def __eq__(self, other: object, /) -> bool:
-        return isinstance(other, Charclass) \
-            and self.chars == other.chars \
+        return (
+            isinstance(other, Charclass)
+            and self.chars == other.chars
             and self.negated == other.negated
+        )
 
     def __hash__(self, /) -> int:
         return hash((self.chars, self.negated))
@@ -139,11 +141,7 @@ class Charclass:
                 # "ab" or "abc" or "abcd"
                 "".join(escapeChar(char) for char in currentRange),
                 # "a-b" or "a-c" or "a-d"
-                (
-                    escapeChar(currentRange[0])
-                    + "-"
-                    + escapeChar(currentRange[-1])
-                ),
+                (escapeChar(currentRange[0]) + "-" + escapeChar(currentRange[-1])),
             ]
             return sorted(strs, key=lambda str: len(str))[0]
 
@@ -157,10 +155,8 @@ class Charclass:
         # look for ranges
         currentRange = ""
         for char in sorted(self.chars, key=ord):
-
             # range is not empty: new char must fit after previous one
             if len(currentRange) > 0:
-
                 i = ord(char)
 
                 # char doesn't fit old range: restart
@@ -211,9 +207,7 @@ class Charclass:
         if self.negated is True:
             string += "~"
         string += "Charclass("
-        string += repr("".join(
-            str(char) for char in sorted(self.chars, key=str)
-        ))
+        string += repr("".join(str(char) for char in sorted(self.chars, key=str)))
         string += ")"
         return string
 
@@ -268,9 +262,7 @@ class Charclass:
 
 
 # Standard character classes
-WORDCHAR = Charclass(
-    "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz"
-)
+WORDCHAR = Charclass("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz")
 DIGIT = Charclass("0123456789")
 SPACECHAR = Charclass("\t\n\v\f\r ")
 

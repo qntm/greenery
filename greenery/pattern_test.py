@@ -26,41 +26,56 @@ def test_pattern_equality():
 
 
 def test_pattern_str():
-    assert str(Pattern(
-        Conc(Mult(Charclass("a"), ONE)),
-        Conc(Mult(Charclass("b"), ONE)),
-    )) == "a|b"
-    assert str(Pattern(
-        Conc(Mult(Charclass("a"), ONE)),
-        Conc(Mult(Charclass("a"), ONE)),
-    )) == "a"
-    assert str(Pattern(
-        Conc(
-            Mult(Charclass("a"), ONE),
-            Mult(Charclass("b"), ONE),
-            Mult(Charclass("c"), ONE),
-        ),
-        Conc(
-            Mult(Charclass("d"), ONE),
-            Mult(Charclass("e"), ONE),
-            Mult(Charclass("f"), ONE),
-            Mult(
-                Pattern(
-                    Conc(
-                        Mult(Charclass("g"), ONE),
-                        Mult(Charclass("h"), ONE),
-                        Mult(Charclass("i"), ONE),
-                    ),
-                    Conc(
-                        Mult(Charclass("j"), ONE),
-                        Mult(Charclass("k"), ONE),
-                        Mult(Charclass("l"), ONE),
+    assert (
+        str(
+            Pattern(
+                Conc(Mult(Charclass("a"), ONE)),
+                Conc(Mult(Charclass("b"), ONE)),
+            )
+        )
+        == "a|b"
+    )
+    assert (
+        str(
+            Pattern(
+                Conc(Mult(Charclass("a"), ONE)),
+                Conc(Mult(Charclass("a"), ONE)),
+            )
+        )
+        == "a"
+    )
+    assert (
+        str(
+            Pattern(
+                Conc(
+                    Mult(Charclass("a"), ONE),
+                    Mult(Charclass("b"), ONE),
+                    Mult(Charclass("c"), ONE),
+                ),
+                Conc(
+                    Mult(Charclass("d"), ONE),
+                    Mult(Charclass("e"), ONE),
+                    Mult(Charclass("f"), ONE),
+                    Mult(
+                        Pattern(
+                            Conc(
+                                Mult(Charclass("g"), ONE),
+                                Mult(Charclass("h"), ONE),
+                                Mult(Charclass("i"), ONE),
+                            ),
+                            Conc(
+                                Mult(Charclass("j"), ONE),
+                                Mult(Charclass("k"), ONE),
+                                Mult(Charclass("l"), ONE),
+                            ),
+                        ),
+                        ONE,
                     ),
                 ),
-                ONE,
-            ),
-        ),
-    )) == "abc|def(ghi|jkl)"
+            )
+        )
+        == "abc|def(ghi|jkl)"
+    )
 
 
 def test_empty():
@@ -76,19 +91,20 @@ def test_mult_reduction_easy():
                 ZERO,
             )
         )
-    ).reduce() == Pattern(
-        Conc()
-    )
-    assert str(
-        Pattern(
-            Conc(
-                Mult(
-                    Charclass("a"),
-                    ZERO,
+    ).reduce() == Pattern(Conc())
+    assert (
+        str(
+            Pattern(
+                Conc(
+                    Mult(
+                        Charclass("a"),
+                        ZERO,
+                    )
                 )
-            )
-        ).reduce()
-    ) == ""
+            ).reduce()
+        )
+        == ""
+    )
 
 
 def test_empty_pattern_reduction():
@@ -96,14 +112,19 @@ def test_empty_pattern_reduction():
 
 
 def test_empty_conc_suppression():
-    assert str(Pattern(
-        Conc(
-            # this `Mult` can never actually match anything
-            Mult(Pattern(), ONE),
-            Mult(Charclass("0"), ONE),
-            Mult(Charclass("0123456789"), ONE),
-        )  # so neither can this `Conc`
-    ).reduce()) == "[]"
+    assert (
+        str(
+            Pattern(
+                Conc(
+                    # this `Mult` can never actually match anything
+                    Mult(Pattern(), ONE),
+                    Mult(Charclass("0"), ONE),
+                    Mult(Charclass("0123456789"), ONE),
+                )  # so neither can this `Conc`
+            ).reduce()
+        )
+        == "[]"
+    )
 
 
 def test_pattern_dock():

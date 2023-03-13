@@ -15,10 +15,7 @@ def test_mult_equality():
     assert a == a
     assert a != Mult(Charclass("b"), ONE)
     assert a != Mult(Charclass("a"), QM)
-    assert a != Mult(
-        Charclass("a"),
-        Multiplier(Bound(1), Bound(2))
-    )
+    assert a != Mult(Charclass("a"), Multiplier(Bound(1), Bound(2)))
 
 
 def test_mult_str():
@@ -62,19 +59,19 @@ def test_odd_bug():
 
 def test_mult_common():
     a = Charclass("a")
-    assert Mult(a, Multiplier(Bound(3), Bound(4))) \
-        .common(Mult(a, Multiplier(Bound(2), Bound(5)))) \
-        == Mult(a, Multiplier(Bound(2), Bound(3)))
-    assert Mult(a, Multiplier(Bound(2), INF)) \
-        .common(Mult(a, Multiplier(Bound(1), Bound(5)))) \
-        == Mult(a, Multiplier(Bound(1), Bound(5)))
-    assert Mult(a, Multiplier(Bound(3), INF)) \
-        .common(Mult(a, Multiplier(Bound(2), INF))) \
-        == Mult(a, Multiplier(Bound(2), INF))
+    assert Mult(a, Multiplier(Bound(3), Bound(4))).common(
+        Mult(a, Multiplier(Bound(2), Bound(5)))
+    ) == Mult(a, Multiplier(Bound(2), Bound(3)))
+    assert Mult(a, Multiplier(Bound(2), INF)).common(
+        Mult(a, Multiplier(Bound(1), Bound(5)))
+    ) == Mult(a, Multiplier(Bound(1), Bound(5)))
+    assert Mult(a, Multiplier(Bound(3), INF)).common(
+        Mult(a, Multiplier(Bound(2), INF))
+    ) == Mult(a, Multiplier(Bound(2), INF))
 
 
 def test_mult_dock():
     a = Charclass("a")
-    assert Mult(a, Multiplier(Bound(4), Bound(5))) \
-        .dock(Mult(a, Multiplier(Bound(3), Bound(3)))) \
-        == Mult(a, Multiplier(Bound(1), Bound(2)))
+    assert Mult(a, Multiplier(Bound(4), Bound(5))).dock(
+        Mult(a, Multiplier(Bound(3), Bound(3)))
+    ) == Mult(a, Multiplier(Bound(1), Bound(2)))

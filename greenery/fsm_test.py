@@ -22,7 +22,7 @@ def test_addbug() -> None:
         map={
             0: {ANYTHING_ELSE: 0, "a": 0, "b": 0, "c": 0},
             1: {ANYTHING_ELSE: 0, "a": 0, "b": 1, "c": 1},
-        }
+        },
     )
     assert int5A.accepts("")
 
@@ -35,7 +35,7 @@ def test_addbug() -> None:
             0: {ANYTHING_ELSE: 2, "a": 2, "b": 2, "c": 2},
             1: {ANYTHING_ELSE: 2, "a": 2, "b": 2, "c": 0},
             2: {ANYTHING_ELSE: 2, "a": 2, "b": 2, "c": 2},
-        }
+        },
     )
     assert int5B.accepts("c")
 
@@ -176,7 +176,7 @@ def test_optional_mul(a: FixtureA, b: FixtureB) -> None:
     unit = a + b
     # accepts "ab"
 
-    optional = (epsilon(a.alphabet) | unit)
+    optional = epsilon(a.alphabet) | unit
     # accepts "(ab)?
     assert optional.accepts([])
     assert not optional.accepts(["a"])
@@ -230,7 +230,7 @@ def test_crawl_reduction() -> None:
             3: {"0": 3, "1": 4},
             4: {"0": "oblivion", "1": "oblivion"},
             "oblivion": {"0": "oblivion", "1": "oblivion"},
-        }
+        },
     ).reduce()
     assert len(merged.states) == 2
 
@@ -242,10 +242,7 @@ def test_bug_28() -> None:
         states={0, 1},
         initial=0,
         finals={1},
-        map={
-            0: {"a": 1},
-            1: {"b": 1}
-        }
+        map={0: {"a": 1}, 1: {"b": 1}},
     )
     assert abstar.accepts("a")
     assert not abstar.accepts("b")
@@ -271,7 +268,7 @@ def test_star_advanced() -> None:
             1: {"a": 2, "b": "oblivion"},
             2: {"a": "oblivion", "b": "oblivion"},
             "oblivion": {"a": "oblivion", "b": "oblivion"},
-        }
+        },
     ).star()
     assert starred.alphabet == frozenset(["a", "b"])
     assert starred.accepts("")
@@ -426,47 +423,19 @@ def test_binary_3() -> None:
 def test_invalid_fsms() -> None:
     # initial state 1 is not a state
     with pytest.raises(Exception, match="Initial state"):
-        Fsm(
-            alphabet={},
-            states={},
-            initial=1,
-            finals=(),
-            map={}
-        )
+        Fsm(alphabet={}, states={}, initial=1, finals=(), map={})
 
     # final state 2 not a state
     with pytest.raises(Exception, match="Final states"):
-        Fsm(
-            alphabet={},
-            states={1},
-            initial=1,
-            finals={2},
-            map={}
-        )
+        Fsm(alphabet={}, states={1}, initial=1, finals={2}, map={})
 
     # invalid transition for state 1, symbol "a"
     with pytest.raises(Exception, match="Transition.+leads to.+not a state"):
-        Fsm(
-            alphabet={"a"},
-            states={1},
-            initial=1,
-            finals=(),
-            map={
-                1: {"a": 2}
-            }
-        )
+        Fsm(alphabet={"a"}, states={1}, initial=1, finals=(), map={1: {"a": 2}})
 
     # invalid transition from unknown state
     with pytest.raises(Exception, match="Transition.+unknown state"):
-        Fsm(
-            alphabet={"a"},
-            states={1, 2},
-            initial=1,
-            finals=(),
-            map={
-                3: {"a": 2}
-            }
-        )
+        Fsm(alphabet={"a"}, states={1, 2}, initial=1, finals=(), map={3: {"a": 2}})
 
     # invalid transition table includes symbol outside of alphabet
     with pytest.raises(Exception, match="Invalid symbol"):
@@ -490,9 +459,7 @@ def test_anything_else_acceptance() -> None:
         states={1},
         initial=1,
         finals={1},
-        map={
-            1: {"a": 1, "b": 1, "c": 1, ANYTHING_ELSE: 1}
-        },
+        map={1: {"a": 1, "b": 1, "c": 1, ANYTHING_ELSE: 1}},
     )
     assert a.accepts("d")
 
@@ -603,19 +570,21 @@ def test_dead_default() -> None:
             1: {"*": 2},
             2: {"/": 2, ANYTHING_ELSE: 2, "*": 3},
             3: {"/": 4, ANYTHING_ELSE: 2, "*": 3},
-        }
+        },
     )
     assert blockquote.accepts(["/", "*", "whatever", "*", "/"])
     assert not blockquote.accepts(["*", "*", "whatever", "*", "/"])
-    assert str(blockquote) \
-        == "  name final? * / ANYTHING_ELSE \n" \
-        + "--------------------------------\n" \
-        + "* 0    False    1               \n" \
-        + "  1    False  2                 \n" \
-        + "  2    False  3 2 2             \n" \
-        + "  3    False  3 4 2             \n" \
-        + "  4    True                     \n" \
+    assert (
+        str(blockquote)
+        == "  name final? * / ANYTHING_ELSE \n"
+        + "--------------------------------\n"
+        + "* 0    False    1               \n"
+        + "  1    False  2                 \n"
+        + "  2    False  3 2 2             \n"
+        + "  3    False  3 4 2             \n"
+        + "  4    True                     \n"
         + "  5    False                    \n"
+    )
     blockquote | blockquote
     blockquote & blockquote
     blockquote ^ blockquote
@@ -626,8 +595,7 @@ def test_dead_default() -> None:
     # strings.
     # reversed(blockquote)
     blockquote.reversed()
-    assert not blockquote.everythingbut() \
-        .accepts(["/", "*", "whatever", "*", "/"])
+    assert not blockquote.everythingbut().accepts(["/", "*", "whatever", "*", "/"])
 
     # deliberately seek oblivion
     assert blockquote.everythingbut().accepts(["*"])
@@ -690,12 +658,7 @@ def test_new_set_methods(a: FixtureA, b: FixtureB) -> None:
     for string in four:
         assert string == ["a", "a"]
         break
-    assert [s for s in four] == [
-        ["a", "a"],
-        ["a", "b"],
-        ["b", "a"],
-        ["b", "b"]
-    ]
+    assert [s for s in four] == [["a", "a"], ["a", "b"], ["b", "a"], ["b", "b"]]
 
     # set.union() imitation
     assert Fsm.union(a, b) == a.union(b)
@@ -713,12 +676,13 @@ def test_new_set_methods(a: FixtureA, b: FixtureB) -> None:
     assert len(int_none) == 1
     assert [] in int_none
 
-    assert (a | b).difference(a) \
-        == Fsm.difference((a | b), a) \
-        == (a | b) - a == b
-    assert (a | b).difference(a, b) \
-        == Fsm.difference((a | b), a, b) \
-        == (a | b) - a - b == null("ab")
+    assert (a | b).difference(a) == Fsm.difference((a | b), a) == (a | b) - a == b
+    assert (
+        (a | b).difference(a, b)
+        == Fsm.difference((a | b), a, b)
+        == (a | b) - a - b
+        == null("ab")
+    )
     assert a.symmetric_difference(b) == Fsm.symmetric_difference(a, b) == a ^ b
     assert a.isdisjoint(b)
     assert a <= (a | b)
@@ -757,7 +721,7 @@ def test_oblivion_crawl(a: FixtureA) -> None:
             0: {"a": 1},
             1: {"b": 2},
             2: {"c": 3},
-        }
+        },
     )
     assert len((abc + abc).states) == 7
     assert len(abc.star().states) == 3
@@ -793,26 +757,14 @@ def test_bug_36() -> None:
         states={0},
         initial=0,
         finals={0},
-        map={
-            0: {
-                ANYTHING_ELSE: 0
-            }
-        }
+        map={0: {ANYTHING_ELSE: 0}},
     )
     etc2 = Fsm(
         alphabet={"s", ANYTHING_ELSE},
         states={0, 1},
         initial=0,
         finals={1},
-        map={
-            0: {
-                "s": 1
-            },
-            1: {
-                "s": 1,
-                ANYTHING_ELSE: 1
-            }
-        }
+        map={0: {"s": 1}, 1: {"s": 1, ANYTHING_ELSE: 1}},
     )
     both = etc1 & etc2
     assert etc1.accepts(["s"])
@@ -828,7 +780,7 @@ def test_add_anything_else() -> None:
         states={0, 1},
         initial=0,
         finals={1},
-        map={0: {ANYTHING_ELSE: 1}}
+        map={0: {ANYTHING_ELSE: 1}},
     )
 
     # [^b]
@@ -837,7 +789,7 @@ def test_add_anything_else() -> None:
         states={0, 1},
         initial=0,
         finals={1},
-        map={0: {ANYTHING_ELSE: 1}}
+        map={0: {ANYTHING_ELSE: 1}},
     )
     assert (fsm1 + fsm2).accepts("ba")
 

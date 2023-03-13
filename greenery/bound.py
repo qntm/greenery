@@ -66,9 +66,7 @@ class Bound:
         """
         if other.v is None:
             if self.v is not None:
-                raise Exception(
-                    f"Can't subtract {other!r} from {self!r}"
-                )
+                raise Exception(f"Can't subtract {other!r} from {self!r}")
 
             # Infinity minus infinity is zero. This has to be true so that
             # we can for example subtract Multiplier(Bound(0), INF) from
