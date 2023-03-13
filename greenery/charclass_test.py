@@ -83,11 +83,9 @@ def test_charclass_fsm() -> None:
     # "[^a]"
     nota = (~Charclass("a")).to_fsm()
     assert nota.alphabet == {"a", ANYTHING_ELSE}
-
-    # Fsm methods are not yet typed.
-    assert nota.accepts("b")  # type: ignore
-    assert nota.accepts(["b"])  # type: ignore
-    assert nota.accepts([ANYTHING_ELSE])  # type: ignore
+    assert nota.accepts("b")
+    assert nota.accepts(["b"])
+    assert nota.accepts([ANYTHING_ELSE])
 
 
 def test_charclass_negation() -> None:
