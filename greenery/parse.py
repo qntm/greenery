@@ -145,20 +145,11 @@ def match_class_interior(string, i):
         while True:
             # Match an internal character, range, or other charclass predicate.
             internal, internal_negated, i = match_class_interior_1(string, i)
-            predicates.append((internal, internal_negated))
+            predicates.append(Charclass(internal, negated=internal_negated))
     except NoMatch:
         pass
 
-    closed_sets = [chars for chars, negated in predicates if not negated]
-    include = frozenset.union(*closed_sets) if closed_sets else frozenset()
-
-    open_sets = [chars for chars, negated in predicates if negated]
-    exclude = frozenset.intersection(*open_sets) if open_sets else frozenset()
-
-    is_open = bool(open_sets)
-    chars = (exclude - include) if is_open else (include - exclude)
-
-    return chars, is_open, i
+    return Charclass.union(*predicates), i
 
 
 def match_charclass(string: str, i):
@@ -175,18 +166,18 @@ def match_charclass(string: str, i):
     # "[^dsgsdg]"
     try:
         j = static(string, i, "[^")
-        chars, negated, j = match_class_interior(string, j)
+        result, j = match_class_interior(string, j)
         j = static(string, j, "]")
-        return Charclass(chars, not negated), j
+        return ~result, j
     except NoMatch:
         pass
 
     # "[sdfsf]"
     try:
         j = static(string, i, "[")
-        chars, negated, j = match_class_interior(string, j)
+        result, j = match_class_interior(string, j)
         j = static(string, j, "]")
-        return Charclass(chars, negated), j
+        return result, j
     except NoMatch:
         pass
 

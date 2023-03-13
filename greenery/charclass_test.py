@@ -83,16 +83,57 @@ def test_charclass_fsm() -> None:
     # "[^a]"
     nota = (~Charclass("a")).to_fsm()
     assert nota.alphabet == {"a", ANYTHING_ELSE}
-
-    # Fsm methods are not yet typed.
-    assert nota.accepts("b")  # type: ignore
-    assert nota.accepts(["b"])  # type: ignore
-    assert nota.accepts([ANYTHING_ELSE])  # type: ignore
+    assert nota.accepts("b")
+    assert nota.accepts(["b"])
+    assert nota.accepts([ANYTHING_ELSE])
 
 
 def test_charclass_negation() -> None:
     assert ~~Charclass("a") == Charclass("a")
     assert Charclass("a") == ~~Charclass("a")
+
+
+def test_charclass_union() -> None:
+    # [ab] ∪ [bc] = [abc]
+    assert Charclass("ab") | Charclass("bc") == Charclass("abc")
+    # [ab] ∪ [^bc] = [^c]
+    assert Charclass("ab") | ~Charclass("bc") == ~Charclass("c")
+    # [^a] ∪ [bc] = [^a]
+    assert ~Charclass("ab") | Charclass("bc") == ~Charclass("a")
+    # [^ab] ∪ [^bc] = [^b]
+    assert ~Charclass("ab") | ~Charclass("bc") == ~Charclass("b")
+
+    assert Charclass.union() == NULLCHARCLASS
+
+    assert Charclass.union(
+        Charclass("ab"),
+        Charclass("a"),
+        Charclass("cd"),
+    ) == Charclass("abcd")
+
+    assert Charclass.union(
+        Charclass("ab"),
+        ~Charclass("abc"),
+    ) == ~Charclass("c")
+
+
+def test_charclass_intersection() -> None:
+    # [ab] ∩ [bc] = [b]
+    assert Charclass("ab") & Charclass("bc") == Charclass("b")
+    # [ab] ∩ [^bc] = [a]
+    assert Charclass("ab") & ~Charclass("bc") == Charclass("a")
+    # [^ab] ∩ [bc] = [c]
+    assert ~Charclass("ab") & Charclass("bc") == Charclass("c")
+    # [^ab] ∩ [^bc] = [^abc]
+    assert ~Charclass("ab") & ~Charclass("bc") == ~Charclass("abc")
+
+    assert Charclass.intersection(
+        Charclass("ab"),
+        Charclass("bcd"),
+        Charclass("abcde"),
+    ) == Charclass("b")
+
+    assert Charclass.intersection() == ~NULLCHARCLASS
 
 
 def test_empty() -> None:
