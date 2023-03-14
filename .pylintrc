@@ -133,7 +133,6 @@ disable=
         suppressed-message,
         too-complex,
         too-few-public-methods,
-        useless-suppression,
         while-used,
 
 # Enable the message, report, category or checker with the given id(s). You can
@@ -146,6 +145,7 @@ enable=
         deprecated-pragma,
         raw-checker-failed,
         use-symbolic-message-instead,
+        useless-suppression,
 
 
 [REPORTS]

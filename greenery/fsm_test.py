@@ -542,8 +542,6 @@ def test_eq_ne(a: FixtureA, b: FixtureB) -> None:
     ),
 )
 def test_eq_ne_het(a: FixtureA, other: object) -> None:
-    # pylint: disable=comparison-with-itself
-
     # eq
     assert not a == other
     # eq, symmetric
@@ -827,7 +825,6 @@ def test_anything_else_self() -> None:
 def test_anything_else_sorts_after(val: object) -> None:
     """ANYTHING_ELSE sorts strictly after anything."""
 
-    # pylint: disable=unneeded-not
     assert not ANYTHING_ELSE < val
     assert not ANYTHING_ELSE <= val
     assert not ANYTHING_ELSE == val
