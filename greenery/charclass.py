@@ -240,9 +240,7 @@ class Charclass:
         include = frozenset.union(*closed_sets) if closed_sets else frozenset()
 
         open_sets = [cc.chars for cc in predicates if cc.negated]
-        exclude = (
-            frozenset.intersection(*open_sets) if open_sets else frozenset()
-        )
+        exclude = frozenset.intersection(*open_sets) if open_sets else frozenset()
 
         is_open = bool(open_sets)
         chars = (exclude - include) if is_open else (include - exclude)
