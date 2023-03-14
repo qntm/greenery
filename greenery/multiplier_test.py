@@ -5,20 +5,31 @@ import pytest
 from .bound import INF, Bound
 from .multiplier import ONE, PLUS, QM, STAR, ZERO, Multiplier
 
-# mypy: allow-untyped-calls
-# mypy: allow-untyped-defs
 
-
-def test_multiplier_str():
+def test_multiplier_str() -> None:
     assert str(Multiplier(Bound(2), INF)) == "{2,}"
 
 
-def test_bound_qm():
+def test_bound_qm() -> None:
     assert QM.mandatory == Bound(0)
     assert QM.optional == Bound(1)
 
 
-def test_multiplier_common():
+def test_eq() -> None:
+    assert ZERO == Multiplier(Bound(0), Bound(0))
+    assert ONE == Multiplier(Bound(1), Bound(1))
+    assert STAR == Multiplier(Bound(0), INF)
+    assert Multiplier(Bound(1), Bound(2)) == Multiplier(Bound(1), Bound(2))
+
+    assert ZERO != ONE
+    assert STAR != QM
+
+
+def test_eq_het() -> None:
+    assert ZERO != "goldfish"
+
+
+def test_multiplier_common() -> None:
     assert ZERO.common(ZERO) == ZERO
     assert ZERO.common(QM) == ZERO
     assert ZERO.common(ONE) == ZERO
@@ -46,7 +57,7 @@ def test_multiplier_common():
     assert PLUS.common(PLUS) == PLUS
 
 
-def test_multiplier_subtraction():
+def test_multiplier_subtraction() -> None:
     # a{3,4}, a{2,5} -> a{2,3} (with a{1,1}, a{0,2} left over)
     assert Multiplier(Bound(3), Bound(4)).common(
         Multiplier(Bound(2), Bound(5))
@@ -77,7 +88,7 @@ def test_multiplier_subtraction():
     assert Multiplier(Bound(3), INF) - Multiplier(Bound(3), INF) == ZERO
 
 
-def test_multiplier_union():
+def test_multiplier_union() -> None:
     assert ZERO | ZERO == ZERO
     assert ZERO | QM == QM
     assert ZERO | ONE == QM
