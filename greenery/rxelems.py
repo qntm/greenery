@@ -720,16 +720,19 @@ class Pattern:
         # match. It's not productive to iterate over all of these giving every
         # single example. You must supply your own "otherchar" to stand in for
         # all of these possibilities.
-        for string in self.to_fsm().strings():
+        for symbols in self.to_fsm().strings():
             # Have to represent `ANYTHING_ELSE` somehow.
-            if ANYTHING_ELSE in string:
-                if otherchar is None:
-                    raise Exception("Please choose an `otherchar`")
-                string = [
-                    otherchar if char is ANYTHING_ELSE else char for char in string
-                ]
+            chars = []
+            for symbol in symbols:
+                if isinstance(symbol, str):
+                    char = symbol
+                elif otherchar is not None:
+                    char = otherchar
+                else:
+                    raise TypeError("Please choose an `otherchar`")
+                chars.append(char)
 
-            yield "".join(string)
+            yield "".join(chars)
 
     def __iter__(self, /):
         """
