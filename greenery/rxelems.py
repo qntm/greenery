@@ -869,6 +869,10 @@ class Mult:
         unit = self.multiplicand.to_fsm(alphabet)
         # accepts e.g. "ab"
 
+        # Yuck. `mandatory` cannot be infinite: it's just a natural number.
+        # However, it uses `Bound`, which describes co-naturals.
+        assert self.multiplier.mandatory.v is not None
+
         # accepts "ababababab"
         mandatory = unit * self.multiplier.mandatory.v
 
@@ -880,6 +884,9 @@ class Mult:
         else:
             optional = epsilon(alphabet) | unit
             # accepts "(ab)?"
+
+            # Implied by `!= INF`.
+            assert self.multiplier.optional.v is not None
 
             optional *= self.multiplier.optional.v
             # accepts "(ab)?(ab)?"
