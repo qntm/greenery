@@ -190,7 +190,7 @@ class Conc:
         """
         mults = []
 
-        indices = range(min(len(self.mults), len(other.mults)))
+        indices = list(range(min(len(self.mults), len(other.mults))))
         # e.g. [0, 1, 2, 3]
 
         # Work backwards from the end of both `Conc`s instead.
