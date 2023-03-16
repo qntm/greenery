@@ -156,6 +156,7 @@ Special `Bound` representing no limit. Can be used as an upper bound only.
 ### Running tests
 
 ```sh
+pip install -r requirements.dev.txt
 isort .
 black .
 mypy greenery
