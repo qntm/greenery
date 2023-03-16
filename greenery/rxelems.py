@@ -37,7 +37,7 @@ class Conc:
 
     mults: tuple[Mult, ...]
 
-    def __init__(self, *mults):
+    def __init__(self, /, *mults: Mult):
         object.__setattr__(self, "mults", tuple(mults))
 
     def __eq__(self, other):
@@ -406,7 +406,7 @@ class Pattern:
 
     concs: frozenset[Conc]
 
-    def __init__(self, *concs):
+    def __init__(self, /, *concs: Conc):
         object.__setattr__(self, "concs", frozenset(concs))
 
     def __eq__(self, other):
