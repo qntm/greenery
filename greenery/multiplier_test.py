@@ -8,6 +8,9 @@ from .multiplier import ONE, PLUS, QM, STAR, ZERO, Multiplier
 
 def test_multiplier_str() -> None:
     assert str(Multiplier(Bound(2), INF)) == "{2,}"
+    assert str(Multiplier(Bound(0), Bound(0))) == "{0}"
+    assert str(Multiplier(Bound(2), Bound(2))) == "{2}"
+    assert str(Multiplier(Bound(2), Bound(5))) == "{2,5}"
 
 
 def test_bound_qm() -> None:
