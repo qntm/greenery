@@ -7,11 +7,8 @@ from .charclass import Charclass
 from .multiplier import ONE, PLUS, QM, STAR, ZERO, Multiplier
 from .rxelems import Conc, Mult
 
-# mypy: allow-untyped-calls
-# mypy: allow-untyped-defs
 
-
-def test_conc_equality():
+def test_conc_equality() -> None:
     a = Conc(Mult(Charclass("a"), ONE))
     assert a == Conc(Mult(Charclass("a"), ONE))
     assert a != Conc(Mult(Charclass("b"), ONE))
@@ -20,7 +17,7 @@ def test_conc_equality():
     assert a != Conc()
 
 
-def test_conc_str():
+def test_conc_str() -> None:
     assert (
         str(
             Conc(
@@ -38,7 +35,7 @@ def test_conc_str():
     )
 
 
-def test_conc_common():
+def test_conc_common() -> None:
     a = Mult(Charclass("A"), ONE)
     b = Mult(Charclass("B"), ONE)
     c = Mult(Charclass("C"), ONE)
@@ -54,7 +51,7 @@ def test_conc_common():
     assert Conc(a).common(Conc(b), suffix=True) == Conc()
 
 
-def test_conc_dock():
+def test_conc_dock() -> None:
     a = Mult(Charclass("A"), ONE)
     b = Mult(Charclass("B"), ONE)
     x = Mult(Charclass("X"), ONE)
@@ -71,5 +68,5 @@ def test_conc_dock():
         Conc(x2, yplus, z).behead(Conc(x, yplus))
 
 
-def test_mult_reduction_easy():
+def test_mult_reduction_easy() -> None:
     assert Conc(Mult(Charclass("a"), ZERO)).reduce() == Conc()

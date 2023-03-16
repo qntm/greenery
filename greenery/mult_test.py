@@ -6,11 +6,8 @@ from .fsm import ANYTHING_ELSE
 from .multiplier import ONE, PLUS, QM, STAR, Multiplier
 from .rxelems import Mult
 
-# mypy: allow-untyped-calls
-# mypy: allow-untyped-defs
 
-
-def test_mult_equality():
+def test_mult_equality() -> None:
     a = Mult(Charclass("a"), ONE)
     assert a == a
     assert a != Mult(Charclass("b"), ONE)
@@ -18,7 +15,7 @@ def test_mult_equality():
     assert a != Mult(Charclass("a"), Multiplier(Bound(1), Bound(2)))
 
 
-def test_mult_str():
+def test_mult_str() -> None:
     a = Charclass("a")
     assert str(Mult(a, ONE)) == "a"
     assert str(Mult(a, Multiplier(Bound(2), Bound(2)))) == "a{2}"
@@ -36,7 +33,7 @@ def test_mult_str():
     assert str(Mult(DIGIT, Multiplier(Bound(3), Bound(3)))) == "\\d{3}"
 
 
-def test_odd_bug():
+def test_odd_bug() -> None:
     # Odd bug with ([bc]*c)?[ab]*
     int5A = Mult(
         Charclass("bc"),
@@ -57,7 +54,7 @@ def test_odd_bug():
     assert int5C.accepts(["c"])
 
 
-def test_mult_common():
+def test_mult_common() -> None:
     a = Charclass("a")
     assert Mult(a, Multiplier(Bound(3), Bound(4))).common(
         Mult(a, Multiplier(Bound(2), Bound(5)))
@@ -70,7 +67,7 @@ def test_mult_common():
     ) == Mult(a, Multiplier(Bound(2), INF))
 
 
-def test_mult_dock():
+def test_mult_dock() -> None:
     a = Charclass("a")
     assert Mult(a, Multiplier(Bound(4), Bound(5))).dock(
         Mult(a, Multiplier(Bound(3), Bound(3)))
