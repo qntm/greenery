@@ -256,6 +256,28 @@ def test_forin() -> None:
     assert [s for s in parse("abc|def(ghi|jkl)")] == ["abc", "defghi", "defjkl"]
 
 
+def test_brzozowski_reverse():
+    # A continuation of the test of the same name in fsm_test.py
+    brzozowski = parse("(a|b)*a(a|b)")
+    gen = brzozowski.strings()
+    assert next(gen) == "aa"
+    assert next(gen) == "ab"
+    assert next(gen) == "aaa"
+    assert next(gen) == "aab"
+    assert next(gen) == "baa"
+    assert next(gen) == "bab"
+    assert next(gen) == "aaaa"
+
+    b2 = brzozowski.reversed()
+    gen = b2.strings()
+    assert next(gen) == "aa"
+    assert next(gen) == "ba"
+    assert next(gen) == "aaa"
+    assert next(gen) == "aab"
+    assert next(gen) == "baa"
+    assert next(gen) == "bab"
+    assert next(gen) == "aaaa"
+
 ###############################################################################
 # Test cardinality() and len()
 
@@ -369,11 +391,11 @@ def test_even_star_bug1() -> None:
     assert elesscomplex.accepts("a")
     assert not elesscomplex.accepts("aa")
     assert elesscomplex.accepts("aaa")
-    gen = elesscomplex.strings()
-    assert next(gen) == ["a"]
-    assert next(gen) == ["a", "a", "a"]
-    assert next(gen) == ["a", "a", "a", "a", "a"]
-    assert next(gen) == ["a", "a", "a", "a", "a", "a", "a"]
+    gen = elesscomplex_pat.strings()
+    assert next(gen) == "a"
+    assert next(gen) == "aaa"
+    assert next(gen) == "aaaaa"
+    assert next(gen) == "aaaaaaa"
 
 
 def test_binary_3() -> None:

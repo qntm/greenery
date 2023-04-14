@@ -12,6 +12,7 @@ __all__ = (
     "from_fsm",
 )
 
+from collections import deque
 from dataclasses import dataclass
 from enum import Enum, auto
 from functools import reduce
@@ -699,7 +700,35 @@ class Pattern:
         """
         # There is no way to do this other than converting to an FSM, because
         # the `Pattern` may allow duplicate routes, such as "a|a".
-        return self.to_fsm().cardinality()
+        fsm = self.to_fsm()
+        num_strings: dict[state_type, int | None] = {}
+
+        def get_num_strings(state: state_type) -> int:
+            # Many FSMs have at least one oblivion state
+            if state in num_strings:
+                if num_strings[state] is None:  # "computing..."
+                    # Recursion! There are infinitely many strings
+                    # recognised
+                    raise OverflowError(state)
+                return num_strings[state]  # type: ignore
+            if fsm.islive(state):
+                num_strings[state] = None  # i.e. "computing..."
+
+                n = 0
+                if state in fsm.finals:
+                    n += 1
+                if state in fsm.map:
+                    for symbol in fsm.map[state]:
+                        n += get_num_strings(fsm.map[state][symbol])
+                num_strings[state] = n
+
+            else:
+                # Dead state
+                num_strings[state] = 0
+
+            return num_strings[state]  # type: ignore
+
+        return get_num_strings(fsm.initial)
 
     def __len__(self, /) -> int:
         return self.cardinality()
@@ -711,25 +740,49 @@ class Pattern:
         is raised once all such strings have been returned, although a
         regex with a * in may match infinitely many strings.
         """
+        fsm = self.to_fsm()
 
-        # In the case of a regex like "[^abc]", there are infinitely many
-        # (well, a very large finite number of) single characters which will
-        # match. It's not productive to iterate over all of these giving every
-        # single example. You must supply your own "otherchar" to stand in for
-        # all of these possibilities.
-        for symbols in self.to_fsm().strings():
-            # Have to represent `ANYTHING_ELSE` somehow.
-            chars = []
-            for symbol in symbols:
-                if isinstance(symbol, str):
-                    char = symbol
-                elif otherchar is not None:
-                    char = otherchar
-                else:
-                    raise TypeError("Please choose an `otherchar`")
-                chars.append(char)
+        # Many FSMs have "dead states". Once you reach a dead state, you can no
+        # longer reach a final state. Since many strings may end up here, it's
+        # advantageous to constrain our search to live states only.
+        livestates = set(state for state in fsm.states if fsm.islive(state))
 
-            yield "".join(chars)
+        # We store a list of tuples. Each tuple consists of an input string and
+        # the state that this input string leads to. This means we don't have
+        # to run the state machine from the very beginning every time we want
+        # to check a new string.
+        # We use a deque instead of a basic list so that we can discard states
+        # we already visited, saving memory
+        strings: deque[tuple[str, state_type]] = deque()
+
+        # Initial entry (or possibly not, in which case this is a short one)
+        current_state: state_type = fsm.initial
+        current_string: str = ""
+        if current_state in livestates:
+            if current_state in fsm.finals:
+                yield current_string
+            strings.append((current_string, current_state))
+
+        # As long as we have states we still have to visit
+        while strings:
+            # Get the shortest and lexicographically first one
+            current_string, current_state = strings.popleft()
+            if current_state in fsm.map:
+                # For each symbol we can feed in from here
+                # Note that we iterate through the sorted list
+                # to make sure that we always output in lexicographic order
+                for symbol in sorted(fsm.map[current_state]):
+                    # Calculate the next state and next string
+                    next_state = fsm.map[current_state][symbol]
+                    if symbol is ANYTHING_ELSE:
+                        if otherchar is None:
+                            raise TypeError("Please choose an `otherchar`")
+                        symbol = otherchar
+                    next_string = current_string + symbol
+                    if next_state in livestates:
+                        if next_state in fsm.finals:
+                            yield next_string
+                        strings.append((next_string, next_state))
 
     def __iter__(self, /) -> Iterator[str]:
         """

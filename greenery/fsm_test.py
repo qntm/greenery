@@ -1,15 +1,44 @@
 from __future__ import annotations
 
 import pickle
+from collections import deque
 from copy import copy
+from typing import Iterable
 
 import pytest
 
-from .fsm import ANYTHING_ELSE, AnythingElse, Fsm, epsilon, null
+from .fsm import ANYTHING_ELSE, AnythingElse, Fsm, epsilon, null, alpha_type, state_type
 
 FixtureA = Fsm
 
 FixtureB = Fsm
+
+
+def strings(fsm: Fsm) -> Iterable[list[alpha_type]]:
+    """
+    Generates a list of all strings `fsm` accepts.
+    Only intended to test if the Fsm
+    For a commented version of this code see rxelems.Pattern.strings
+    """
+    livestates = set(state for state in fsm.states if fsm.islive(state))
+    strings: deque[tuple[list[alpha_type], state_type]] = deque()
+
+    current_state: state_type = fsm.initial
+    current_string: list[alpha_type] = []
+    if current_state in livestates:
+        if current_state in fsm.finals:
+            yield current_string
+        strings.append((current_string, current_state))
+    while strings:
+        current_string, current_state = strings.popleft()
+        if current_state in fsm.map:
+            for symbol in sorted(fsm.map[current_state]):
+                next_state = fsm.map[current_state][symbol]
+                next_string = current_string + [symbol]
+                if next_state in livestates:
+                    if next_state in fsm.finals:
+                        yield next_string
+                    strings.append((next_string, next_state))
 
 
 def test_addbug() -> None:
@@ -360,7 +389,9 @@ def test_reverse_brzozowski() -> None:
     assert not b2.accepts("bbbbbbbbbbbb")
 
     # Test string generator functionality.
-    gen = b2.strings()
+    # Other tests require this helper function to work correctly, so we test
+    # it here
+    gen = strings(b2)
     assert next(gen) == ["a", "a"]
     assert next(gen) == ["b", "a"]
     assert next(gen) == ["a", "a", "a"]
@@ -477,10 +508,10 @@ def test_difference(a: FixtureA, b: FixtureB) -> None:
         },
     )
 
-    assert list((a ^ a).strings()) == []
-    assert list((b ^ b).strings()) == []
-    assert list((a ^ b).strings()) == [["a"], ["b"]]
-    assert list((aorb ^ a).strings()) == [["b"]]
+    assert (a ^ a).empty()
+    assert (b ^ b).empty()
+    assert list(strings(a ^ b)) == [["a"], ["b"]]
+    assert list(strings(aorb ^ a)) == [["b"]]
 
 
 def test_empty(a: FixtureA, b: FixtureB) -> None:
@@ -603,8 +634,7 @@ def test_dead_default() -> None:
     assert blockquote.islive(3)
     assert blockquote.islive(4)
     assert not blockquote.islive(5)
-    gen = blockquote.strings()
-    assert next(gen) == ["/", "*", "*", "/"]
+    assert next(strings(blockquote)) == ["/", "*", "*", "/"]
 
 
 def test_alphabet_unions() -> None:
@@ -643,26 +673,14 @@ def test_new_set_methods(a: FixtureA, b: FixtureB) -> None:
     # to function exactly as if they were sets of strings (symbol lists), see:
     # https://docs.python.org/3/library/stdtypes.html#set-types-set-frozenset
     # But do they work?
-    assert len(a) == 1
-    assert len((a | b) * 4) == 16
-
-    with pytest.raises(OverflowError):
-        len(a.star())
 
     # "in"
     assert "a" in a
     assert "a" not in b
 
-    # List comprehension!
-    four = (a | b) * 2
-    for string in four:
-        assert string == ["a", "a"]
-        break
-    assert [s for s in four] == [["a", "a"], ["a", "b"], ["b", "a"], ["b", "b"]]
-
     # set.union() imitation
     assert Fsm.union(a, b) == a.union(b)
-    assert len(Fsm.union()) == 0
+    assert Fsm.union().empty()
     assert Fsm.intersection(a, b) == a.intersection(b)
 
     # This takes a little explaining. In general, `a & b & c` is equivalent to
@@ -673,7 +691,7 @@ def test_new_set_methods(a: FixtureA, b: FixtureB) -> None:
     # the empty set. So the only string which `EVERYTHING` actually recognises
     # is the empty string, [] (or "" if you prefer).
     int_none = Fsm.intersection()
-    assert len(int_none) == 1
+    assert len(list(strings(int_none))) == 1
     assert [] in int_none
 
     assert (a | b).difference(a) == Fsm.difference((a | b), a) == (a | b) - a == b
@@ -691,10 +709,10 @@ def test_new_set_methods(a: FixtureA, b: FixtureB) -> None:
     assert (a | b) > a
     assert (a | b) >= a
 
-    assert list(a.concatenate(a, a).strings()) == [["a", "a", "a"]]
-    assert list(a.concatenate().strings()) == [["a"]]
-    assert list(Fsm.concatenate(b, a, b).strings()) == [["b", "a", "b"]]
-    assert list(Fsm.concatenate().strings()) == []
+    assert list(strings(a.concatenate(a, a))) == [["a", "a", "a"]]
+    assert list(strings(a.concatenate())) == [["a"]]
+    assert list(strings(Fsm.concatenate(b, a, b))) == [["b", "a", "b"]]
+    assert Fsm.concatenate().empty()
 
 
 def test_copy(a: FixtureA) -> None:

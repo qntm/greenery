@@ -576,56 +576,6 @@ class Fsm:
         """
         return not self.islive(self.initial)
 
-    def strings(self, /) -> Iterator[list[alpha_type]]:
-        """
-        Generate strings (lists of symbols) that this FSM accepts. Since
-        there may be infinitely many of these we use a generator instead of
-        constructing a static list. Strings will be sorted in order of
-        length and then lexically. This procedure uses arbitrary amounts of
-        memory but is very fast. There may be more efficient ways to do
-        this, that I haven't investigated yet. You can use this in list
-        comprehensions.
-        """
-
-        # Many FSMs have "dead states". Once you reach a dead state, you can no
-        # longer reach a final state. Since many strings may end up here, it's
-        # advantageous to constrain our search to live states only.
-        livestates = set(state for state in self.states if self.islive(state))
-
-        # We store a list of tuples. Each tuple consists of an input string and
-        # the state that this input string leads to. This means we don't have
-        # to run the state machine from the very beginning every time we want
-        # to check a new string.
-        strings: list[tuple[list[alpha_type], state_type]] = []
-
-        # Initial entry (or possibly not, in which case this is a short one)
-        cstate: state_type = self.initial
-        cstring: list[alpha_type] = []
-        if cstate in livestates:
-            if cstate in self.finals:
-                yield cstring
-            strings.append((cstring, cstate))
-
-        # Fixed point calculation
-        i = 0
-        while i < len(strings):
-            cstring, cstate = strings[i]
-            if cstate in self.map:
-                for symbol in sorted(self.map[cstate]):
-                    nstate = self.map[cstate][symbol]
-                    nstring = cstring + [symbol]
-                    if nstate in livestates:
-                        if nstate in self.finals:
-                            yield nstring
-                        strings.append((nstring, nstate))
-            i += 1
-
-    def __iter__(self, /) -> Iterator[list[alpha_type]]:
-        """
-        This allows you to do `for string in fsm1` as a list comprehension!
-        """
-        return self.strings()
-
     def equivalent(self, other: Fsm, /) -> bool:
         """
         Two FSMs are considered equivalent if they recognise the same
@@ -666,47 +616,6 @@ class Fsm:
 
     def __sub__(self, other: Fsm, /) -> Fsm:
         return self.difference(other)
-
-    def cardinality(self, /) -> int:
-        """
-        Consider the FSM as a set of strings and return the cardinality of
-        that set, or raise an OverflowError if there are infinitely many
-        """
-        num_strings: dict[state_type, int | None] = {}
-
-        def get_num_strings(state: state_type) -> int:
-            # Many FSMs have at least one oblivion state
-            if self.islive(state):
-                if state in num_strings:
-                    if num_strings[state] is None:  # "computing..."
-                        # Recursion! There are infinitely many strings
-                        # recognised
-                        raise OverflowError(state)
-                    return num_strings[state]  # type: ignore
-                num_strings[state] = None  # i.e. "computing..."
-
-                n = 0
-                if state in self.finals:
-                    n += 1
-                if state in self.map:
-                    for symbol in self.map[state]:
-                        n += get_num_strings(self.map[state][symbol])
-                num_strings[state] = n
-
-            else:
-                # Dead state
-                num_strings[state] = 0
-
-            return num_strings[state]  # type: ignore
-
-        return get_num_strings(self.initial)
-
-    def __len__(self, /) -> int:
-        """
-        Consider the FSM as a set of strings and return the cardinality of
-        that set, or raise an OverflowError if there are infinitely many
-        """
-        return self.cardinality()
 
     def isdisjoint(self, other: Fsm, /) -> bool:
         """
