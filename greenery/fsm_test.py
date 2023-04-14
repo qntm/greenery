@@ -3,7 +3,7 @@ from __future__ import annotations
 import pickle
 from collections import deque
 from copy import copy
-from typing import Iterable
+from typing import Iterator
 
 import pytest
 
@@ -14,7 +14,7 @@ FixtureA = Fsm
 FixtureB = Fsm
 
 
-def strings(fsm: Fsm) -> Iterable[list[alpha_type]]:
+def strings(fsm: Fsm) -> Iterator[list[alpha_type]]:
     """
     Generates a list of all strings `fsm` accepts.
     Only intended to test if the Fsm

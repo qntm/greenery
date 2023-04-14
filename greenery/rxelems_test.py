@@ -256,7 +256,7 @@ def test_forin() -> None:
     assert [s for s in parse("abc|def(ghi|jkl)")] == ["abc", "defghi", "defjkl"]
 
 
-def test_brzozowski_reverse():
+def test_brzozowski_reverse() -> None:
     # A continuation of the test of the same name in fsm_test.py
     brzozowski = parse("(a|b)*a(a|b)")
     gen = brzozowski.strings()
