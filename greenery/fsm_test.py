@@ -7,7 +7,7 @@ from typing import Iterator
 
 import pytest
 
-from .fsm import ANYTHING_ELSE, AnythingElse, Fsm, epsilon, null, alpha_type, state_type
+from .fsm import ANYTHING_ELSE, AnythingElse, Fsm, alpha_type, epsilon, null, state_type
 
 FixtureA = Fsm
 
