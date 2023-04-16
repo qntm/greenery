@@ -278,6 +278,7 @@ def test_brzozowski_reverse() -> None:
     assert next(gen) == "bab"
     assert next(gen) == "aaaa"
 
+
 ###############################################################################
 # Test cardinality() and len()
 
