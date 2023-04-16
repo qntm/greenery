@@ -920,24 +920,6 @@ def test_derive() -> None:
     assert str(parse("abc|ade").derive("ab")) == "c"
 
 
-def test_bug_36_1() -> None:
-    etc1 = parse(".*").to_fsm()
-    etc2 = parse("s.*").to_fsm()
-    assert etc1.accepts("s")
-    assert etc2.accepts("s")
-    assert not etc1.isdisjoint(etc2)
-    assert not etc2.isdisjoint(etc1)
-
-
-def test_bug_36_2() -> None:
-    etc1 = parse("/etc/.*").to_fsm()
-    etc2 = parse("/etc/something.*").to_fsm()
-    assert etc1.accepts("/etc/something")
-    assert etc2.accepts("/etc/something")
-    assert not etc1.isdisjoint(etc2)
-    assert not etc2.isdisjoint(etc1)
-
-
 def test_isdisjoint() -> None:
     xyzzy = parse("xyz(zy)?")
     xyz = parse("xyz")

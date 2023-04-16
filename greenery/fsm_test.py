@@ -3,7 +3,7 @@ from __future__ import annotations
 import pickle
 from collections import deque
 from copy import copy
-from typing import Iterator
+from typing import Iterator, Literal, Union, FrozenSet
 
 import pytest
 
@@ -12,6 +12,8 @@ from .fsm import ANYTHING_ELSE, AnythingElse, Fsm, epsilon, null, alpha_type, st
 FixtureA = Fsm
 
 FixtureB = Fsm
+
+Symbol = Union[str, FrozenSet[str]]
 
 
 def strings(fsm: Fsm) -> Iterator[list[alpha_type]]:
@@ -32,7 +34,7 @@ def strings(fsm: Fsm) -> Iterator[list[alpha_type]]:
     while strings:
         current_string, current_state = strings.popleft()
         if current_state in fsm.map:
-            for symbol in sorted(fsm.map[current_state]):
+            for symbol in sorted(fsm.map[current_state], key=lambda a: min(a) if isinstance(a, frozenset) else a):
                 next_state = fsm.map[current_state][symbol]
                 next_string = current_string + [symbol]
                 if next_state in livestates:
@@ -79,17 +81,46 @@ def test_builtins() -> None:
     assert not epsilon("a").accepts("a")
 
 
+@pytest.fixture(params=["str", "frozenset", "mixed"])
+def mode(request: pytest.FixtureRequest) -> str:
+    return request.param
+
+
 @pytest.fixture
-def a() -> FixtureA:
+def a_sym(mode: Literal["str", "frozenset", "mixed"]) -> Symbol:
+    if mode == "str":
+        return "a"
+    elif mode == "frozenset":
+        return frozenset({"a", "c"})
+    elif mode == "mixed":
+        return "a"
+    else:
+        raise ValueError(mode)
+
+
+@pytest.fixture
+def b_sym(mode: Literal["str", "frozenset", "mixed"]) -> Symbol:
+    if mode == "str":
+        return "b"
+    elif mode == "frozenset":
+        return frozenset({"b", "d", "e"})
+    elif mode == "mixed":
+        return frozenset({"b", "d", "e"})
+    else:
+        raise ValueError(mode)
+
+
+@pytest.fixture
+def a(a_sym: Symbol, b_sym: Symbol) -> FixtureA:
     a = Fsm(
-        alphabet={"a", "b"},
+        alphabet={a_sym, b_sym},
         states={0, 1, "ob"},
         initial=0,
         finals={1},
         map={
-            0: {"a": 1, "b": "ob"},
-            1: {"a": "ob", "b": "ob"},
-            "ob": {"a": "ob", "b": "ob"},
+            0: {a_sym: 1, b_sym: "ob"},
+            1: {a_sym: "ob", b_sym: "ob"},
+            "ob": {a_sym: "ob", b_sym: "ob"},
         },
     )
     return a
@@ -102,16 +133,16 @@ def test_a(a: FixtureA) -> None:
 
 
 @pytest.fixture
-def b() -> FixtureB:
+def b(a_sym, b_sym) -> FixtureB:
     b = Fsm(
-        alphabet={"a", "b"},
+        alphabet={a_sym, b_sym},
         states={0, 1, "ob"},
         initial=0,
         finals={1},
         map={
-            0: {"a": "ob", "b": 1},
-            1: {"a": "ob", "b": "ob"},
-            "ob": {"a": "ob", "b": "ob"},
+            0: {a_sym: "ob", b_sym: 1},
+            1: {a_sym: "ob", b_sym: "ob"},
+            "ob": {a_sym: "ob", b_sym: "ob"},
         },
     )
     return b
@@ -130,7 +161,7 @@ def test_concatenation_aa(a: FixtureA) -> None:
     assert concAA.accepts("aa")
     assert not concAA.accepts("aaa")
 
-    concAA = epsilon({"a", "b"}) + a + a
+    concAA = epsilon(a.alphabet) + a + a
     assert not concAA.accepts("")
     assert not concAA.accepts("a")
     assert concAA.accepts("aa")
@@ -149,7 +180,7 @@ def test_concatenation_ab(a: FixtureA, b: FixtureB) -> None:
 
 
 def test_alternation_a(a: FixtureA) -> None:
-    altA = a | null({"a", "b"})
+    altA = a | null(a.alphabet)
     assert not altA.accepts("")
     assert altA.accepts("a")
 
@@ -495,23 +526,23 @@ def test_anything_else_acceptance() -> None:
     assert a.accepts("d")
 
 
-def test_difference(a: FixtureA, b: FixtureB) -> None:
+def test_difference(a: FixtureA, b: FixtureB, a_sym: Symbol, b_sym: Symbol) -> None:
     aorb = Fsm(
-        alphabet={"a", "b"},
+        alphabet=a.alphabet,
         states={0, 1, None},
         initial=0,
         finals={1},
         map={
-            0: {"a": 1, "b": 1},
-            1: {"a": None, "b": None},
-            None: {"a": None, "b": None},
+            0: {a_sym: 1, b_sym: 1},
+            1: {a_sym: None, b_sym: None},
+            None: {a_sym: None, b_sym: None},
         },
     )
 
     assert (a ^ a).empty()
     assert (b ^ b).empty()
-    assert list(strings(a ^ b)) == [["a"], ["b"]]
-    assert list(strings(aorb ^ a)) == [["b"]]
+    assert list(strings(a ^ b)) == [[a_sym], [b_sym]]
+    assert list(strings(aorb ^ a)) == [[b_sym]]
 
 
 def test_empty(a: FixtureA, b: FixtureB) -> None:
@@ -637,46 +668,15 @@ def test_dead_default() -> None:
     assert next(strings(blockquote)) == ["/", "*", "*", "/"]
 
 
-def test_alphabet_unions() -> None:
-    # Thanks to sparse maps it should now be possible to compute the union of
-    # FSMs with disagreeing alphabets!
-    a = Fsm(
-        alphabet={"a"},
-        states={0, 1},
-        initial=0,
-        finals={1},
-        map={
-            0: {"a": 1},
-        },
-    )
-
-    b = Fsm(
-        alphabet={"b"},
-        states={0, 1},
-        initial=0,
-        finals={1},
-        map={
-            0: {"b": 1},
-        },
-    )
-
-    assert (a | b).accepts(["a"])
-    assert (a | b).accepts(["b"])
-    assert (a & b).empty()
-    assert (a + b).accepts(["a", "b"])
-    assert (a ^ b).accepts(["a"])
-    assert (a ^ b).accepts(["b"])
-
-
-def test_new_set_methods(a: FixtureA, b: FixtureB) -> None:
+def test_new_set_methods(a: FixtureA, b: FixtureB, a_sym: Symbol, b_sym: Symbol) -> None:
     # A whole bunch of new methods were added to the FSM module to enable FSMs
     # to function exactly as if they were sets of strings (symbol lists), see:
     # https://docs.python.org/3/library/stdtypes.html#set-types-set-frozenset
     # But do they work?
 
     # "in"
-    assert "a" in a
-    assert "a" not in b
+    assert [a_sym] in a
+    assert [a_sym] not in b
 
     # set.union() imitation
     assert Fsm.union(a, b) == a.union(b)
@@ -699,7 +699,7 @@ def test_new_set_methods(a: FixtureA, b: FixtureB) -> None:
         (a | b).difference(a, b)
         == Fsm.difference((a | b), a, b)
         == (a | b) - a - b
-        == null("ab")
+        == null(a.alphabet)
     )
     assert a.symmetric_difference(b) == Fsm.symmetric_difference(a, b) == a ^ b
     assert a.isdisjoint(b)
@@ -709,9 +709,9 @@ def test_new_set_methods(a: FixtureA, b: FixtureB) -> None:
     assert (a | b) > a
     assert (a | b) >= a
 
-    assert list(strings(a.concatenate(a, a))) == [["a", "a", "a"]]
-    assert list(strings(a.concatenate())) == [["a"]]
-    assert list(strings(Fsm.concatenate(b, a, b))) == [["b", "a", "b"]]
+    assert list(strings(a.concatenate(a, a))) == [[a_sym, a_sym, a_sym]]
+    assert list(strings(a.concatenate())) == [[a_sym]]
+    assert list(strings(Fsm.concatenate(b, a, b))) == [[b_sym, a_sym, b_sym]]
     assert Fsm.concatenate().empty()
 
 
@@ -751,65 +751,22 @@ def test_oblivion_crawl(a: FixtureA) -> None:
     assert len((abc - abc).states) == 1
 
 
-def test_concatenate_bug(a: FixtureA) -> None:
+def test_concatenate_bug(a: FixtureA, a_sym: Symbol) -> None:
     # This exposes a defect in Fsm.concatenate.
-    assert Fsm.concatenate(a, epsilon({"a"}), a).accepts("aa")
-    assert Fsm.concatenate(a, epsilon({"a"}), epsilon({"a"}), a).accepts("aa")
+    assert Fsm.concatenate(a, epsilon(a.alphabet), a).accepts("aa")
+    assert Fsm.concatenate(a, epsilon(a.alphabet), epsilon(a.alphabet), a).accepts("aa")
 
 
-def test_derive(a: FixtureA, b: FixtureB) -> None:
+def test_derive(a: FixtureA, b: FixtureB, a_sym: Symbol, b_sym: Symbol) -> None:
     # Just some basic tests because this is mainly a regex thing.
-    assert a.derive("a") == epsilon({"a", "b"})
-    assert a.derive("b") == null({"a", "b"})
+    assert a.derive([a_sym]) == epsilon(a.alphabet)
+    assert a.derive([b_sym]) == null(a.alphabet)
 
     with pytest.raises(KeyError):
         a.derive("c")
 
-    assert (a * 3).derive("a") == a * 2
-    assert (a.star() - epsilon({"a", "b"})).derive("a") == a.star()
-
-
-def test_bug_36() -> None:
-    etc1 = Fsm(
-        alphabet={ANYTHING_ELSE},
-        states={0},
-        initial=0,
-        finals={0},
-        map={0: {ANYTHING_ELSE: 0}},
-    )
-    etc2 = Fsm(
-        alphabet={"s", ANYTHING_ELSE},
-        states={0, 1},
-        initial=0,
-        finals={1},
-        map={0: {"s": 1}, 1: {"s": 1, ANYTHING_ELSE: 1}},
-    )
-    both = etc1 & etc2
-    assert etc1.accepts(["s"])
-    assert etc2.accepts(["s"])
-    assert both.alphabet == {ANYTHING_ELSE, "s"}
-    assert both.accepts(["s"])
-
-
-def test_add_anything_else() -> None:
-    # [^a]
-    fsm1 = Fsm(
-        alphabet={"a", ANYTHING_ELSE},
-        states={0, 1},
-        initial=0,
-        finals={1},
-        map={0: {ANYTHING_ELSE: 1}},
-    )
-
-    # [^b]
-    fsm2 = Fsm(
-        alphabet={"b", ANYTHING_ELSE},
-        states={0, 1},
-        initial=0,
-        finals={1},
-        map={0: {ANYTHING_ELSE: 1}},
-    )
-    assert (fsm1 + fsm2).accepts("ba")
+    assert (a * 3).derive([a_sym]) == a * 2
+    assert (a.star() - epsilon(a.alphabet)).derive([a_sym]) == a.star()
 
 
 def test_anything_else_singleton() -> None:

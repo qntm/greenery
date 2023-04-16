@@ -24,7 +24,7 @@ from typing import (
     Iterator,
     Mapping,
     TypeVar,
-    Union,
+    Union, FrozenSet,
 )
 
 
@@ -77,7 +77,7 @@ class OblivionError(Exception):
     pass
 
 
-alpha_type = Union[str, AnythingElse]
+alpha_type = Union[str, FrozenSet[str], AnythingElse]
 
 
 state_type = Union[int, str, None]
@@ -175,8 +175,14 @@ class Fsm:
         """
         state = self.initial
         for symbol in input:
-            if ANYTHING_ELSE in self.alphabet and symbol not in self.alphabet:
-                symbol = ANYTHING_ELSE
+            if symbol not in self.alphabet:
+                for actual_symbol in self.alphabet:
+                    if actual_symbol is not ANYTHING_ELSE and symbol in actual_symbol:
+                        symbol = actual_symbol
+                        break
+                else:
+                    if ANYTHING_ELSE in self.alphabet:
+                        symbol = ANYTHING_ELSE
 
             # Missing transition = transition to dead state
             if not (state in self.map and symbol in self.map[state]):
@@ -215,7 +221,7 @@ class Fsm:
     def __str__(self, /) -> str:
         rows = []
 
-        sorted_alphabet = sorted(self.alphabet)
+        sorted_alphabet = sorted(self.alphabet, key=lambda a: min(a) if isinstance(a, frozenset) else a)
 
         # top row
         row = ["", "name", "final?"]
@@ -260,7 +266,8 @@ class Fsm:
         """
         Concatenate arbitrarily many finite state machines together.
         """
-        alphabet = set().union(*[fsm.alphabet for fsm in fsms])
+        alphabet = fsms[0].alphabet if fsms else frozenset()
+        assert all(fsm.alphabet == alphabet for fsm in fsms), "All alphabets have to be the same"
 
         def connect_all(
             i: int,
@@ -311,11 +318,7 @@ class Fsm:
                 if substate in fsm.map:
                     if symbol in fsm.map[substate]:
                         next.update(connect_all(i, fsm.map[substate][symbol]))
-                    elif (
-                        ANYTHING_ELSE in fsm.map[substate]
-                        and symbol not in fsm.alphabet
-                    ):
-                        next.update(connect_all(i, fsm.map[substate][ANYTHING_ELSE]))
+                    assert symbol in fsm.alphabet
             if len(next) == 0:
                 raise OblivionError
             return frozenset(next)
@@ -705,9 +708,7 @@ class Fsm:
             state = self.initial
             for symbol in input:
                 if symbol not in self.alphabet:
-                    if ANYTHING_ELSE not in self.alphabet:
-                        raise KeyError(symbol)
-                    symbol = ANYTHING_ELSE
+                    raise KeyError(symbol)
 
                 # Missing transition = transition to dead state
                 if not (state in self.map and symbol in self.map[state]):
@@ -771,7 +772,8 @@ def parallel(
     meta-FSM. To determine whether a state in the larger FSM is final, pass
     all of the finality statuses (e.g. [True, False, False] to `test`.
     """
-    alphabet = set().union(*[fsm.alphabet for fsm in fsms])
+    alphabet = fsms[0].alphabet if fsms else frozenset()
+    assert all(fsm.alphabet == alphabet for fsm in fsms), "All alphabets have to be the same"
 
     initial: Mapping[int, state_type] = dict(
         [(i, fsm.initial) for i, fsm in enumerate(fsms)]
@@ -785,17 +787,13 @@ def parallel(
     ) -> Mapping[int, state_type]:
         next = {}
         for i in range(len(fsms)):
-            actual_symbol: alpha_type
-            if symbol not in fsms[i].alphabet and ANYTHING_ELSE in fsms[i].alphabet:
-                actual_symbol = ANYTHING_ELSE
-            else:
-                actual_symbol = symbol
+            assert symbol in fsms[i].alphabet # This replaces code that once was needed to fix bug #36
             if (
                 i in current
                 and current[i] in fsms[i].map
-                and actual_symbol in fsms[i].map[current[i]]
+                and symbol in fsms[i].map[current[i]]
             ):
-                next[i] = fsms[i].map[current[i]][actual_symbol]
+                next[i] = fsms[i].map[current[i]][symbol]
         if len(next.keys()) == 0:
             raise OblivionError
         return next
@@ -837,7 +835,7 @@ def crawl(
 
         # compute map for this state
         map[i] = {}
-        for symbol in sorted(alphabet):
+        for symbol in sorted(alphabet, key=lambda t: min(t) if isinstance(t, frozenset) else t):
             try:
                 next = follow(state, symbol)
 

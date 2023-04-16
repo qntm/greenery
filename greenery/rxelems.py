@@ -164,6 +164,7 @@ class Conc:
 
     def alphabet(self, /) -> frozenset[str | AnythingElse]:
         components = self.mults
+        # TODO: Alphabet union
         return frozenset().union(*(c.alphabet() for c in components)) | {ANYTHING_ELSE}
 
     def empty(self, /) -> bool:
@@ -408,6 +409,7 @@ class Pattern:
 
     def alphabet(self, /) -> frozenset[str | AnythingElse]:
         components = self.concs
+        # TODO: Alphabet union
         return frozenset().union(*(c.alphabet() for c in components)) | {ANYTHING_ELSE}
 
     def empty(self, /) -> bool:
@@ -415,6 +417,7 @@ class Pattern:
 
     def intersection(self, other: Pattern, /) -> Pattern:
         # A deceptively simple method for an astoundingly difficult operation
+        # TODO: Alphabet union
         alphabet = self.alphabet() | other.alphabet()
 
         # Which means that we can build finite state machines sharing that
@@ -430,6 +433,7 @@ class Pattern:
         Return a regular expression which matches any string which `self`
         matches but none of the strings which `other` matches.
         """
+        # TODO: Alphabet union
         alphabet = frozenset().union(*(elem.alphabet() for elem in elems))
         return from_fsm(Fsm.difference(*(elem.to_fsm(alphabet) for elem in elems)))
 
@@ -577,6 +581,7 @@ class Pattern:
         Return a regular expression matching only the strings recognised by
         `self` or `other` but not both.
         """
+        # TODO: Alphabet union
         alphabet = frozenset().union(*(elem.alphabet() for elem in elems))
         return from_fsm(
             Fsm.symmetric_difference(*(elem.to_fsm(alphabet) for elem in elems))
@@ -646,7 +651,9 @@ class Pattern:
         Note that in the general case this is actually quite an intensive
         calculation, but far from unsolvable, as we demonstrate here:
         """
-        return self.to_fsm().equivalent(other.to_fsm())
+        # TODO: Alphabet union
+        alphabet = self.alphabet() | other.alphabet()
+        return self.to_fsm(alphabet).equivalent(other.to_fsm(alphabet))
 
     def times(self, multiplier: Multiplier, /) -> Pattern:
         """
@@ -677,9 +684,12 @@ class Pattern:
         Treat `self` and `other` as sets of strings and see if they are
         disjoint
         """
-        return self.to_fsm().isdisjoint(other.to_fsm())
+        # TODO: Alphabet union
+        alphabet = self.alphabet() | other.alphabet()
+        return self.to_fsm(alphabet).isdisjoint(other.to_fsm(alphabet))
 
     def matches(self, string: str, /) -> bool:
+        # TODO: accepts call with string
         return self.to_fsm().accepts(string)
 
     def __contains__(self, string: str, /) -> bool:
