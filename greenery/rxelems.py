@@ -12,7 +12,7 @@ __all__ = (
     "from_fsm",
 )
 
-from collections import deque
+from collections import deque, defaultdict
 from dataclasses import dataclass
 from enum import Enum, auto
 from functools import reduce
@@ -20,8 +20,34 @@ from typing import Iterable, Iterator
 
 from .bound import INF, Bound
 from .charclass import NULLCHARCLASS, Charclass
-from .fsm import ANYTHING_ELSE, AnythingElse, Fsm, epsilon, null, state_type
+from .fsm import ANYTHING_ELSE, AnythingElse, Fsm, epsilon, null, state_type, alpha_type, alphabet_lookup, all_symbols
 from .multiplier import ONE, QM, STAR, ZERO, Multiplier
+
+
+def alphabet_union(*alphabets: frozenset[alpha_type]) -> frozenset[alpha_type]:
+    """
+    Joins together multiple alphabets. This is non-trivial operation because
+     we allow CharSets inside the alphabets.
+     
+     The central property that needs to be preserved is that an Alphabet has
+      no internal overlap between any symbols.
+      
+    Additionally, we need to preserver that all symbols that are in different
+     groups in one of the alphabets in the input are in differnet groups in
+     the output.
+    """
+    symbols_to_groups = {
+        s: tuple(alphabet_lookup(a, s) for a in alphabets)
+        for a in alphabets
+        for s in all_symbols(a)
+    }
+    unique_groups = defaultdict(set)
+    for s, g in symbols_to_groups.items():
+        unique_groups[g].add(s)
+    return frozenset(
+        (next(iter(g)) if len(g) == 1 else frozenset(g))
+        for g in unique_groups.values()
+    )
 
 
 @dataclass(frozen=True)
@@ -164,8 +190,7 @@ class Conc:
 
     def alphabet(self, /) -> frozenset[str | AnythingElse]:
         components = self.mults
-        # TODO: Alphabet union
-        return frozenset().union(*(c.alphabet() for c in components)) | {ANYTHING_ELSE}
+        return alphabet_union(*(c.alphabet() for c in components)) | {ANYTHING_ELSE}
 
     def empty(self, /) -> bool:
         return any(mult.empty() for mult in self.mults)
@@ -280,6 +305,11 @@ def from_fsm(f: Fsm) -> Pattern:
             continue
         if isinstance(symbol, str) and len(symbol) == 1:
             continue
+        if isinstance(symbol, frozenset) and all(
+            isinstance(s, str) and len(s) == 1
+            for s in symbol
+        ):
+            continue
         raise Exception(f"Symbol {symbol!r} cannot be used in a regular expression")
 
     outside = _Outside.TOKEN
@@ -304,7 +334,7 @@ def from_fsm(f: Fsm) -> Pattern:
     while i < len(states):
         current = states[i]
         if current in f.map:
-            for symbol in sorted(f.map[current]):
+            for symbol in f.map[current]:
                 next = f.map[current][symbol]
                 if next not in states:
                     states.append(next)
@@ -331,13 +361,14 @@ def from_fsm(f: Fsm) -> Pattern:
                 charclass = ~Charclass(
                     frozenset(
                         s  # type: ignore[misc]
-                        for s in f.alphabet
+                        for s in all_symbols(f.alphabet)
                         if s is not ANYTHING_ELSE
                     )
                 )
             else:
-                assert isinstance(symbol, str)
-                charclass = Charclass(frozenset((symbol,)))
+                charclass = Charclass(frozenset((symbol,))
+                                      if not isinstance(symbol, frozenset)
+                                      else symbol)
 
             brz[a][b] = Pattern(*brz[a][b].concs, Conc(Mult(charclass, ONE))).reduce()
 
@@ -414,16 +445,14 @@ class Pattern:
 
     def alphabet(self, /) -> frozenset[str | AnythingElse]:
         components = self.concs
-        # TODO: Alphabet union
-        return frozenset().union(*(c.alphabet() for c in components)) | {ANYTHING_ELSE}
+        return alphabet_union(*(c.alphabet() for c in components)) | {ANYTHING_ELSE}
 
     def empty(self, /) -> bool:
         return all(conc.empty() for conc in self.concs)
 
     def intersection(self, other: Pattern, /) -> Pattern:
         # A deceptively simple method for an astoundingly difficult operation
-        # TODO: Alphabet union
-        alphabet = self.alphabet() | other.alphabet()
+        alphabet = alphabet_union(self.alphabet(), other.alphabet())
 
         # Which means that we can build finite state machines sharing that
         # alphabet
@@ -438,8 +467,7 @@ class Pattern:
         Return a regular expression which matches any string which `self`
         matches but none of the strings which `other` matches.
         """
-        # TODO: Alphabet union
-        alphabet = frozenset().union(*(elem.alphabet() for elem in elems))
+        alphabet = alphabet_union(*(elem.alphabet() for elem in elems))
         return from_fsm(Fsm.difference(*(elem.to_fsm(alphabet) for elem in elems)))
 
     def __sub__(self, other: Pattern, /) -> Pattern:
@@ -586,8 +614,7 @@ class Pattern:
         Return a regular expression matching only the strings recognised by
         `self` or `other` but not both.
         """
-        # TODO: Alphabet union
-        alphabet = frozenset().union(*(elem.alphabet() for elem in elems))
+        alphabet = alphabet_union(*(elem.alphabet() for elem in elems))
         return from_fsm(
             Fsm.symmetric_difference(*(elem.to_fsm(alphabet) for elem in elems))
         )
@@ -656,8 +683,7 @@ class Pattern:
         Note that in the general case this is actually quite an intensive
         calculation, but far from unsolvable, as we demonstrate here:
         """
-        # TODO: Alphabet union
-        alphabet = self.alphabet() | other.alphabet()
+        alphabet = alphabet_union(self.alphabet(), other.alphabet())
         return self.to_fsm(alphabet).equivalent(other.to_fsm(alphabet))
 
     def times(self, multiplier: Multiplier, /) -> Pattern:
@@ -689,8 +715,7 @@ class Pattern:
         Treat `self` and `other` as sets of strings and see if they are
         disjoint
         """
-        # TODO: Alphabet union
-        alphabet = self.alphabet() | other.alphabet()
+        alphabet = alphabet_union(self.alphabet(), other.alphabet())
         return self.to_fsm(alphabet).isdisjoint(other.to_fsm(alphabet))
 
     def matches(self, string: str, /) -> bool:
@@ -734,7 +759,8 @@ class Pattern:
                     n += 1
                 if state in fsm.map:
                     for symbol in fsm.map[state]:
-                        n += get_num_strings(fsm.map[state][symbol])
+                        n += get_num_strings(fsm.map[state][symbol]) * \
+                             (len(symbol) if isinstance(symbol, frozenset) else 1)
                 num_strings[state] = n
 
             else:
@@ -786,9 +812,9 @@ class Pattern:
                 # For each symbol we can feed in from here
                 # Note that we iterate through the sorted list
                 # to make sure that we always output in lexicographic order
-                for symbol in sorted(fsm.map[current_state]):
+                for symbol in sorted(all_symbols(frozenset(fsm.map[current_state]))):
                     # Calculate the next state and next string
-                    next_state = fsm.map[current_state][symbol]
+                    next_state = fsm.map[current_state][alphabet_lookup(fsm.alphabet, symbol)]
                     if symbol is ANYTHING_ELSE:
                         if otherchar is None:
                             raise TypeError("Please choose an `otherchar`")
@@ -862,8 +888,7 @@ class Mult:
         return Mult(NULLCHARCLASS, ZERO)
 
     def alphabet(self, /) -> frozenset[str | AnythingElse]:
-        components = (self.multiplicand,)
-        return frozenset().union(*(c.alphabet() for c in components)) | {ANYTHING_ELSE}
+        return self.multiplicand.alphabet() | {ANYTHING_ELSE}
 
     def empty(self, /) -> bool:
         return self.multiplicand.empty() and self.multiplier.min > Bound(0)

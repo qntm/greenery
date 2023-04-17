@@ -17,7 +17,7 @@ __all__ = (
 from dataclasses import dataclass
 from typing import ClassVar, Iterable, Mapping
 
-from .fsm import ANYTHING_ELSE, AnythingElse, Fsm, alpha_type, state_type
+from .fsm import ANYTHING_ELSE, AnythingElse, Fsm, alpha_type, state_type, alphabet_lookup, all_symbols
 
 
 @dataclass(frozen=True, init=False)
@@ -185,13 +185,14 @@ class Charclass:
         # If negated, make a singular FSM accepting any other characters
         if self.negated:
             map = {
-                0: dict([(symbol, 1) for symbol in alphabet - self.chars]),
+                0: {alphabet_lookup(alphabet, symbol): 1
+                    for symbol in set(all_symbols(alphabet)) - self.chars},
             }
 
         # If normal, make a singular FSM accepting only these characters
         else:
             map = {
-                0: dict([(symbol, 1) for symbol in self.chars]),
+                0: {alphabet_lookup(alphabet, symbol): 1 for symbol in self.chars},
             }
 
         return Fsm(
@@ -215,8 +216,10 @@ class Charclass:
         # `Charclass`es cannot be reduced.
         return self
 
-    def alphabet(self, /) -> frozenset[str | AnythingElse]:
-        return self.chars | {ANYTHING_ELSE}
+    def alphabet(self, /) -> frozenset[alpha_type]:
+        return frozenset((frozenset(self.chars)
+                          if len(self.chars) != 1
+                          else next(iter(self.chars)), ANYTHING_ELSE))
 
     def empty(self, /) -> bool:
         return len(self.chars) == 0 and not self.negated

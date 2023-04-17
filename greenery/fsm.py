@@ -84,6 +84,26 @@ def alphabet_sort_key(t: alpha_type) -> Union[str, AnythingElse]:
     return min(t) if isinstance(t, frozenset) else t
 
 
+def alphabet_lookup(alphabet: frozenset[alpha_type], s: str) -> alpha_type:
+    for g in alphabet:
+        if g == s:
+            return g
+        elif isinstance(g, frozenset) and s in g:
+            return g
+    else:
+        if ANYTHING_ELSE in alphabet:
+            return ANYTHING_ELSE
+        else:
+            raise KeyError(s)
+
+
+def all_symbols(alphabet: frozenset[alpha_type]) -> Iterable[Union[str, AnythingElse]]:
+    for g in alphabet:
+        if isinstance(g, frozenset):
+            yield from g
+        else:
+            yield g
+
 state_type = Union[int, str, None]
 
 M = TypeVar("M")
@@ -143,6 +163,15 @@ class Fsm:
             raise Exception(f"Initial state {initial!r} must be one of {states!r}")
         if not finals.issubset(states):
             raise Exception(f"Final states {finals!r} must be a subset of {states!r}")
+        for symbol in alphabet:
+            if symbol is ANYTHING_ELSE:
+                continue
+            if isinstance(symbol, str):
+                continue
+            if isinstance(symbol, frozenset) and len(symbol) > 1:
+                if all(isinstance(s, str) for s in symbol):
+                    continue
+            raise Exception(f"Invalid symbol in alphabet: {symbol!r}")
         for state, _state_trans in map.items():
             if state not in states:
                 raise Exception(f"Transition from unknown state {state!r}")
@@ -168,7 +197,7 @@ class Fsm:
         object.__setattr__(self, "finals", finals)
         object.__setattr__(self, "map", map)
 
-    def accepts(self, input: Iterable[alpha_type], /) -> bool:
+    def accepts(self, input: Iterable[alpha_type], /, *, auto_lookup: bool = True) -> bool:
         """
         Test whether the present FSM accepts the supplied string (iterable
         of symbols). Equivalently, consider `self` as a possibly-infinite
@@ -179,14 +208,8 @@ class Fsm:
         """
         state = self.initial
         for symbol in input:
-            if symbol not in self.alphabet:
-                for actual_symbol in self.alphabet:
-                    if actual_symbol is not ANYTHING_ELSE and symbol in actual_symbol:
-                        symbol = actual_symbol
-                        break
-                else:
-                    if ANYTHING_ELSE in self.alphabet:
-                        symbol = ANYTHING_ELSE
+            if symbol not in self.alphabet and auto_lookup:
+                symbol = alphabet_lookup(self.alphabet, symbol)
 
             # Missing transition = transition to dead state
             if not (state in self.map and symbol in self.map[state]):
