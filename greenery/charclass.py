@@ -17,7 +17,7 @@ __all__ = (
 from dataclasses import dataclass
 from typing import ClassVar, Iterable, Mapping
 
-from .fsm import ANYTHING_ELSE, AnythingElse, Fsm
+from .fsm import ANYTHING_ELSE, AnythingElse, Fsm, alpha_type, state_type
 
 
 @dataclass(frozen=True, init=False)
@@ -178,7 +178,7 @@ class Charclass:
     ) -> Fsm:
         alphabet = self.alphabet() if alphabet is None else frozenset(alphabet)
 
-        map: dict[int | str | None, dict[str | AnythingElse, int | str | None]]
+        map: dict[state_type, dict[alpha_type, state_type]]
 
         # 0 is initial, 1 is final
 

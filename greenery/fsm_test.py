@@ -3,11 +3,20 @@ from __future__ import annotations
 import pickle
 from collections import deque
 from copy import copy
-from typing import Iterator, Literal, Union, FrozenSet
+from typing import FrozenSet, Iterator, Literal, Union, cast
 
 import pytest
 
-from .fsm import ANYTHING_ELSE, AnythingElse, Fsm, alpha_type, epsilon, null, state_type
+from .fsm import (
+    ANYTHING_ELSE,
+    AnythingElse,
+    Fsm,
+    alpha_type,
+    alphabet_sort_key,
+    epsilon,
+    null,
+    state_type,
+)
 
 FixtureA = Fsm
 
@@ -34,7 +43,7 @@ def strings(fsm: Fsm) -> Iterator[list[alpha_type]]:
     while strings:
         current_string, current_state = strings.popleft()
         if current_state in fsm.map:
-            for symbol in sorted(fsm.map[current_state], key=lambda a: min(a) if isinstance(a, frozenset) else a):
+            for symbol in sorted(fsm.map[current_state], key=alphabet_sort_key):
                 next_state = fsm.map[current_state][symbol]
                 next_string = current_string + [symbol]
                 if next_state in livestates:
@@ -83,7 +92,7 @@ def test_builtins() -> None:
 
 @pytest.fixture(params=["str", "frozenset", "mixed"])
 def mode(request: pytest.FixtureRequest) -> str:
-    return request.param
+    return cast(str, request.param)
 
 
 @pytest.fixture
@@ -133,7 +142,7 @@ def test_a(a: FixtureA) -> None:
 
 
 @pytest.fixture
-def b(a_sym, b_sym) -> FixtureB:
+def b(a_sym: Symbol, b_sym: Symbol) -> FixtureB:
     b = Fsm(
         alphabet={a_sym, b_sym},
         states={0, 1, "ob"},
@@ -668,7 +677,9 @@ def test_dead_default() -> None:
     assert next(strings(blockquote)) == ["/", "*", "*", "/"]
 
 
-def test_new_set_methods(a: FixtureA, b: FixtureB, a_sym: Symbol, b_sym: Symbol) -> None:
+def test_new_set_methods(
+    a: FixtureA, b: FixtureB, a_sym: Symbol, b_sym: Symbol
+) -> None:
     # A whole bunch of new methods were added to the FSM module to enable FSMs
     # to function exactly as if they were sets of strings (symbol lists), see:
     # https://docs.python.org/3/library/stdtypes.html#set-types-set-frozenset

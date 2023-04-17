@@ -20,11 +20,11 @@ from typing import (
     Any,
     Callable,
     Collection,
+    FrozenSet,
     Iterable,
-    Iterator,
     Mapping,
     TypeVar,
-    Union, FrozenSet,
+    Union,
 )
 
 
@@ -78,6 +78,10 @@ class OblivionError(Exception):
 
 
 alpha_type = Union[str, FrozenSet[str], AnythingElse]
+
+
+def alphabet_sort_key(t: alpha_type) -> Union[str, AnythingElse]:
+    return min(t) if isinstance(t, frozenset) else t
 
 
 state_type = Union[int, str, None]
@@ -221,7 +225,7 @@ class Fsm:
     def __str__(self, /) -> str:
         rows = []
 
-        sorted_alphabet = sorted(self.alphabet, key=lambda a: min(a) if isinstance(a, frozenset) else a)
+        sorted_alphabet = sorted(self.alphabet, key=alphabet_sort_key)
 
         # top row
         row = ["", "name", "final?"]
@@ -267,7 +271,8 @@ class Fsm:
         Concatenate arbitrarily many finite state machines together.
         """
         alphabet = fsms[0].alphabet if fsms else frozenset()
-        assert all(fsm.alphabet == alphabet for fsm in fsms), "All alphabets have to be the same"
+        if not all(fsm.alphabet == alphabet for fsm in fsms):
+            raise Exception("All alphabets have to be the same")
 
         def connect_all(
             i: int,
@@ -773,7 +778,8 @@ def parallel(
     all of the finality statuses (e.g. [True, False, False] to `test`.
     """
     alphabet = fsms[0].alphabet if fsms else frozenset()
-    assert all(fsm.alphabet == alphabet for fsm in fsms), "All alphabets have to be the same"
+    if not all(fsm.alphabet == alphabet for fsm in fsms):
+        raise Exception("All alphabets have to be the same")
 
     initial: Mapping[int, state_type] = dict(
         [(i, fsm.initial) for i, fsm in enumerate(fsms)]
@@ -787,7 +793,8 @@ def parallel(
     ) -> Mapping[int, state_type]:
         next = {}
         for i in range(len(fsms)):
-            assert symbol in fsms[i].alphabet # This replaces code that once was needed to fix bug #36
+            # This replaces code that once was needed to fix bug #36
+            assert symbol in fsms[i].alphabet
             if (
                 i in current
                 and current[i] in fsms[i].map
@@ -835,7 +842,7 @@ def crawl(
 
         # compute map for this state
         map[i] = {}
-        for symbol in sorted(alphabet, key=lambda t: min(t) if isinstance(t, frozenset) else t):
+        for symbol in sorted(alphabet, key=alphabet_sort_key):
             try:
                 next = follow(state, symbol)
 

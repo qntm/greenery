@@ -329,9 +329,14 @@ def from_fsm(f: Fsm) -> Pattern:
             b = f.map[a][symbol]
             if symbol is ANYTHING_ELSE:
                 charclass = ~Charclass(
-                    frozenset(s for s in f.alphabet if s is not ANYTHING_ELSE)
+                    frozenset(
+                        s  # type: ignore[misc]
+                        for s in f.alphabet
+                        if s is not ANYTHING_ELSE
+                    )
                 )
             else:
+                assert isinstance(symbol, str)
                 charclass = Charclass(frozenset((symbol,)))
 
             brz[a][b] = Pattern(*brz[a][b].concs, Conc(Mult(charclass, ONE))).reduce()
@@ -788,6 +793,7 @@ class Pattern:
                         if otherchar is None:
                             raise TypeError("Please choose an `otherchar`")
                         symbol = otherchar
+                    assert isinstance(symbol, str)
                     next_string = current_string + symbol
                     if next_state in livestates:
                         if next_state in fsm.finals:
