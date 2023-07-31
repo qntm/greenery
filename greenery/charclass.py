@@ -183,20 +183,17 @@ class Charclass:
         # 0 is initial, 1 is final, 2 is dead
 
         # If negated, make a singular FSM accepting any other characters
-        if self.negated:
-            map = {
-                0: dict([(symbol, 1) for symbol in alphabet - self.chars]),
-                1: dict([(symbol, 2) for symbol in alphabet - self.chars]),
-                2: dict([(symbol, 2) for symbol in alphabet - self.chars]),
-            }
-
         # If normal, make a singular FSM accepting only these characters
-        else:
-            map = {
-                0: dict([(symbol, 1) for symbol in self.chars]),
-                1: dict([(symbol, 2) for symbol in self.chars]),
-                2: dict([(symbol, 2) for symbol in self.chars]),
-            }
+        map = {
+            0: dict([
+                (
+                    symbol,
+                    2 if ((symbol in self.chars) == self.negated) else 1
+                ) for symbol in alphabet
+            ]),
+            1: dict([(symbol, 2) for symbol in alphabet]),
+            2: dict([(symbol, 2) for symbol in alphabet]),
+        }
 
         return Fsm(
             alphabet=set(alphabet),

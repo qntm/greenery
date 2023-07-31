@@ -218,7 +218,6 @@ def test_crawl_reduction() -> None:
     # Notice how states 2 and 3 behave identically. When resolved together,
     # states 1 and 2&3 also behave identically, so they, too should be resolved
     # (this is impossible to spot before 2 and 3 have been combined).
-    # Finally, the oblivion state should be omitted.
     merged = Fsm(
         alphabet={"0", "1"},
         states={1, 2, 3, 4, "oblivion"},
@@ -232,17 +231,18 @@ def test_crawl_reduction() -> None:
             "oblivion": {"0": "oblivion", "1": "oblivion"},
         },
     ).reduce()
-    assert len(merged.states) == 2
+    print(merged)
+    assert len(merged.states) == 3
 
 
 def test_bug_28() -> None:
     # This is (ab*)* and it caused some defects.
     abstar = Fsm(
         alphabet={"a", "b"},
-        states={0, 1},
+        states={0, 1, 2},
         initial=0,
         finals={1},
-        map={0: {"a": 1}, 1: {"b": 1}},
+        map={0: {"a": 1, "b": 2}, 1: {"a": 2, "b": 1}, 2: {"a": 2, "b": 2}},
     )
     assert abstar.accepts("a")
     assert not abstar.accepts("b")
@@ -557,8 +557,7 @@ def test_eq_ne_het(a: FixtureA, other: object) -> None:
 
 def test_dead_default() -> None:
     """
-    You may now omit a transition, or even an entire state, from the map.
-    This affects every usage of `Fsm.map`.
+    Old test from when you used to be able to have sparse maps
     """
     blockquote = Fsm(
         alphabet={"/", "*", ANYTHING_ELSE},
@@ -566,8 +565,8 @@ def test_dead_default() -> None:
         initial=0,
         finals={4},
         map={
-            0: {"/": 1},
-            1: {"*": 2},
+            0: {"/": 1, ANYTHING_ELSE: 5, "*": 5},
+            1: {"/": 5, ANYTHING_ELSE: 5, "*": 2},
             2: {"/": 2, ANYTHING_ELSE: 2, "*": 3},
             3: {"/": 4, ANYTHING_ELSE: 2, "*": 3},
             4: {"/": 5, ANYTHING_ELSE: 5, "*": 5},
@@ -580,8 +579,8 @@ def test_dead_default() -> None:
         str(blockquote)
         == "  name final? * / ANYTHING_ELSE \n"
         + "--------------------------------\n"
-        + "* 0    False    1               \n"
-        + "  1    False  2                 \n"
+        + "* 0    False  5 1 5             \n"
+        + "  1    False  2 5 5             \n"
         + "  2    False  3 2 2             \n"
         + "  3    False  3 4 2             \n"
         + "  4    True   5 5 5             \n"
@@ -714,26 +713,26 @@ def test_copy(a: FixtureA) -> None:
 
 
 def test_oblivion_crawl(a: FixtureA) -> None:
-    # When crawling a new FSM, we should avoid generating an oblivion state.
-    # `abc` has no oblivion state... all the results should not as well!
+    # Old test from when we used to have a suppressed/secret "oblivion state"
     abc = Fsm(
         alphabet={"a", "b", "c"},
-        states={0, 1, 2, 3},
+        states={0, 1, 2, 3, 4},
         initial=0,
         finals={3},
         map={
-            0: {"a": 1},
-            1: {"b": 2},
-            2: {"c": 3},
-            3: {}
+            0: {"a": 1, "b": 2, "c": 4},
+            1: {"a": 4, "b": 2, "c": 4},
+            2: {"a": 4, "b": 4, "c": 3},
+            3: {"a": 4, "b": 4, "c": 4},
+            4: {"a": 4, "b": 4, "c": 4},
         },
     )
-    assert len((abc + abc).states) == 7
-    assert len(abc.star().states) == 3
-    assert len((abc * 3).states) == 10
-    assert len(abc.reversed().states) == 4
-    assert len((abc | abc).states) == 4
-    assert len((abc & abc).states) == 4
+    assert len((abc + abc).states) == 8
+    assert len(abc.star().states) == 4
+    assert len((abc * 3).states) == 11
+    assert len(abc.reversed().states) == 5
+    assert len((abc | abc).states) == 5
+    assert len((abc & abc).states) == 5
     assert len((abc ^ abc).states) == 1
     assert len((abc - abc).states) == 1
 
@@ -762,14 +761,20 @@ def test_bug_36() -> None:
         states={0},
         initial=0,
         finals={0},
-        map={0: {ANYTHING_ELSE: 0}},
+        map={
+            0: {ANYTHING_ELSE: 0},
+        },
     )
     etc2 = Fsm(
         alphabet={"s", ANYTHING_ELSE},
-        states={0, 1},
+        states={0, 1, 2},
         initial=0,
         finals={1},
-        map={0: {"s": 1}, 1: {"s": 1, ANYTHING_ELSE: 1}},
+        map={
+            0: {"s": 1, ANYTHING_ELSE: 2},
+            1: {"s": 1, ANYTHING_ELSE: 1},
+            2: {"s": 2, ANYTHING_ELSE: 2},
+        },
     )
     both = etc1 & etc2
     assert etc1.accepts(["s"])
@@ -782,24 +787,26 @@ def test_add_anything_else() -> None:
     # [^a]
     fsm1 = Fsm(
         alphabet={"a", ANYTHING_ELSE},
-        states={0, 1},
+        states={0, 1, 2},
         initial=0,
         finals={1},
         map={
-            0: {ANYTHING_ELSE: 1},
-            1: {ANYTHING_ELSE: 1}
+            0: {"a": 2, ANYTHING_ELSE: 1},
+            1: {"a": 2, ANYTHING_ELSE: 1},
+            2: {"a": 2, ANYTHING_ELSE: 2},
         },
     )
 
     # [^b]
     fsm2 = Fsm(
         alphabet={"b", ANYTHING_ELSE},
-        states={0, 1},
+        states={0, 1, 2},
         initial=0,
         finals={1},
         map={
-            0: {ANYTHING_ELSE: 1},
-            1: {ANYTHING_ELSE: 1},
+            0: {"b": 2, ANYTHING_ELSE: 1},
+            1: {"b": 2, ANYTHING_ELSE: 1},
+            2: {"b": 2, ANYTHING_ELSE: 2},
         },
     )
     assert (fsm1 + fsm2).accepts("ba")
@@ -854,15 +861,16 @@ def test_anything_else_sorts_after(val: object) -> None:
 
 
 def test_anything_else_pickle() -> None:
-    # [^z]
+    # [^z]*
     fsm1 = Fsm(
         alphabet={"z", ANYTHING_ELSE},
-        states={0, 1},
+        states={0, 1, 2},
         initial=0,
         finals={1},
         map={
-            0: {ANYTHING_ELSE: 1},
-            1: {ANYTHING_ELSE: 1},
+            0: {"z": 2, ANYTHING_ELSE: 1},
+            1: {"z": 2, ANYTHING_ELSE: 1},
+            2: {"z": 2, ANYTHING_ELSE: 2},
         },
     )
 

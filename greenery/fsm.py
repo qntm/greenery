@@ -65,18 +65,6 @@ class AnythingElse(Enum):
 ANYTHING_ELSE = AnythingElse.TOKEN
 
 
-class OblivionError(Exception):
-    """
-    This exception is thrown while `crawl()`ing an FSM if we transition to
-    the oblivion state. For example while crawling two FSMs in parallel we
-    may transition to the oblivion state of both FSMs at once. This
-    warrants an out-of-band signal which will reduce the complexity of the
-    new FSM's map.
-    """
-
-    pass
-
-
 alpha_type = Union[str, AnythingElse]
 
 
@@ -159,6 +147,9 @@ class Fsm:
         for state in states:
             if state not in map:
                 raise Exception(f"State {state!r} missing from map")
+            for symbol in alphabet:
+                if symbol not in map[state]:
+                    raise Exception(f"Symbol {symbol!r} missing from map[{state!r}]")
 
         # Initialise the hard way due to immutability.
         object.__setattr__(self, "alphabet", alphabet)
@@ -319,8 +310,6 @@ class Fsm:
                         and symbol not in fsm.alphabet
                     ):
                         next.update(connect_all(i, fsm.map[substate][ANYTHING_ELSE]))
-            if len(next) == 0:
-                raise OblivionError
             return frozenset(next)
 
         return crawl(alphabet, initial, final, follow).reduce()
@@ -363,9 +352,6 @@ class Fsm:
                     and symbol in self.map[self.initial]
                 ):
                     next.add(self.map[self.initial][symbol])
-
-            if len(next) == 0:
-                raise OblivionError
 
             return frozenset(next)
 
@@ -413,8 +399,6 @@ class Fsm:
                     # final of self? merge with initial on next iteration
                     if self.map[substate][symbol] in self.finals:
                         next.append((self.initial, iteration + 1))
-            if len(next) == 0:
-                raise OblivionError
             return frozenset(next)
 
         return crawl(alphabet, initial, final, follow).reduce()
@@ -533,8 +517,6 @@ class Fsm:
                     if symbol in self.map[prev] and self.map[prev][symbol] == state
                 ]
             )
-            if len(next) == 0:
-                raise OblivionError
             return next
 
         # A state-set is final if the initial state is in it.
@@ -794,34 +776,24 @@ class Fsm:
         `KeyError`. If you fall into oblivion, then the derivative is an
         FSM accepting no strings.
         """
-        try:
-            # Consume the input string.
-            state = self.initial
-            for symbol in input:
-                if symbol not in self.alphabet:
-                    if ANYTHING_ELSE not in self.alphabet:
-                        raise KeyError(symbol)
-                    symbol = ANYTHING_ELSE
+        # Consume the input string.
+        state = self.initial
+        for symbol in input:
+            if symbol not in self.alphabet:
+                if ANYTHING_ELSE not in self.alphabet:
+                    raise KeyError(symbol)
+                symbol = ANYTHING_ELSE
+            state = self.map[state][symbol]
 
-                # Missing transition = transition to dead state
-                if not (state in self.map and symbol in self.map[state]):
-                    raise OblivionError
-
-                state = self.map[state][symbol]
-
-            # OK so now we have consumed that string, use the new location as
-            # the starting point.
-            return Fsm(
-                alphabet=self.alphabet,
-                states=self.states,
-                initial=state,
-                finals=self.finals,
-                map=self.map,
-            )
-
-        except OblivionError:
-            # Fell out of the FSM. The derivative of this FSM is the empty FSM.
-            return null(self.alphabet)
+        # OK so now we have consumed that string, use the new location as
+        # the starting point.
+        return Fsm(
+            alphabet=self.alphabet,
+            states=self.states,
+            initial=state,
+            finals=self.finals,
+            map=self.map,
+        )
 
 
 def null(alphabet: Iterable[alpha_type]) -> Fsm:
@@ -893,8 +865,6 @@ def parallel(
                 and actual_symbol in fsms[i].map[current[i]]
             ):
                 next[i] = fsms[i].map[current[i]][actual_symbol]
-        if len(next.keys()) == 0:
-            raise OblivionError
         return next
 
     # Determine the "is final?" condition of each substate, then pass it to the
@@ -935,18 +905,13 @@ def crawl(
         # compute map for this state
         map[i] = {}
         for symbol in sorted(alphabet):
+            next = follow(state, symbol)
+
             try:
-                next = follow(state, symbol)
-
-                try:
-                    j = states.index(next)
-                except ValueError:
-                    j = len(states)
-                    states.append(next)
-
-            except OblivionError:
-                # Reached an oblivion state. Don't list it.
-                continue
+                j = states.index(next)
+            except ValueError:
+                j = len(states)
+                states.append(next)
 
             map[i][symbol] = j
 
