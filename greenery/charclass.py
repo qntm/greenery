@@ -180,23 +180,27 @@ class Charclass:
 
         map: dict[int | str | None, dict[str | AnythingElse, int | str | None]]
 
-        # 0 is initial, 1 is final
+        # 0 is initial, 1 is final, 2 is dead
 
         # If negated, make a singular FSM accepting any other characters
         if self.negated:
             map = {
                 0: dict([(symbol, 1) for symbol in alphabet - self.chars]),
+                1: dict([(symbol, 2) for symbol in alphabet - self.chars]),
+                2: dict([(symbol, 2) for symbol in alphabet - self.chars]),
             }
 
         # If normal, make a singular FSM accepting only these characters
         else:
             map = {
                 0: dict([(symbol, 1) for symbol in self.chars]),
+                1: dict([(symbol, 2) for symbol in self.chars]),
+                2: dict([(symbol, 2) for symbol in self.chars]),
             }
 
         return Fsm(
             alphabet=set(alphabet),
-            states={0, 1},
+            states={0, 1, 2},
             initial=0,
             finals={1},
             map=map,

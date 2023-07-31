@@ -156,6 +156,9 @@ class Fsm:
                         f" leads to {map[state][symbol]!r},"
                         " which is not a state"
                     )
+        for state in states:
+            if state not in map:
+                raise Exception(f"State {state!r} missing from map")
 
         # Initialise the hard way due to immutability.
         object.__setattr__(self, "alphabet", alphabet)
@@ -845,10 +848,13 @@ def epsilon(alphabet: Iterable[alpha_type]) -> Fsm:
     """
     return Fsm(
         alphabet=alphabet,
-        states={0},
+        states={0, 1},
         initial=0,
         finals={0},
-        map={},
+        map={
+            0: dict([(symbol, 1) for symbol in alphabet]),
+            1: dict([(symbol, 1) for symbol in alphabet]),
+        },
     )
 
 

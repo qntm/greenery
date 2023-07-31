@@ -570,6 +570,8 @@ def test_dead_default() -> None:
             1: {"*": 2},
             2: {"/": 2, ANYTHING_ELSE: 2, "*": 3},
             3: {"/": 4, ANYTHING_ELSE: 2, "*": 3},
+            4: {"/": 5, ANYTHING_ELSE: 5, "*": 5},
+            5: {"/": 5, ANYTHING_ELSE: 5, "*": 5},
         },
     )
     assert blockquote.accepts(["/", "*", "whatever", "*", "/"])
@@ -582,8 +584,8 @@ def test_dead_default() -> None:
         + "  1    False  2                 \n"
         + "  2    False  3 2 2             \n"
         + "  3    False  3 4 2             \n"
-        + "  4    True                     \n"
-        + "  5    False                    \n"
+        + "  4    True   5 5 5             \n"
+        + "  5    False  5 5 5             \n"
     )
     blockquote | blockquote
     blockquote & blockquote
@@ -617,6 +619,7 @@ def test_alphabet_unions() -> None:
         finals={1},
         map={
             0: {"a": 1},
+            1: {"a": 1}
         },
     )
 
@@ -627,6 +630,7 @@ def test_alphabet_unions() -> None:
         finals={1},
         map={
             0: {"b": 1},
+            1: {"b": 1}
         },
     )
 
@@ -721,6 +725,7 @@ def test_oblivion_crawl(a: FixtureA) -> None:
             0: {"a": 1},
             1: {"b": 2},
             2: {"c": 3},
+            3: {}
         },
     )
     assert len((abc + abc).states) == 7
@@ -780,7 +785,10 @@ def test_add_anything_else() -> None:
         states={0, 1},
         initial=0,
         finals={1},
-        map={0: {ANYTHING_ELSE: 1}},
+        map={
+            0: {ANYTHING_ELSE: 1},
+            1: {ANYTHING_ELSE: 1}
+        },
     )
 
     # [^b]
@@ -789,7 +797,10 @@ def test_add_anything_else() -> None:
         states={0, 1},
         initial=0,
         finals={1},
-        map={0: {ANYTHING_ELSE: 1}},
+        map={
+            0: {ANYTHING_ELSE: 1},
+            1: {ANYTHING_ELSE: 1},
+        },
     )
     assert (fsm1 + fsm2).accepts("ba")
 
@@ -849,7 +860,10 @@ def test_anything_else_pickle() -> None:
         states={0, 1},
         initial=0,
         finals={1},
-        map={0: {ANYTHING_ELSE: 1}},
+        map={
+            0: {ANYTHING_ELSE: 1},
+            1: {ANYTHING_ELSE: 1},
+        },
     )
 
     fsm1_unpickled = pickle.loads(pickle.dumps(fsm1))

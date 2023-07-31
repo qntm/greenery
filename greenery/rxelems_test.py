@@ -478,7 +478,7 @@ def test_dead_default() -> None:
     blockquote = from_fsm(
         Fsm(
             alphabet={"/", "*", ANYTHING_ELSE},
-            states={0, 1, 2, 3, 4},
+            states={0, 1, 2, 3, 4, 5},
             initial=0,
             finals={4},
             map={
@@ -486,6 +486,8 @@ def test_dead_default() -> None:
                 1: {"*": 2},
                 2: {"/": 2, ANYTHING_ELSE: 2, "*": 3},
                 3: {"/": 4, ANYTHING_ELSE: 2, "*": 3},
+                4: {"/": 5, ANYTHING_ELSE: 5, "*": 5},
+                5: {"/": 5, ANYTHING_ELSE: 5, "*": 5},
             },
         )
     )
@@ -990,11 +992,13 @@ def test_bug_48_simpler() -> None:
             from_fsm(
                 Fsm(
                     alphabet={"d"},
-                    states={0, 1},
+                    states={0, 1, 2},
                     initial=0,
                     finals={1},
                     map={
                         0: {"d": 1},
+                        1: {"d": 2},
+                        2: {"d": 2},
                     },
                 )
             )
@@ -1004,7 +1008,7 @@ def test_bug_48_simpler() -> None:
 
 
 def test_bug_48() -> None:
-    S5, S26, S45, S63, S80, S97, S113, S127, S140, S152, S163, S175, S182 = range(13)
+    S5, S26, S45, S63, S80, S97, S113, S127, S140, S152, S163, S175, S182, S999 = range(14)
     char0, char1, char2, char3, char4, char5, char6, char7, char8 = (
         "_",
         "a",
@@ -1019,7 +1023,7 @@ def test_bug_48() -> None:
 
     machine = Fsm(
         alphabet={char0, char1, char2, char3, char4, char5, char6, char7, char8},
-        states={S5, S26, S45, S63, S80, S97, S113, S127, S140, S152, S163, S175, S182},
+        states={S5, S26, S45, S63, S80, S97, S113, S127, S140, S152, S163, S175, S182, S999},
         initial=S5,
         finals={S182},
         map={
@@ -1035,6 +1039,8 @@ def test_bug_48() -> None:
             S63: {char1: S80},
             S80: {char4: S97},
             S97: {char3: S113},
+            S182: {char0: S999},
+            S999: {char0: S999},
         },
     )
 
