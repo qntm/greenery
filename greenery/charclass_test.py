@@ -12,6 +12,7 @@ from .charclass import (
     SPACECHAR,
     WORDCHAR,
     Charclass,
+    repartition,
 )
 from .fsm import ANYTHING_ELSE
 
@@ -144,3 +145,46 @@ def test_charclass_intersection() -> None:
 def test_empty() -> None:
     assert NULLCHARCLASS.empty()
     assert not DOT.empty()
+
+
+def test_repartition_elementary() -> None:
+    assert repartition([Charclass("a")]) == {
+        Charclass("a"): [Charclass("a")],
+    }
+    assert repartition([Charclass("a"), ~Charclass("a")]) == {
+        Charclass("a"): [Charclass("a")],
+        ~Charclass("a"): [~Charclass("a")],
+    }
+
+
+def test_repartition_basic() -> None:
+    assert repartition([Charclass("a"), Charclass("abc")]) == {
+        Charclass("a"): [Charclass("a")],
+        Charclass("abc"): [Charclass("a"), Charclass("bc")],
+    }
+
+
+def test_repartition_negation() -> None:
+    assert repartition([Charclass("ab"), Charclass("a"), ~Charclass("ab")]) == {
+        Charclass("ab"): [Charclass("a"), Charclass("b")],
+        Charclass("a"): [Charclass("a")],
+        ~Charclass("ab"): [~Charclass("ab")],
+    }
+    assert repartition([Charclass("ab"), Charclass("abc"), ~Charclass("ab")]) == {
+        Charclass("ab"): [Charclass("ab")],
+        Charclass("abc"): [Charclass("ab"), Charclass("c")],
+        ~Charclass("ab"): [Charclass("c"), ~Charclass("abc")],
+    }
+
+
+def test_repartition_advanced() -> None:
+    assert repartition([
+        Charclass("a"), Charclass("bcdef"), ~Charclass("abcdef"),
+        Charclass("abcd"), ~Charclass("abcd"),
+    ]) == {
+        Charclass("a"): [Charclass("a")],
+        Charclass("bcdef"): [Charclass("bcd"), Charclass("ef")],
+        ~Charclass("abcdef"): [~Charclass("abcdef")],
+        Charclass("abcd"): [Charclass("a"), Charclass("bcd")],
+        ~Charclass("abcd"): [Charclass("ef"), ~Charclass("abcdef")]
+    }

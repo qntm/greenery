@@ -12,6 +12,7 @@ __all__ = (
     "WORDCHAR",
     "escapes",
     "shorthand",
+    "repartition",
 )
 
 from dataclasses import dataclass
@@ -259,7 +260,6 @@ class Charclass:
 
     __and__ = intersection
 
-
 # Standard character classes
 WORDCHAR = Charclass("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz")
 DIGIT = Charclass("0123456789")
@@ -294,3 +294,41 @@ escapes: Mapping[str, str] = {
     "\f": "\\f",  # form feed
     "\r": "\\r",  # carriage return
 }
+
+def repartition(charclasses):
+    """
+    Accept an iterable of `Charclass`es which may overlap somewhat.
+    Construct a minimal collection of `Charclass`es which partition the space
+    of all possible characters and can be combined to create all of the
+    originals.
+    Return a map from each original `Charclass` to its constituent pieces.
+    """
+    alphabet = set()
+    for charclass in charclasses:
+        for char in charclass.chars:
+            alphabet.add(char)
+
+    # Group all of the possible characters by "signature".
+    # A signature is a tuple of Booleans telling us which character classes
+    # a particular character is mentioned in.
+    signatures = {}
+    for char in sorted(alphabet):
+        signature = tuple(char in charclass.chars for charclass in charclasses)
+        if signature not in signatures:
+            signatures[signature] = []
+        signatures[signature].append(char)
+
+    newcharclasses = list(map(lambda chars: Charclass(chars), signatures.values()))
+
+    # And one last thing
+    newcharclasses.append(~Charclass(alphabet))
+
+    # Now compute the breakdowns
+    partition = {}
+    for charclass in charclasses:
+        partition[charclass] = []
+        for newcharclass in newcharclasses:
+            if newcharclass & charclass == newcharclass:
+                partition[charclass].append(newcharclass)
+
+    return partition
