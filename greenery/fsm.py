@@ -171,11 +171,6 @@ class Fsm:
         for symbol in input:
             if ANYTHING_ELSE in self.alphabet and symbol not in self.alphabet:
                 symbol = ANYTHING_ELSE
-
-            # Missing transition = transition to dead state
-            if not (state in self.map and symbol in self.map[state]):
-                return False
-
             state = self.map[state][symbol]
         return state in self.finals
 
@@ -229,10 +224,7 @@ class Fsm:
             else:
                 row.append("False")
             for symbol in sorted_alphabet:
-                if state in self.map and symbol in self.map[state]:
-                    row.append(str(self.map[state][symbol]))
-                else:
-                    row.append("")
+                row.append(str(self.map[state][symbol]))
             rows.append(row)
 
         # column widths
@@ -341,16 +333,11 @@ class Fsm:
             next = set()
 
             for substate in state:
-                if substate in self.map and symbol in self.map[substate]:
-                    next.add(self.map[substate][symbol])
+                next.add(self.map[substate][symbol])
 
                 # If one of our substates is final, then we can also consider
                 # transitions from the initial state of the original FSM.
-                if (
-                    substate in self.finals
-                    and self.initial in self.map
-                    and symbol in self.map[self.initial]
-                ):
+                if substate in self.finals:
                     next.add(self.map[self.initial][symbol])
 
             return frozenset(next)
@@ -390,11 +377,7 @@ class Fsm:
         ) -> Collection[tuple[state_type, int]]:
             next = []
             for substate, iteration in current:
-                if (
-                    iteration < multiplier
-                    and substate in self.map
-                    and symbol in self.map[substate]
-                ):
+                if iteration < multiplier:
                     next.append((self.map[substate][symbol], iteration))
                     # final of self? merge with initial on next iteration
                     if self.map[substate][symbol] in self.finals:
@@ -477,11 +460,7 @@ class Fsm:
             symbol: alpha_type,
         ) -> Mapping[int, state_type]:
             next = {}
-            if (
-                0 in current
-                and current[0] in self.map
-                and symbol in self.map[current[0]]
-            ):
+            if 0 in current:
                 next[0] = self.map[current[0]][symbol]
             return next
 
@@ -514,7 +493,7 @@ class Fsm:
                     prev
                     for prev in self.map
                     for state in current
-                    if symbol in self.map[prev] and self.map[prev][symbol] == state
+                    if self.map[prev][symbol] == state
                 ]
             )
             return next
@@ -542,11 +521,10 @@ class Fsm:
             current = reachable[i]
             if current in self.finals:
                 return True
-            if current in self.map:
-                for symbol in self.map[current]:
-                    next = self.map[current][symbol]
-                    if next not in reachable:
-                        reachable.append(next)
+            for symbol in self.map[current]:
+                next = self.map[current][symbol]
+                if next not in reachable:
+                    reachable.append(next)
             i += 1
         return False
 
@@ -595,14 +573,13 @@ class Fsm:
         i = 0
         while i < len(strings):
             cstring, cstate = strings[i]
-            if cstate in self.map:
-                for symbol in sorted(self.map[cstate]):
-                    nstate = self.map[cstate][symbol]
-                    nstring = cstring + [symbol]
-                    if nstate in livestates:
-                        if nstate in self.finals:
-                            yield nstring
-                        strings.append((nstring, nstate))
+            for symbol in sorted(self.map[cstate]):
+                nstate = self.map[cstate][symbol]
+                nstring = cstring + [symbol]
+                if nstate in livestates:
+                    if nstate in self.finals:
+                        yield nstring
+                    strings.append((nstring, nstate))
             i += 1
 
     def __iter__(self, /) -> Iterator[list[alpha_type]]:
@@ -673,9 +650,8 @@ class Fsm:
                 n = 0
                 if state in self.finals:
                     n += 1
-                if state in self.map:
-                    for symbol in self.map[state]:
-                        n += get_num_strings(self.map[state][symbol])
+                for symbol in self.map[state]:
+                    n += get_num_strings(self.map[state][symbol])
                 num_strings[state] = n
 
             else:
@@ -779,10 +755,6 @@ class Fsm:
         # Consume the input string.
         state = self.initial
         for symbol in input:
-            if symbol not in self.alphabet:
-                if ANYTHING_ELSE not in self.alphabet:
-                    raise KeyError(symbol)
-                symbol = ANYTHING_ELSE
             state = self.map[state][symbol]
 
         # OK so now we have consumed that string, use the new location as

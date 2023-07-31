@@ -898,6 +898,7 @@ def test_derive() -> None:
     assert str(parse("a+|b+").derive("a")) == "a*"
     assert str(parse("abc|ade").derive("a")) == "bc|de"
     assert str(parse("abc|ade").derive("ab")) == "c"
+    assert str(parse("abc|ade").derive("c")) == "[]"
 
 
 def test_bug_36_1() -> None:
