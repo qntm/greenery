@@ -140,6 +140,7 @@ def test_charclass_intersection() -> None:
     ) == Charclass("b")
 
     assert Charclass.intersection() == ~NULLCHARCLASS
+    assert NULLCHARCLASS & NULLCHARCLASS == NULLCHARCLASS
 
 
 def test_empty() -> None:
@@ -175,6 +176,11 @@ def test_repartition_negation() -> None:
         Charclass("abc"): [Charclass("ab"), Charclass("c")],
         ~Charclass("ab"): [Charclass("c"), ~Charclass("abc")],
     }
+    assert repartition([~Charclass("a"), ~Charclass("ab"), ~Charclass("abc")]) == {
+        ~Charclass("a"): [Charclass("b"), Charclass("c"), ~Charclass("abc")],
+        ~Charclass("ab"): [Charclass("c"), ~Charclass("abc")],
+        ~Charclass("abc"): [~Charclass("abc")],
+    }
 
 
 def test_repartition_advanced() -> None:
@@ -187,4 +193,24 @@ def test_repartition_advanced() -> None:
         ~Charclass("abcdef"): [~Charclass("abcdef")],
         Charclass("abcd"): [Charclass("a"), Charclass("bcd")],
         ~Charclass("abcd"): [Charclass("ef"), ~Charclass("abcdef")]
+    }
+    assert repartition([WORDCHAR, DIGIT, DOT, NONDIGITCHAR, NULLCHARCLASS]) == {
+        WORDCHAR: [
+            DIGIT,
+            Charclass("ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz"),
+        ],
+        DIGIT: [DIGIT],
+        DOT: [
+            DIGIT,
+            Charclass("ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz"),
+            NONWORDCHAR,
+        ],
+        NONDIGITCHAR: [
+            Charclass("ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz"),
+            NONWORDCHAR,
+        ],
+
+        # Yup, there's nothing here!
+        # This should be impossible or at least cause no problems in practice
+        NULLCHARCLASS: [],
     }
