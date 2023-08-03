@@ -771,6 +771,31 @@ class Fsm:
             map=self.map,
         )
 
+    def replace_alphabet(self, replacements, /) -> Fsm:
+        """
+        Returns a new FSM which uses a different alphabet. If one original
+        symbol converts to two new symbols, there will be multiple identical
+        transitions; if none, the transitions will be omitted.
+        """
+        new_alphabet = set()
+        for symbol in self.alphabet:
+            for replacement in replacements[symbol]:
+                new_alphabet.add(replacement)
+        new_map = {}
+        for state in self.map:
+            new_map[state] = {}
+            for symbol in self.alphabet:
+                for replacement in replacements[symbol]:
+                    new_map[state][replacement] = self.map[state][symbol]
+
+        return Fsm(
+            alphabet=new_alphabet,
+            states=self.states,
+            initial=self.initial,
+            finals=self.finals,
+            map=new_map,
+        )
+
 
 def null(alphabet: Iterable[AlphaType]) -> Fsm:
     """

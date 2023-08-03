@@ -900,3 +900,29 @@ def test_anything_else_pickle() -> None:
 
     # Stronger singleton assertion:
     assert anything_else is ANYTHING_ELSE
+
+
+def test_replace_alphabet() -> None:
+    # [^z]*
+    fsm1 = Fsm(
+        alphabet={"z", ANYTHING_ELSE},
+        states={0, 1, 2},
+        initial=0,
+        finals={1},
+        map={
+            0: {"z": 2, ANYTHING_ELSE: 1},
+            1: {"z": 2, ANYTHING_ELSE: 1},
+            2: {"z": 2, ANYTHING_ELSE: 2},
+        },
+    )
+
+    fsm2 = fsm1.replace_alphabet({
+        "z": ["a", "b"],
+        ANYTHING_ELSE: ["c", ANYTHING_ELSE]
+    })
+
+    assert fsm2.map == {
+        0: {"a": 2, "b": 2, "c": 1, ANYTHING_ELSE: 1},
+        1: {"a": 2, "b": 2, "c": 1, ANYTHING_ELSE: 1},
+        2: {"a": 2, "b": 2, "c": 2, ANYTHING_ELSE: 2},
+    }
