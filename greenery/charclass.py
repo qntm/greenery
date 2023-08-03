@@ -88,13 +88,15 @@ class Charclass:
     }
 
     def __str__(self, /) -> str:
+        # pylint: disable=too-many-return-statements
+
         # e.g. \w
-        if self in shorthand.keys():
+        if self in shorthand:
             return shorthand[self]
 
         # e.g. [^a]
         if self.negated:
-            return "[^" + self.escape() + "]"
+            return f"[^{self.escape()}]"
 
         # single character, not contained inside square brackets.
         if len(self.chars) == 1:
@@ -102,48 +104,48 @@ class Charclass:
             char = "".join(self.chars)
 
             # e.g. if char is "\t", return "\\t"
-            if char in escapes.keys():
+            if char in escapes:
                 return escapes[char]
 
             if char in Charclass.allSpecial:
-                return "\\" + char
+                return f"\\{char}"
 
             # If char is an ASCII control character, don't print it directly,
             # return a hex escape sequence e.g. "\\x00". Note that this
             # includes tab and other characters already handled above
             if 0 <= ord(char) <= 0x1F or ord(char) == 0x7F:
-                return "\\x" + "{0:02x}".format(ord(char))
+                return f"\\x{ord(char):02x}"
 
             return char
 
         # multiple characters (or possibly 0 characters)
-        return "[" + self.escape() + "]"
+        return f"[{self.escape()}]"
 
     def escape(self, /) -> str:
-        def escapeChar(char: str, /) -> str:
+        def escape_char(char: str, /) -> str:
             if char in Charclass.classSpecial:
-                return "\\" + char
-            if char in escapes.keys():
+                return f"\\{char}"
+            if char in escapes:
                 return escapes[char]
 
             # If char is an ASCII control character, don't print it directly,
             # return a hex escape sequence e.g. "\\x00". Note that this
             # includes tab and other characters already handled above
             if 0 <= ord(char) <= 0x1F or ord(char) == 0x7F:
-                return "\\x" + "{0:02x}".format(ord(char))
+                return f"\\x{ord(char):02x}"
 
             return char
 
-        def recordRange() -> str:
+        def record_range() -> str:
             # there's no point in putting a range when the whole thing is
             # 3 characters or fewer. "abc" -> "abc" but "abcd" -> "a-d"
             strs = [
                 # "ab" or "abc" or "abcd"
-                "".join(escapeChar(char) for char in currentRange),
+                "".join(escape_char(c) for c in current_range),
                 # "a-b" or "a-c" or "a-d"
-                (escapeChar(currentRange[0]) + "-" + escapeChar(currentRange[-1])),
+                (escape_char(current_range[0]) + "-" + escape_char(current_range[-1])),
             ]
-            return sorted(strs, key=lambda str: len(str))[0]
+            return sorted(strs, key=len)[0]
 
         output = ""
 
@@ -153,21 +155,21 @@ class Charclass:
         # a problem will arise because there is no clear ordering to use...
 
         # look for ranges
-        currentRange = ""
+        current_range = ""
         for char in sorted(self.chars, key=ord):
             # range is not empty: new char must fit after previous one
-            if len(currentRange) > 0:
+            if current_range:
                 i = ord(char)
 
                 # char doesn't fit old range: restart
-                if i != ord(currentRange[-1]) + 1:
-                    output += recordRange()
-                    currentRange = ""
+                if i != ord(current_range[-1]) + 1:
+                    output += record_range()
+                    current_range = ""
 
-            currentRange += char
+            current_range += char
 
-        if len(currentRange) > 0:
-            output += recordRange()
+        if current_range:
+            output += record_range()
 
         return output
 
@@ -178,38 +180,23 @@ class Charclass:
     ) -> Fsm:
         alphabet = self.alphabet() if alphabet is None else frozenset(alphabet)
 
-        map: dict[int | str | None, dict[str | AnythingElse, int | str | None]]
-
-        # 0 is initial, 1 is final
-
         # If negated, make a singular FSM accepting any other characters
-        if self.negated:
-            map = {
-                0: dict([(symbol, 1) for symbol in alphabet - self.chars]),
-            }
-
         # If normal, make a singular FSM accepting only these characters
-        else:
-            map = {
-                0: dict([(symbol, 1) for symbol in self.chars]),
-            }
+        symbols = (alphabet - self.chars) if self.negated else self.chars
 
+        # State 0 is initial, 1 is final
         return Fsm(
             alphabet=set(alphabet),
             states={0, 1},
             initial=0,
             finals={1},
-            map=map,
+            map={0: {symbol: 1 for symbol in symbols}},
         )
 
     def __repr__(self, /) -> str:
-        string = ""
-        if self.negated is True:
-            string += "~"
-        string += "Charclass("
-        string += repr("".join(str(char) for char in sorted(self.chars, key=str)))
-        string += ")"
-        return string
+        sign = "~" if self.negated else ""
+        chars = "".join(sorted(self.chars))
+        return f"{sign}Charclass({chars!r})"
 
     def reduce(self, /) -> Charclass:
         # `Charclass`es cannot be reduced.
@@ -219,7 +206,7 @@ class Charclass:
         return self.chars | {ANYTHING_ELSE}
 
     def empty(self, /) -> bool:
-        return len(self.chars) == 0 and not self.negated
+        return not self.chars and not self.negated
 
     # set operations
     def negate(self, /) -> Charclass:

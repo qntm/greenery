@@ -7,6 +7,8 @@ import pytest
 
 from .fsm import ANYTHING_ELSE, AnythingElse, Fsm, epsilon, null
 
+# pylint: disable=invalid-name
+
 FixtureA = Fsm
 
 FixtureB = Fsm
@@ -50,9 +52,9 @@ def test_builtins() -> None:
     assert not epsilon("a").accepts("a")
 
 
-@pytest.fixture
-def a() -> FixtureA:
-    a = Fsm(
+@pytest.fixture(name="a")
+def fixture_a() -> FixtureA:
+    return Fsm(
         alphabet={"a", "b"},
         states={0, 1, "ob"},
         initial=0,
@@ -63,7 +65,6 @@ def a() -> FixtureA:
             "ob": {"a": "ob", "b": "ob"},
         },
     )
-    return a
 
 
 def test_a(a: FixtureA) -> None:
@@ -72,9 +73,9 @@ def test_a(a: FixtureA) -> None:
     assert not a.accepts("b")
 
 
-@pytest.fixture
-def b() -> FixtureB:
-    b = Fsm(
+@pytest.fixture(name="b")
+def fixture_b() -> FixtureB:
+    return Fsm(
         alphabet={"a", "b"},
         states={0, 1, "ob"},
         initial=0,
@@ -85,7 +86,6 @@ def b() -> FixtureB:
             "ob": {"a": "ob", "b": "ob"},
         },
     )
-    return b
 
 
 def test_b(b: FixtureB) -> None:
@@ -422,23 +422,23 @@ def test_binary_3() -> None:
 
 def test_invalid_fsms() -> None:
     # initial state 1 is not a state
-    with pytest.raises(Exception, match="Initial state"):
+    with pytest.raises(ValueError, match="Initial state"):
         Fsm(alphabet={}, states={}, initial=1, finals=(), map={})
 
     # final state 2 not a state
-    with pytest.raises(Exception, match="Final states"):
+    with pytest.raises(ValueError, match="Final states"):
         Fsm(alphabet={}, states={1}, initial=1, finals={2}, map={})
 
     # invalid transition for state 1, symbol "a"
-    with pytest.raises(Exception, match="Transition.+leads to.+not a state"):
+    with pytest.raises(ValueError, match="Transition.+leads to.+not a state"):
         Fsm(alphabet={"a"}, states={1}, initial=1, finals=(), map={1: {"a": 2}})
 
     # invalid transition from unknown state
-    with pytest.raises(Exception, match="Transition.+unknown state"):
+    with pytest.raises(ValueError, match="Transition.+unknown state"):
         Fsm(alphabet={"a"}, states={1, 2}, initial=1, finals=(), map={3: {"a": 2}})
 
     # invalid transition table includes symbol outside of alphabet
-    with pytest.raises(Exception, match="Invalid symbol"):
+    with pytest.raises(ValueError, match="Invalid symbol"):
         Fsm(
             alphabet={"a"},
             states={1, 2},
@@ -449,8 +449,8 @@ def test_invalid_fsms() -> None:
 
 
 def test_bad_multiplier(a: FixtureA) -> None:
-    with pytest.raises(Exception, match="Can't multiply"):
-        a * -1
+    with pytest.raises(ArithmeticError, match="Can't multiply"):
+        _ = a * -1
 
 
 def test_anything_else_acceptance() -> None:
@@ -477,8 +477,8 @@ def test_difference(a: FixtureA, b: FixtureB) -> None:
         },
     )
 
-    assert list((a ^ a).strings()) == []
-    assert list((b ^ b).strings()) == []
+    assert not list((a ^ a).strings())
+    assert not list((b ^ b).strings())
     assert list((a ^ b).strings()) == [["a"], ["b"]]
     assert list((aorb ^ a).strings()) == [["b"]]
 
@@ -542,8 +542,6 @@ def test_eq_ne(a: FixtureA, b: FixtureB) -> None:
     ),
 )
 def test_eq_ne_het(a: FixtureA, other: object) -> None:
-    # pylint: disable=comparison-with-itself
-
     # eq
     assert not a == other
     # eq, symmetric
@@ -585,9 +583,9 @@ def test_dead_default() -> None:
         + "  4    True                     \n"
         + "  5    False                    \n"
     )
-    blockquote | blockquote
-    blockquote & blockquote
-    blockquote ^ blockquote
+    _ = blockquote | blockquote
+    _ = blockquote & blockquote
+    _ = blockquote ^ blockquote
     # Fsm does not support the `Reversible` protocol, because its
     # `__reversed__` implementation does not return an iterator.
     # Even if it did, it would not conform semantically because it returns an
@@ -658,10 +656,11 @@ def test_new_set_methods(a: FixtureA, b: FixtureB) -> None:
     for string in four:
         assert string == ["a", "a"]
         break
-    assert [s for s in four] == [["a", "a"], ["a", "b"], ["b", "a"], ["b", "b"]]
+    assert tuple(four) == (["a", "a"], ["a", "b"], ["b", "a"], ["b", "b"])
 
     # set.union() imitation
     assert Fsm.union(a, b) == a.union(b)
+    # pylint: disable-next=compare-to-zero
     assert len(Fsm.union()) == 0
     assert Fsm.intersection(a, b) == a.intersection(b)
 
@@ -694,7 +693,7 @@ def test_new_set_methods(a: FixtureA, b: FixtureB) -> None:
     assert list(a.concatenate(a, a).strings()) == [["a", "a", "a"]]
     assert list(a.concatenate().strings()) == [["a"]]
     assert list(Fsm.concatenate(b, a, b).strings()) == [["b", "a", "b"]]
-    assert list(Fsm.concatenate().strings()) == []
+    assert not list(Fsm.concatenate().strings())
 
 
 def test_copy(a: FixtureA) -> None:
@@ -709,7 +708,7 @@ def test_copy(a: FixtureA) -> None:
         assert copy(x) is x
 
 
-def test_oblivion_crawl(a: FixtureA) -> None:
+def test_oblivion_crawl() -> None:
     # When crawling a new FSM, we should avoid generating an oblivion state.
     # `abc` has no oblivion state... all the results should not as well!
     abc = Fsm(
@@ -739,7 +738,7 @@ def test_concatenate_bug(a: FixtureA) -> None:
     assert Fsm.concatenate(a, epsilon({"a"}), epsilon({"a"}), a).accepts("aa")
 
 
-def test_derive(a: FixtureA, b: FixtureB) -> None:
+def test_derive(a: FixtureA) -> None:
     # Just some basic tests because this is mainly a regex thing.
     assert a.derive("a") == epsilon({"a", "b"})
     assert a.derive("b") == null({"a", "b"})
@@ -826,7 +825,6 @@ def test_anything_else_self() -> None:
 def test_anything_else_sorts_after(val: object) -> None:
     """ANYTHING_ELSE sorts strictly after anything."""
 
-    # pylint: disable=unneeded-not
     assert not ANYTHING_ELSE < val
     assert not ANYTHING_ELSE <= val
     assert not ANYTHING_ELSE == val

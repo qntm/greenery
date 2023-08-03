@@ -12,6 +12,11 @@ from .charclass import Charclass, escapes, shorthand
 from .multiplier import Multiplier, symbolic
 from .rxelems import Conc, Mult, Pattern
 
+# Currently many statements are grouped by `try/except NoMatch` in order to try
+# multiple matching functions in sequence. They can be refactored into smaller
+# functions to remove this suppression.
+# pylint: disable=too-many-try-statements
+
 T_co = TypeVar("T_co", covariant=True)
 
 
@@ -20,8 +25,6 @@ class NoMatch(Exception):
     Thrown when parsing fails.
     Almost always caught and almost never fatal
     """
-
-    pass
 
 
 MatchResult = Tuple[T_co, int]
@@ -38,18 +41,18 @@ def read_until(string: str, i: int, stop_char: str) -> MatchResult[str]:
     return string[start:i], i + 1
 
 
-def static(string: str, i: int, static: str) -> int:
-    j = i + len(static)
-    if string[i:j] == static:
+def static(haystack: str, i: int, needle: str) -> int:
+    j = i + len(needle)
+    if haystack[i:j] == needle:
         return j
     raise NoMatch
 
 
-def select_static(string: str, i: int, *statics: str) -> MatchResult[str]:
-    for st in statics:
-        j = i + len(st)
-        if string[i:j] == st:
-            return st, j
+def select_static(haystack: str, i: int, *needles: str) -> MatchResult[str]:
+    for needle in needles:
+        j = i + len(needle)
+        if haystack[i:j] == needle:
+            return needle, j
     raise NoMatch
 
 
@@ -76,9 +79,9 @@ def unescape_hex(string: str, i: int) -> MatchResult[str]:
 
 def match_internal_char(string: str, i: int) -> MatchResult[str]:
     # e.g. if we see "\\t", return "\t"
-    for key in escapes.keys():
+    for char, escaped_mnemonic in escapes.items():
         try:
-            return key, static(string, i, escapes[key])
+            return char, static(string, i, escaped_mnemonic)
         except NoMatch:
             pass
 
@@ -128,14 +131,14 @@ def match_class_interior_1(
         k = static(string, j, "-")
         last, k = match_internal_char(string, k)  # `last` is "h"
 
-        firstIndex = ord(first)  # 100
-        lastIndex = ord(last)  # 104
+        first_index = ord(first)  # 100
+        last_index = ord(last)  # 104
 
         # Be strict here, "d-d" is not allowed
-        if firstIndex >= lastIndex:
+        if first_index >= last_index:
             raise NoMatch(f"Range {first!r} to {last!r} not allowed")
 
-        chars = frozenset(chr(i) for i in range(firstIndex, lastIndex + 1))
+        chars = frozenset(chr(i) for i in range(first_index, last_index + 1))
         return (chars, False), k
     except NoMatch:
         pass
@@ -159,13 +162,15 @@ def match_class_interior(string: str, i: int) -> MatchResult[Charclass]:
 
 
 def match_charclass(string: str, i: int) -> MatchResult[Charclass]:
+    # pylint: disable=too-many-return-statements
+
     if i >= len(string):
         raise NoMatch
 
     # wildcard ".", "\\w", "\\d", etc.
-    for key in shorthand.keys():
+    for shorthand_charclass, shorthand_abbrev in shorthand.items():
         try:
-            return key, static(string, i, shorthand[key])
+            return shorthand_charclass, static(string, i, shorthand_abbrev)
         except NoMatch:
             pass
 
@@ -188,9 +193,9 @@ def match_charclass(string: str, i: int) -> MatchResult[Charclass]:
         pass
 
     # e.g. if seeing "\\t", return "\t"
-    for ekey in escapes.keys():
+    for char, escaped_mnemonic in escapes.items():
         try:
-            return Charclass(ekey), static(string, i, escapes[ekey])
+            return Charclass(char), static(string, i, escaped_mnemonic)
         except NoMatch:
             pass
 
@@ -220,9 +225,9 @@ def match_multiplicand(string: str, i: int) -> MatchResult[Pattern | Charclass]:
     # explicitly non-capturing "(?:...)" syntax. No special significance
     try:
         j = static(string, i, "(?")
-        st, j = select_static(string, j, ":", "P<")
-        if st == "P<":
-            group_name, j = read_until(string, j, ">")
+        opts, j = select_static(string, j, ":", "P<")
+        if opts == "P<":
+            _group_name, j = read_until(string, j, ">")
         pattern, j = match_pattern(string, j)
         j = static(string, j, ")")
         return pattern, j
@@ -281,29 +286,29 @@ def match_multiplier(string: str, i: int) -> MatchResult[Multiplier]:
     # {2,3} or {2,}
     try:
         j = static(string, i, "{")
-        min, j = match_bound(string, j)
+        min_, j = match_bound(string, j)
         j = static(string, j, ",")
-        max, j = match_bound(string, j)
+        max_, j = match_bound(string, j)
         j = static(string, j, "}")
-        return Multiplier(min, max), j
+        return Multiplier(min_, max_), j
     except NoMatch:
         pass
 
     # {2}
     try:
         j = static(string, i, "{")
-        min, j = match_bound(string, j)
+        min_, j = match_bound(string, j)
         j = static(string, j, "}")
-        return Multiplier(min, min), j
+        return Multiplier(min_, min_), j
     except NoMatch:
         pass
 
     # "?"/"*"/"+"/""
     # we do these in reverse order of symbol length, because
     # that forces "" to be done last
-    for key in sorted(symbolic, key=lambda key: -len(symbolic[key])):
+    for mult, symbol in sorted(symbolic.items(), key=lambda kv: -len(kv[1])):
         try:
-            return key, static(string, i, symbolic[key])
+            return mult, static(string, i, symbol)
         except NoMatch:
             pass
 
@@ -317,7 +322,7 @@ def match_mult(string: str, i: int) -> MatchResult[Mult]:
 
 
 def match_conc(string: str, i: int) -> MatchResult[Conc]:
-    mults = list()
+    mults = []
     try:
         while True:
             m, i = match_mult(string, i)
@@ -328,7 +333,7 @@ def match_conc(string: str, i: int) -> MatchResult[Conc]:
 
 
 def match_pattern(string: str, i: int) -> MatchResult[Pattern]:
-    concs = list()
+    concs = []
 
     # first one
     c, i = match_conc(string, i)
@@ -351,5 +356,5 @@ def parse(string: str) -> Pattern:
     """
     obj, i = match_pattern(string, 0)
     if i != len(string):
-        raise Exception(f"Could not parse {string!r} beyond index {i}")
+        raise NoMatch(f"Could not parse {string!r} beyond index {i}")
     return obj

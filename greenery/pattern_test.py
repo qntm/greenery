@@ -89,14 +89,14 @@ def test_mult_reduction_easy() -> None:
             )
         )
     ).reduce() == Pattern(Conc())
-    assert (
-        str(
-            Pattern(
-                Conc(
-                    Mult(
-                        Charclass("a"),
-                        ZERO,
-                    )
+
+    assert str(
+        # pylint: disable-next=compare-to-empty-string
+        Pattern(
+            Conc(
+                Mult(
+                    Charclass("a"),
+                    ZERO,
                 )
             ).reduce()
         )
