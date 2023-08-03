@@ -201,7 +201,7 @@ class Charclass:
             states={0, 1, 2},
             initial=0,
             finals={1},
-            map={0: {symbol: 1 for symbol in symbols}},
+            map=map,
         )
 
     def __repr__(self, /) -> str:
@@ -255,6 +255,7 @@ class Charclass:
         return ~Charclass.union(*(~cc for cc in predicates))
 
     __and__ = intersection
+
 
 # Standard character classes
 WORDCHAR = Charclass("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz")
