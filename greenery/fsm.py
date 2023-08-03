@@ -171,13 +171,9 @@ class Fsm:
         converted to `ANYTHING_ELSE`.
         """
         state = self.initial
-        for sym in symbols:
-            symbol = (
-                ANYTHING_ELSE
-                if ANYTHING_ELSE in self.alphabet and sym not in self.alphabet
-                else sym
-            )
-            state = self.map[state][symbol]
+        for symbol in symbols:
+            actual_symbol = ANYTHING_ELSE if symbol not in self.alphabet else symbol
+            state = self.map[state][actual_symbol]
         return state in self.finals
 
     def __contains__(self, string: Iterable[AlphaType], /) -> bool:
@@ -306,15 +302,8 @@ class Fsm:
             for i, substate in current:
                 fsm = fsms[i]
                 if substate in fsm.map:
-                    if symbol in fsm.map[substate]:
-                        next_metastate.update(connect_all(i, fsm.map[substate][symbol]))
-                    elif (
-                        ANYTHING_ELSE in fsm.map[substate]
-                        and symbol not in fsm.alphabet
-                    ):
-                        next_metastate.update(
-                            connect_all(i, fsm.map[substate][ANYTHING_ELSE])
-                        )
+                    actual_symbol = symbol if symbol in fsm.alphabet else ANYTHING_ELSE
+                    next_metastate.update(connect_all(i, fsm.map[substate][actual_symbol]))
             return frozenset(next_metastate)
 
         return crawl(alphabet, initial, final, follow).reduce()
@@ -766,14 +755,9 @@ class Fsm:
         """
         # Consume the input string.
         state = self.initial
-        for sym in symbols:
-            symbol: AlphaType
-            if sym not in self.alphabet:
-                symbol = ANYTHING_ELSE
-            else:
-                symbol = sym
-
-            state = self.map[state][symbol]
+        for symbol in symbols:
+            actual_symbol = symbol if symbol in self.alphabet else ANYTHING_ELSE
+            state = self.map[state][actual_symbol]
 
         # OK so now we have consumed that string, use the new location as
         # the starting point.
@@ -840,11 +824,7 @@ def parallel(
     ) -> Mapping[int, StateType]:
         next_states = {}
         for i, fsm in enumerate(fsms):
-            actual_symbol = (
-                ANYTHING_ELSE
-                if symbol not in fsm.alphabet and ANYTHING_ELSE in fsm.alphabet
-                else symbol
-            )
+            actual_symbol = ANYTHING_ELSE if symbol not in fsm.alphabet else symbol
             if (
                 i in current
                 and current[i] in fsm.map

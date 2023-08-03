@@ -235,7 +235,6 @@ def test_crawl_reduction() -> None:
             },
         },
     ).reduce()
-    print(merged)
     assert len(merged.states) == 3
 
 
