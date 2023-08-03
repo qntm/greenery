@@ -151,6 +151,8 @@ class Fsm:
             for symbol in alphabet:
                 if symbol not in map[state]:
                     raise Exception(f"Symbol {symbol!r} missing from map[{state!r}]")
+        if not ANYTHING_ELSE in alphabet:
+            raise Exception(f"Need ANYTHING_ELSE")
 
         # Initialise the hard way due to immutability.
         object.__setattr__(self, "alphabet", alphabet)
@@ -258,7 +260,7 @@ class Fsm:
         """
         Concatenate arbitrarily many finite state machines together.
         """
-        alphabet = set().union(*[fsm.alphabet for fsm in fsms])
+        alphabet = {ANYTHING_ELSE}.union(*[fsm.alphabet for fsm in fsms])
 
         def connect_all(
             i: int,
@@ -826,7 +828,7 @@ def parallel(
     meta-FSM. To determine whether a state in the larger FSM is final, pass
     all of the finality statuses (e.g. [True, False, False] to `test`.
     """
-    alphabet = set().union(*[fsm.alphabet for fsm in fsms])
+    alphabet = {ANYTHING_ELSE}.union(*[fsm.alphabet for fsm in fsms])
 
     initial: Mapping[int, StateType] = {i: fsm.initial for i, fsm in enumerate(fsms)}
 

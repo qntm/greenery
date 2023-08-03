@@ -47,22 +47,22 @@ def test_addbug() -> None:
 
 
 def test_builtins() -> None:
-    assert not null("a").accepts("a")
-    assert epsilon("a").accepts("")
-    assert not epsilon("a").accepts("a")
+    assert not null({"a", ANYTHING_ELSE}).accepts("a")
+    assert epsilon({"a", ANYTHING_ELSE}).accepts("")
+    assert not epsilon({"a", ANYTHING_ELSE}).accepts("a")
 
 
 @pytest.fixture(name="a")
 def fixture_a() -> FixtureA:
     return Fsm(
-        alphabet={"a", "b"},
+        alphabet={"a", "b", ANYTHING_ELSE},
         states={0, 1, "ob"},
         initial=0,
         finals={1},
         map={
-            0: {"a": 1, "b": "ob"},
-            1: {"a": "ob", "b": "ob"},
-            "ob": {"a": "ob", "b": "ob"},
+            0: {"a": 1, "b": "ob", ANYTHING_ELSE: "ob"},
+            1: {"a": "ob", "b": "ob", ANYTHING_ELSE: "ob"},
+            "ob": {"a": "ob", "b": "ob", ANYTHING_ELSE: "ob"},
         },
     )
 
@@ -76,14 +76,14 @@ def test_a(a: FixtureA) -> None:
 @pytest.fixture(name="b")
 def fixture_b() -> FixtureB:
     return Fsm(
-        alphabet={"a", "b"},
+        alphabet={"a", "b", ANYTHING_ELSE},
         states={0, 1, "ob"},
         initial=0,
         finals={1},
         map={
-            0: {"a": "ob", "b": 1},
-            1: {"a": "ob", "b": "ob"},
-            "ob": {"a": "ob", "b": "ob"},
+            0: {"a": "ob", "b": 1, ANYTHING_ELSE: "ob"},
+            1: {"a": "ob", "b": "ob", ANYTHING_ELSE: "ob"},
+            "ob": {"a": "ob", "b": "ob", ANYTHING_ELSE: "ob"},
         },
     )
 
@@ -101,7 +101,7 @@ def test_concatenation_aa(a: FixtureA) -> None:
     assert concAA.accepts("aa")
     assert not concAA.accepts("aaa")
 
-    concAA = epsilon({"a", "b"}) + a + a
+    concAA = epsilon({"a", "b", ANYTHING_ELSE}) + a + a
     assert not concAA.accepts("")
     assert not concAA.accepts("a")
     assert concAA.accepts("aa")
@@ -120,7 +120,7 @@ def test_concatenation_ab(a: FixtureA, b: FixtureB) -> None:
 
 
 def test_alternation_a(a: FixtureA) -> None:
-    altA = a | null({"a", "b"})
+    altA = a | null({"a", "b", ANYTHING_ELSE})
     assert not altA.accepts("")
     assert altA.accepts("a")
 
@@ -219,16 +219,20 @@ def test_crawl_reduction() -> None:
     # states 1 and 2&3 also behave identically, so they, too should be resolved
     # (this is impossible to spot before 2 and 3 have been combined).
     merged = Fsm(
-        alphabet={"0", "1"},
+        alphabet={"0", "1", ANYTHING_ELSE},
         states={1, 2, 3, 4, "oblivion"},
         initial=1,
         finals={4},
         map={
-            1: {"0": 2, "1": 4},
-            2: {"0": 3, "1": 4},
-            3: {"0": 3, "1": 4},
-            4: {"0": "oblivion", "1": "oblivion"},
-            "oblivion": {"0": "oblivion", "1": "oblivion"},
+            1: {"0": 2, "1": 4, ANYTHING_ELSE: "oblivion"},
+            2: {"0": 3, "1": 4, ANYTHING_ELSE: "oblivion"},
+            3: {"0": 3, "1": 4, ANYTHING_ELSE: "oblivion"},
+            4: {"0": "oblivion", "1": "oblivion", ANYTHING_ELSE: "oblivion"},
+            "oblivion": {
+                "0": "oblivion",
+                "1": "oblivion",
+                ANYTHING_ELSE: "oblivion",
+            },
         },
     ).reduce()
     print(merged)
@@ -238,11 +242,15 @@ def test_crawl_reduction() -> None:
 def test_bug_28() -> None:
     # This is (ab*)* and it caused some defects.
     abstar = Fsm(
-        alphabet={"a", "b"},
+        alphabet={"a", "b", ANYTHING_ELSE},
         states={0, 1, 2},
         initial=0,
         finals={1},
-        map={0: {"a": 1, "b": 2}, 1: {"a": 2, "b": 1}, 2: {"a": 2, "b": 2}},
+        map={
+            0: {"a": 1, "b": 2, ANYTHING_ELSE: 2},
+            1: {"a": 2, "b": 1, ANYTHING_ELSE: 2},
+            2: {"a": 2, "b": 2, ANYTHING_ELSE: 2},
+        },
     )
     assert abstar.accepts("a")
     assert not abstar.accepts("b")
@@ -259,18 +267,22 @@ def test_star_advanced() -> None:
     # This is (a*ba)*. Naively connecting the final states to the initial state
     # gives the incorrect result here.
     starred = Fsm(
-        alphabet={"a", "b"},
+        alphabet={"a", "b", ANYTHING_ELSE},
         states={0, 1, 2, "oblivion"},
         initial=0,
         finals={2},
         map={
-            0: {"a": 0, "b": 1},
-            1: {"a": 2, "b": "oblivion"},
-            2: {"a": "oblivion", "b": "oblivion"},
-            "oblivion": {"a": "oblivion", "b": "oblivion"},
+            0: {"a": 0, "b": 1, ANYTHING_ELSE: "oblivion"},
+            1: {"a": 2, "b": "oblivion", ANYTHING_ELSE: "oblivion"},
+            2: {"a": "oblivion", "b": "oblivion", ANYTHING_ELSE: "oblivion"},
+            "oblivion": {
+                "a": "oblivion",
+                "b": "oblivion",
+                ANYTHING_ELSE: "oblivion",
+            },
         },
     ).star()
-    assert starred.alphabet == frozenset(["a", "b"])
+    assert starred.alphabet == frozenset(["a", "b", ANYTHING_ELSE])
     assert starred.accepts("")
     assert not starred.accepts("a")
     assert not starred.accepts("b")
@@ -286,14 +298,14 @@ def test_reduce() -> None:
     # FSM accepts no strings but has 3 states, needs only 1
     symbol = "x"
     asdf = Fsm(
-        alphabet={symbol},
+        alphabet={symbol, ANYTHING_ELSE},
         states={0, 1, 2},
         initial=0,
         finals={1},
         map={
-            0: {symbol: 2},
-            1: {symbol: 2},
-            2: {symbol: 2},
+            0: {symbol: 2, ANYTHING_ELSE: 2},
+            1: {symbol: 2, ANYTHING_ELSE: 2},
+            2: {symbol: 2, ANYTHING_ELSE: 2},
         },
     )
     asdf = asdf.reduce()
@@ -302,16 +314,16 @@ def test_reduce() -> None:
 
 def test_reverse_abc() -> None:
     abc = Fsm(
-        alphabet={"a", "b", "c"},
+        alphabet={"a", "b", "c", ANYTHING_ELSE},
         states={0, 1, 2, 3, None},
         initial=0,
         finals={3},
         map={
-            0: {"a": 1, "b": None, "c": None},
-            1: {"a": None, "b": 2, "c": None},
-            2: {"a": None, "b": None, "c": 3},
-            3: {"a": None, "b": None, "c": None},
-            None: {"a": None, "b": None, "c": None},
+            0: {"a": 1, "b": None, "c": None, ANYTHING_ELSE: None},
+            1: {"a": None, "b": 2, "c": None, ANYTHING_ELSE: None},
+            2: {"a": None, "b": None, "c": 3, ANYTHING_ELSE: None},
+            3: {"a": None, "b": None, "c": None, ANYTHING_ELSE: None},
+            None: {"a": None, "b": None, "c": None, ANYTHING_ELSE: None},
         },
     )
     cba = abc.reversed()
@@ -321,16 +333,17 @@ def test_reverse_abc() -> None:
 def test_reverse_brzozowski() -> None:
     # This is (a|b)*a(a|b)
     brzozowski = Fsm(
-        alphabet={"a", "b"},
-        states={"A", "B", "C", "D", "E"},
+        alphabet={"a", "b", ANYTHING_ELSE},
+        states={"A", "B", "C", "D", "E", None},
         initial="A",
         finals={"C", "E"},
         map={
-            "A": {"a": "B", "b": "D"},
-            "B": {"a": "C", "b": "E"},
-            "C": {"a": "C", "b": "E"},
-            "D": {"a": "B", "b": "D"},
-            "E": {"a": "B", "b": "D"},
+            "A": {"a": "B", "b": "D", ANYTHING_ELSE: None},
+            "B": {"a": "C", "b": "E", ANYTHING_ELSE: None},
+            "C": {"a": "C", "b": "E", ANYTHING_ELSE: None},
+            "D": {"a": "B", "b": "D", ANYTHING_ELSE: None},
+            "E": {"a": "B", "b": "D", ANYTHING_ELSE: None},
+            None: {"a": None, "b": None, ANYTHING_ELSE: None},
         },
     )
     assert brzozowski.accepts("aa")
@@ -372,7 +385,7 @@ def test_reverse_brzozowski() -> None:
 
 def test_reverse_epsilon() -> None:
     # epsilon reversed is epsilon
-    assert epsilon("a").reversed().accepts("")
+    assert epsilon({"a", ANYTHING_ELSE}).reversed().accepts("")
 
 
 def test_binary_3() -> None:
@@ -380,17 +393,17 @@ def test_binary_3() -> None:
     # Disallows the empty string
     # Allows "0" on its own, but not leading zeroes.
     div3 = Fsm(
-        alphabet={"0", "1"},
+        alphabet={"0", "1", ANYTHING_ELSE},
         states={"initial", "zero", 0, 1, 2, None},
         initial="initial",
         finals={"zero", 0},
         map={
-            "initial": {"0": "zero", "1": 1},
-            "zero": {"0": None, "1": None},
-            0: {"0": 0, "1": 1},
-            1: {"0": 2, "1": 0},
-            2: {"0": 1, "1": 2},
-            None: {"0": None, "1": None},
+            "initial": {"0": "zero", "1": 1, ANYTHING_ELSE: None},
+            "zero": {"0": None, "1": None, ANYTHING_ELSE: None},
+            0: {"0": 0, "1": 1, ANYTHING_ELSE: None},
+            1: {"0": 2, "1": 0, ANYTHING_ELSE: None},
+            2: {"0": 1, "1": 2, ANYTHING_ELSE: None},
+            None: {"0": None, "1": None, ANYTHING_ELSE: None},
         },
     )
     assert not div3.accepts("")
@@ -466,14 +479,14 @@ def test_anything_else_acceptance() -> None:
 
 def test_difference(a: FixtureA, b: FixtureB) -> None:
     aorb = Fsm(
-        alphabet={"a", "b"},
+        alphabet={"a", "b", ANYTHING_ELSE},
         states={0, 1, None},
         initial=0,
         finals={1},
         map={
-            0: {"a": 1, "b": 1},
-            1: {"a": None, "b": None},
-            None: {"a": None, "b": None},
+            0: {"a": 1, "b": 1, ANYTHING_ELSE: None},
+            1: {"a": None, "b": None, ANYTHING_ELSE: None},
+            None: {"a": None, "b": None, ANYTHING_ELSE: None},
         },
     )
 
@@ -488,31 +501,31 @@ def test_empty(a: FixtureA, b: FixtureB) -> None:
     assert not b.empty()
 
     assert Fsm(
-        alphabet={},
+        alphabet={ANYTHING_ELSE},
         states={0, 1},
         initial=0,
         finals={1},
-        map={0: {}, 1: {}},
+        map={0: {ANYTHING_ELSE: 0}, 1: {ANYTHING_ELSE: 0}},
     ).empty()
 
     assert not Fsm(
-        alphabet={},
+        alphabet={ANYTHING_ELSE},
         states={0},
         initial=0,
         finals={0},
-        map={0: {}},
+        map={0: {ANYTHING_ELSE: 0}},
     ).empty()
 
     assert Fsm(
-        alphabet={"a", "b"},
+        alphabet={"a", "b", ANYTHING_ELSE},
         states={0, 1, None, 2},
         initial=0,
         finals={2},
         map={
-            0: {"a": 1, "b": 1},
-            1: {"a": None, "b": None},
-            None: {"a": None, "b": None},
-            2: {"a": None, "b": None},
+            0: {"a": 1, "b": 1, ANYTHING_ELSE: None},
+            1: {"a": None, "b": None, ANYTHING_ELSE: None},
+            None: {"a": None, "b": None, ANYTHING_ELSE: None},
+            2: {"a": None, "b": None, ANYTHING_ELSE: None},
         },
     ).empty()
 
@@ -607,27 +620,29 @@ def test_dead_default() -> None:
 
 
 def test_alphabet_unions() -> None:
-    # Thanks to sparse maps it should now be possible to compute the union of
+    # It should now be possible to compute the union of
     # FSMs with disagreeing alphabets!
     a = Fsm(
-        alphabet={"a"},
-        states={0, 1},
+        alphabet={"a", ANYTHING_ELSE},
+        states={0, 1, 2},
         initial=0,
         finals={1},
         map={
-            0: {"a": 1},
-            1: {"a": 1}
+            0: {"a": 1, ANYTHING_ELSE: 2},
+            1: {"a": 1, ANYTHING_ELSE: 2},
+            2: {"a": 2, ANYTHING_ELSE: 2},
         },
     )
 
     b = Fsm(
-        alphabet={"b"},
-        states={0, 1},
+        alphabet={"b", ANYTHING_ELSE},
+        states={0, 1, 2},
         initial=0,
         finals={1},
         map={
-            0: {"b": 1},
-            1: {"b": 1}
+            0: {"b": 1, ANYTHING_ELSE: 2},
+            1: {"b": 1, ANYTHING_ELSE: 2},
+            2: {"b": 2, ANYTHING_ELSE: 2},
         },
     )
 
@@ -670,12 +685,10 @@ def test_new_set_methods(a: FixtureA, b: FixtureB) -> None:
     # This takes a little explaining. In general, `a & b & c` is equivalent to
     # `EVERYTHING & a & b & c` where `EVERYTHING` is an FSM accepting every
     # possible string. Similarly `a` is equivalent to `EVERYTHING & a`, and the
-    # intersection of no sets at all is... `EVERYTHING`. However, since we
-    # compute the union of alphabets, and there are no alphabets, the union is
-    # the empty set. So the only string which `EVERYTHING` actually recognises
-    # is the empty string, [] (or "" if you prefer).
+    # intersection of no sets at all is... `EVERYTHING`.
     int_none = Fsm.intersection()
-    assert len(int_none) == 1
+    with pytest.raises(OverflowError):
+        len(int_none)
     assert [] in int_none
 
     assert (a | b).difference(a) == Fsm.difference((a | b), a) == (a | b) - a == b
@@ -683,7 +696,7 @@ def test_new_set_methods(a: FixtureA, b: FixtureB) -> None:
         (a | b).difference(a, b)
         == Fsm.difference((a | b), a, b)
         == (a | b) - a - b
-        == null("ab")
+        == null({"a", "b", ANYTHING_ELSE})
     )
     assert a.symmetric_difference(b) == Fsm.symmetric_difference(a, b) == a ^ b
     assert a.isdisjoint(b)
@@ -714,16 +727,16 @@ def test_copy(a: FixtureA) -> None:
 def test_oblivion_crawl() -> None:
     # Old test from when we used to have a suppressed/secret "oblivion state"
     abc = Fsm(
-        alphabet={"a", "b", "c"},
+        alphabet={"a", "b", "c", ANYTHING_ELSE},
         states={0, 1, 2, 3, 4},
         initial=0,
         finals={3},
         map={
-            0: {"a": 1, "b": 2, "c": 4},
-            1: {"a": 4, "b": 2, "c": 4},
-            2: {"a": 4, "b": 4, "c": 3},
-            3: {"a": 4, "b": 4, "c": 4},
-            4: {"a": 4, "b": 4, "c": 4},
+            0: {"a": 1, "b": 2, "c": 4, ANYTHING_ELSE: 4},
+            1: {"a": 4, "b": 2, "c": 4, ANYTHING_ELSE: 4},
+            2: {"a": 4, "b": 4, "c": 3, ANYTHING_ELSE: 4},
+            3: {"a": 4, "b": 4, "c": 4, ANYTHING_ELSE: 4},
+            4: {"a": 4, "b": 4, "c": 4, ANYTHING_ELSE: 4},
         },
     )
     assert len((abc + abc).states) == 8
@@ -738,20 +751,22 @@ def test_oblivion_crawl() -> None:
 
 def test_concatenate_bug(a: FixtureA) -> None:
     # This exposes a defect in Fsm.concatenate.
-    assert Fsm.concatenate(a, epsilon({"a"}), a).accepts("aa")
-    assert Fsm.concatenate(a, epsilon({"a"}), epsilon({"a"}), a).accepts("aa")
+    assert Fsm.concatenate(a, epsilon({"a", ANYTHING_ELSE}), a).accepts("aa")
+    assert Fsm.concatenate(
+        a,
+        epsilon({"a", ANYTHING_ELSE}),
+        epsilon({"a", ANYTHING_ELSE}),
+        a
+    ).accepts("aa")
 
 
 def test_derive(a: FixtureA) -> None:
     # Just some basic tests because this is mainly a regex thing.
-    assert a.derive("a") == epsilon({"a", "b"})
-    assert a.derive("b") == null({"a", "b"})
-
-    with pytest.raises(KeyError):
-        a.derive("c")
+    assert a.derive("a") == epsilon({"a", "b", ANYTHING_ELSE})
+    assert a.derive("b") == null({"a", "b", ANYTHING_ELSE})
 
     assert (a * 3).derive("a") == a * 2
-    assert (a.star() - epsilon({"a", "b"})).derive("a") == a.star()
+    assert (a.star() - epsilon({"a", "b", ANYTHING_ELSE})).derive("a") == a.star()
 
 
 def test_bug_36() -> None:
