@@ -69,7 +69,7 @@ ANYTHING_ELSE = AnythingElse.TOKEN
 
 AlphaType = Union[str, AnythingElse]
 
-StateType = Union[int, str, None]
+StateType = Union[int, str]
 
 M = TypeVar("M")
 """Meta-state type for crawl(). Can be anything."""
@@ -146,6 +146,8 @@ class Fsm:
                         " which is not a state"
                     )
         for state in states:
+            if state is None:
+                raise Exception("Can't have a None state")
             if state not in map:
                 raise Exception(f"State {state!r} missing from map")
             for symbol in alphabet:

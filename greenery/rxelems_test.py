@@ -392,16 +392,16 @@ def test_binary_3() -> None:
     div3 = from_fsm(
         Fsm(
             alphabet={"0", "1", ANYTHING_ELSE},
-            states={"initial", "zero", 0, 1, 2, None},
+            states={"initial", "zero", 0, 1, 2, 3},
             initial="initial",
             finals={"zero", 0},
             map={
-                "initial": {"0": "zero", "1": 1, ANYTHING_ELSE: None},
-                "zero": {"0": None, "1": None, ANYTHING_ELSE: None},
-                0: {"0": 0, "1": 1, ANYTHING_ELSE: None},
-                1: {"0": 2, "1": 0, ANYTHING_ELSE: None},
-                2: {"0": 1, "1": 2, ANYTHING_ELSE: None},
-                None: {"0": None, "1": None, ANYTHING_ELSE: None},
+                "initial": {"0": "zero", "1": 1, ANYTHING_ELSE: 3},
+                "zero": {"0": 3, "1": 3, ANYTHING_ELSE: 3},
+                0: {"0": 0, "1": 1, ANYTHING_ELSE: 3},
+                1: {"0": 2, "1": 0, ANYTHING_ELSE: 3},
+                2: {"0": 1, "1": 2, ANYTHING_ELSE: 3},
+                3: {"0": 3, "1": 3, ANYTHING_ELSE: 3},
             },
         )
     )
@@ -427,28 +427,28 @@ def test_base_N() -> None:
     divN = from_fsm(
         Fsm(
             alphabet=({str(i) for i in range(base)} | {ANYTHING_ELSE}),
-            states=frozenset(range(N)) | {"initial", "zero", None},
+            states=frozenset(range(N)) | {"initial", "zero", N},
             initial="initial",
             finals={"zero", 0},
             map={
                 "initial": {
                     "0": "zero",
                     **{str(j): j % N for j in range(1, base)},
-                    ANYTHING_ELSE: None,
+                    ANYTHING_ELSE: N,
                 },
                 "zero": {
-                    **{str(j): None for j in range(base)},
-                    ANYTHING_ELSE: None,
-                },
-                None: {
-                    **{str(j): None for j in range(base)},
-                    ANYTHING_ELSE: None,
+                    **{str(j): N for j in range(base)},
+                    ANYTHING_ELSE: N,
                 },
                 **{
                     i: {
                         **{str(j): (i * base + j) % N for j in range(base)},
-                        ANYTHING_ELSE: None,
+                        ANYTHING_ELSE: N,
                     } for i in range(N)
+                },
+                N: {
+                    **{str(j): N for j in range(base)},
+                    ANYTHING_ELSE: N,
                 },
             },
         )

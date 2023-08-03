@@ -314,15 +314,15 @@ def test_reduce() -> None:
 def test_reverse_abc() -> None:
     abc = Fsm(
         alphabet={"a", "b", "c", ANYTHING_ELSE},
-        states={0, 1, 2, 3, None},
+        states={0, 1, 2, 3, 4},
         initial=0,
         finals={3},
         map={
-            0: {"a": 1, "b": None, "c": None, ANYTHING_ELSE: None},
-            1: {"a": None, "b": 2, "c": None, ANYTHING_ELSE: None},
-            2: {"a": None, "b": None, "c": 3, ANYTHING_ELSE: None},
-            3: {"a": None, "b": None, "c": None, ANYTHING_ELSE: None},
-            None: {"a": None, "b": None, "c": None, ANYTHING_ELSE: None},
+            0: {"a": 1, "b": 4, "c": 4, ANYTHING_ELSE: 4},
+            1: {"a": 4, "b": 2, "c": 4, ANYTHING_ELSE: 4},
+            2: {"a": 4, "b": 4, "c": 3, ANYTHING_ELSE: 4},
+            3: {"a": 4, "b": 4, "c": 4, ANYTHING_ELSE: 4},
+            4: {"a": 4, "b": 4, "c": 4, ANYTHING_ELSE: 4},
         },
     )
     cba = abc.reversed()
@@ -333,16 +333,16 @@ def test_reverse_brzozowski() -> None:
     # This is (a|b)*a(a|b)
     brzozowski = Fsm(
         alphabet={"a", "b", ANYTHING_ELSE},
-        states={"A", "B", "C", "D", "E", None},
+        states={"A", "B", "C", "D", "E", "F"},
         initial="A",
         finals={"C", "E"},
         map={
-            "A": {"a": "B", "b": "D", ANYTHING_ELSE: None},
-            "B": {"a": "C", "b": "E", ANYTHING_ELSE: None},
-            "C": {"a": "C", "b": "E", ANYTHING_ELSE: None},
-            "D": {"a": "B", "b": "D", ANYTHING_ELSE: None},
-            "E": {"a": "B", "b": "D", ANYTHING_ELSE: None},
-            None: {"a": None, "b": None, ANYTHING_ELSE: None},
+            "A": {"a": "B", "b": "D", ANYTHING_ELSE: "F"},
+            "B": {"a": "C", "b": "E", ANYTHING_ELSE: "F"},
+            "C": {"a": "C", "b": "E", ANYTHING_ELSE: "F"},
+            "D": {"a": "B", "b": "D", ANYTHING_ELSE: "F"},
+            "E": {"a": "B", "b": "D", ANYTHING_ELSE: "F"},
+            "F": {"a": "F", "b": "F", ANYTHING_ELSE: "F"},
         },
     )
     assert brzozowski.accepts("aa")
@@ -393,16 +393,16 @@ def test_binary_3() -> None:
     # Allows "0" on its own, but not leading zeroes.
     div3 = Fsm(
         alphabet={"0", "1", ANYTHING_ELSE},
-        states={"initial", "zero", 0, 1, 2, None},
+        states={"initial", "zero", 0, 1, 2, 3},
         initial="initial",
         finals={"zero", 0},
         map={
-            "initial": {"0": "zero", "1": 1, ANYTHING_ELSE: None},
-            "zero": {"0": None, "1": None, ANYTHING_ELSE: None},
-            0: {"0": 0, "1": 1, ANYTHING_ELSE: None},
-            1: {"0": 2, "1": 0, ANYTHING_ELSE: None},
-            2: {"0": 1, "1": 2, ANYTHING_ELSE: None},
-            None: {"0": None, "1": None, ANYTHING_ELSE: None},
+            "initial": {"0": "zero", "1": 1, ANYTHING_ELSE: 3},
+            "zero": {"0": 3, "1": 3, ANYTHING_ELSE: 3},
+            0: {"0": 0, "1": 1, ANYTHING_ELSE: 3},
+            1: {"0": 2, "1": 0, ANYTHING_ELSE: 3},
+            2: {"0": 1, "1": 2, ANYTHING_ELSE: 3},
+            3: {"0": 3, "1": 3, ANYTHING_ELSE: 3},
         },
     )
     assert not div3.accepts("")
@@ -479,13 +479,13 @@ def test_anything_else_acceptance() -> None:
 def test_difference(a: FixtureA, b: FixtureB) -> None:
     aorb = Fsm(
         alphabet={"a", "b", ANYTHING_ELSE},
-        states={0, 1, None},
+        states={0, 1, 2},
         initial=0,
         finals={1},
         map={
-            0: {"a": 1, "b": 1, ANYTHING_ELSE: None},
-            1: {"a": None, "b": None, ANYTHING_ELSE: None},
-            None: {"a": None, "b": None, ANYTHING_ELSE: None},
+            0: {"a": 1, "b": 1, ANYTHING_ELSE: 2},
+            1: {"a": 2, "b": 2, ANYTHING_ELSE: 2},
+            2: {"a": 2, "b": 2, ANYTHING_ELSE: 2},
         },
     )
 
@@ -517,14 +517,14 @@ def test_empty(a: FixtureA, b: FixtureB) -> None:
 
     assert Fsm(
         alphabet={"a", "b", ANYTHING_ELSE},
-        states={0, 1, None, 2},
+        states={0, 1, 2, 3},
         initial=0,
-        finals={2},
+        finals={3},
         map={
-            0: {"a": 1, "b": 1, ANYTHING_ELSE: None},
-            1: {"a": None, "b": None, ANYTHING_ELSE: None},
-            None: {"a": None, "b": None, ANYTHING_ELSE: None},
-            2: {"a": None, "b": None, ANYTHING_ELSE: None},
+            0: {"a": 1, "b": 1, ANYTHING_ELSE: 2},
+            1: {"a": 2, "b": 2, ANYTHING_ELSE: 2},
+            2: {"a": 2, "b": 2, ANYTHING_ELSE: 2},
+            3: {"a": 2, "b": 2, ANYTHING_ELSE: 2},
         },
     ).empty()
 
