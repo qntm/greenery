@@ -19,7 +19,7 @@ from typing import Iterable, Iterator
 
 from .bound import INF, Bound
 from .charclass import NULLCHARCLASS, Charclass
-from .fsm import ANYTHING_ELSE, AnythingElse, Fsm, epsilon, null, state_type
+from .fsm import ANYTHING_ELSE, AnythingElse, Fsm, StateType, epsilon, null
 from .multiplier import ONE, QM, STAR, ZERO, Multiplier
 
 
@@ -50,6 +50,9 @@ class Conc:
         return f"Conc({args})"
 
     def reduce(self) -> Conc:
+        # pylint: disable=too-many-branches
+        # pylint: disable=too-many-return-statements
+
         if self == NULLCONC:
             return self
 
@@ -241,9 +244,8 @@ class Conc:
             # other.mults, then we have a problem. For example, "ABC{2} - BC"
             # subtracts the C successfully but leaves something behind,
             # then tries to subtract the B too, which isn't possible
-            else:
-                if i != 0:
-                    raise Exception(f"Can't subtract {other!r} from {self!r}")
+            elif i:
+                raise ArithmeticError(f"Can't subtract {other!r} from {self!r}")
 
         return Conc(*new)
 
@@ -271,6 +273,8 @@ def from_fsm(f: Fsm) -> Pattern:
     Turn the supplied finite state machine into a `Pattern`. This is
     accomplished using the Brzozowski algebraic method.
     """
+    # pylint: disable=too-many-branches
+
     # Make sure the supplied alphabet is kosher. It must contain only single-
     # character strings or `ANYTHING_ELSE`.
     for symbol in f.alphabet:
@@ -278,7 +282,7 @@ def from_fsm(f: Fsm) -> Pattern:
             continue
         if isinstance(symbol, str) and len(symbol) == 1:
             continue
-        raise Exception(f"Symbol {symbol!r} cannot be used in a regular expression")
+        raise TypeError(f"Symbol {symbol!r} cannot be used in a regular expression")
 
     outside = _Outside.TOKEN
 
@@ -303,13 +307,13 @@ def from_fsm(f: Fsm) -> Pattern:
         current = states[i]
         if current in f.map:
             for symbol in sorted(f.map[current]):
-                next = f.map[current][symbol]
-                if next not in states:
-                    states.append(next)
+                next_state = f.map[current][symbol]
+                if next_state not in states:
+                    states.append(next_state)
         i += 1
 
     # Our system of equations is represented like so:
-    brz: dict[state_type, dict[state_type | _Outside, Pattern]] = {}
+    brz: dict[StateType, dict[StateType | _Outside, Pattern]] = {}
 
     for a in f.states:
         brz[a] = {}
@@ -325,12 +329,12 @@ def from_fsm(f: Fsm) -> Pattern:
     for a in f.map:
         for symbol in f.map[a]:
             b = f.map[a][symbol]
-            if symbol is ANYTHING_ELSE:
-                charclass = ~Charclass(
-                    frozenset(s for s in f.alphabet if s is not ANYTHING_ELSE)
-                )
-            else:
-                charclass = Charclass(frozenset((symbol,)))
+
+            charclass = (
+                ~Charclass(frozenset(s for s in f.alphabet if s is not ANYTHING_ELSE))
+                if symbol is ANYTHING_ELSE
+                else Charclass(frozenset((symbol,)))
+            )
 
             brz[a][b] = Pattern(*brz[a][b].concs, Conc(Mult(charclass, ONE))).reduce()
 
@@ -442,11 +446,15 @@ class Pattern:
         return self.union(other)
 
     def __str__(self, /) -> str:
-        if len(self.concs) == 0:
-            raise Exception(f"Can't serialise {self!r}")
+        if not self.concs:
+            raise ValueError(f"Can't serialise {self!r}")
         return "|".join(sorted(str(conc) for conc in self.concs))
 
     def reduce(self, /) -> Pattern:
+        # pylint: disable=too-many-branches
+        # pylint: disable=too-many-locals
+        # pylint: disable=too-many-return-statements
+
         if self == NULLPATTERN:
             return self
 
@@ -480,8 +488,7 @@ class Pattern:
         # multipliers.
         # e.g. "a{1,2}|a{3,4}|bc" -> "a{1,4}|bc"
         oldconcs = list(self.concs)  # so we can index the things
-        for i in range(len(oldconcs)):
-            conc1 = oldconcs[i]
+        for i, conc1 in enumerate(oldconcs):
             if len(conc1.mults) != 1:
                 continue
             multiplicand1 = conc1.mults[0].multiplicand
@@ -615,8 +622,8 @@ class Pattern:
 
         If "suffix" is True, the same result but for suffixes.
         """
-        if len(self.concs) == 0:
-            raise Exception(f"Can't call _commonconc on {self!r}")
+        if not self.concs:
+            raise ValueError(f"Can't call _commonconc on {self!r}")
 
         return reduce(lambda x, y: x.common(y, suffix=suffix), self.concs)
 
@@ -776,7 +783,7 @@ class Mult:
         e.g. a{4,5} - a{3} = a{1,2}
         """
         if other.multiplicand != self.multiplicand:
-            raise Exception(f"Can't subtract {other!r} from {self!r}")
+            raise ArithmeticError(f"Can't subtract {other!r} from {self!r}")
         return Mult(self.multiplicand, self.multiplier - other.multiplier)
 
     def common(self, other: Mult, /) -> Mult:
@@ -823,9 +830,7 @@ class Mult:
             and self.multiplier.canmultiplyby(QM)
         ):
             return Mult(
-                Pattern(
-                    *filter(lambda conc: len(conc.mults) != 0, self.multiplicand.concs)
-                ),
+                Pattern(*(conc for conc in self.multiplicand.concs if conc.mults)),
                 self.multiplier * QM,
             ).reduce()
 
@@ -854,7 +859,7 @@ class Mult:
             return f"({self.multiplicand}){self.multiplier}"
         if isinstance(self.multiplicand, Charclass):
             return f"{self.multiplicand}{self.multiplier}"
-        raise Exception(f"Unknown type {type(self.multiplicand)}")
+        raise TypeError(f"Unknown type {type(self.multiplicand)}")
 
     def to_fsm(self, /, alphabet: Iterable[str | AnythingElse] | None = None) -> Fsm:
         if alphabet is None:

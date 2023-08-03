@@ -12,7 +12,7 @@ def test_ctor() -> None:
     Bound(1)
     Bound(2)
 
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError):
         Bound(-1)
 
 
@@ -83,16 +83,16 @@ def test_subtraction() -> None:
     assert INF - Bound(1000) == INF
     assert INF - INF == Bound(0)
 
-    with pytest.raises(Exception):
+    with pytest.raises(ArithmeticError):
         _ = Bound(5) - Bound(6)
 
-    with pytest.raises(Exception):
+    with pytest.raises(ArithmeticError):
         _ = Bound(0) - Bound(1)
 
-    with pytest.raises(Exception):
+    with pytest.raises(ArithmeticError):
         _ = Bound(0) - INF
 
-    with pytest.raises(Exception):
+    with pytest.raises(ArithmeticError):
         _ = Bound(10) - INF
 
 
@@ -105,6 +105,8 @@ def test_copy() -> None:
 
 def test_bound_str() -> None:
     assert str(Bound(2)) == "2"
+
+    # pylint: disable-next=compare-to-empty-string
     assert str(INF) == ""
 
 

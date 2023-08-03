@@ -9,6 +9,7 @@ from .rxelems import Mult
 
 def test_mult_equality() -> None:
     a = Mult(Charclass("a"), ONE)
+    # pylint: disable=comparison-with-itself
     assert a == a
     assert a != Mult(Charclass("b"), ONE)
     assert a != Mult(Charclass("a"), QM)
@@ -34,6 +35,8 @@ def test_mult_str() -> None:
 
 
 def test_odd_bug() -> None:
+    # pylint: disable=invalid-name
+
     # Odd bug with ([bc]*c)?[ab]*
     int5A = Mult(
         Charclass("bc"),

@@ -35,6 +35,9 @@ jobs:
         flake8 --count --statistics --show-source --select=E9,F63,F7,F82 .
         # exit-zero treats all errors as warnings
         flake8 --count --statistics --exit-zero .
+    - name: Lint with pylint
+      run: |
+        pylint --recursive=true .
     - name: Check with mypy
       run: |
         mypy greenery

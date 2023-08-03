@@ -16,7 +16,7 @@ class Bound:
 
     def __post_init__(self, /) -> None:
         if self.v is not None and self.v < 0:
-            raise Exception(f"Invalid bound: {self.v!r}")
+            raise ValueError(f"Invalid bound: {self.v!r}")
 
     def __repr__(self, /) -> str:
         return f"Bound({self.v!r})"
@@ -47,7 +47,7 @@ class Bound:
 
     def __mul__(self, other: Bound, /) -> Bound:
         """Multiply this bound by another"""
-        if self == Bound(0) or other == Bound(0):
+        if Bound(0) in (self, other):
             return Bound(0)
         if self.v is None or other.v is None:
             return INF
@@ -66,7 +66,7 @@ class Bound:
         """
         if other.v is None:
             if self.v is not None:
-                raise Exception(f"Can't subtract {other!r} from {self!r}")
+                raise ArithmeticError(f"Can't subtract {other!r} from {self!r}")
 
             # Infinity minus infinity is zero. This has to be true so that
             # we can for example subtract Multiplier(Bound(0), INF) from
@@ -74,7 +74,10 @@ class Bound:
             return Bound(0)
         if self.v is None:
             return INF
-        return Bound(self.v - other.v)
+        try:
+            return Bound(self.v - other.v)
+        except ValueError as e:
+            raise ArithmeticError(*e.args) from e
 
     def copy(self, /) -> Bound:
         return Bound(self.v)

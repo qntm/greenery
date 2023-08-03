@@ -55,7 +55,7 @@ def test_conc_dock() -> None:
     a = Mult(Charclass("A"), ONE)
     b = Mult(Charclass("B"), ONE)
     x = Mult(Charclass("X"), ONE)
-    x2 = Mult(Charclass("X"), Multiplier(Bound(2), Bound(2)))
+    x_twice = Mult(Charclass("X"), Multiplier(Bound(2), Bound(2)))
     yplus = Mult(Charclass("y"), PLUS)
     z = Mult(Charclass("Z"), ONE)
 
@@ -64,8 +64,8 @@ def test_conc_dock() -> None:
     assert Conc(a, b, x, yplus, z).behead(Conc(a, b, x, yplus)) == Conc(z)
     assert Conc(a).dock(Conc()) == Conc(a)
 
-    with pytest.raises(Exception, match="Can't subtract"):
-        Conc(x2, yplus, z).behead(Conc(x, yplus))
+    with pytest.raises(ArithmeticError, match="Can't subtract"):
+        Conc(x_twice, yplus, z).behead(Conc(x, yplus))
 
 
 def test_mult_reduction_easy() -> None:

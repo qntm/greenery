@@ -11,8 +11,14 @@ from .fsm import ANYTHING_ELSE, Fsm
 from .parse import parse
 from .rxelems import from_fsm
 
+# pylint: disable=compare-to-empty-string
+# pylint: disable=invalid-name
+# pylint: disable=too-many-lines
+
 if __name__ == "__main__":
-    raise Exception("Test files can't be run directly. Use `python -m pytest greenery`")
+    raise RuntimeError(
+        "Test files can't be run directly. Use `python -m pytest greenery`"
+    )
 
 
 ###############################################################################
@@ -22,6 +28,7 @@ if __name__ == "__main__":
 def test_charclass_str() -> None:
     # Arbitrary ranges
     assert str(parse("[\\w:;<=>?@\\[\\\\\\]\\^`]")) == "[0-z]"
+    # pylint: disable-next=fixme
     # TODO: what if \d is a proper subset of `chars`?
 
     # escape sequences are not preserved
@@ -253,7 +260,7 @@ def test_wildcard_generator() -> None:
 
 
 def test_forin() -> None:
-    assert [s for s in parse("abc|def(ghi|jkl)")] == ["abc", "defghi", "defjkl"]
+    assert tuple(parse("abc|def(ghi|jkl)")) == ("abc", "defghi", "defjkl")
 
 
 ###############################################################################
@@ -261,6 +268,7 @@ def test_forin() -> None:
 
 
 def test_cardinality() -> None:
+    # pylint: disable-next=compare-to-zero
     assert parse("[]").cardinality() == 0
     assert parse("[]?").cardinality() == 1
     assert parse("[]{0,6}").cardinality() == 1
@@ -421,22 +429,18 @@ def test_base_N() -> None:
             states=frozenset(range(N)) | {"initial", "zero", None},
             initial="initial",
             finals={"zero", 0},
-            map=dict(
-                [  # type: ignore
-                    (
-                        "initial",
-                        dict(
-                            [(str(j), j % N) for j in range(1, base)] + [("0", "zero")]
-                        ),
-                    ),
-                    ("zero", dict([(str(j), None) for j in range(base)])),
-                    (None, dict([(str(j), None) for j in range(base)])),
-                ]
-                + [
-                    (i, dict([(str(j), (i * base + j) % N) for j in range(base)]))
+            map={
+                "initial": {
+                    "0": "zero",
+                    **{str(j): j % N for j in range(1, base)},
+                },
+                "zero": {str(j): None for j in range(base)},
+                None: {str(j): None for j in range(base)},
+                **{
+                    i: {str(j): (i * base + j) % N for j in range(base)}
                     for i in range(N)
-                ]
-            ),
+                },
+            },
         )
     )
     gen = divN.strings()
@@ -470,7 +474,7 @@ def test_bad_alphabet() -> None:
             map={0: {bad_symbol: 0}},
         )
 
-        with pytest.raises(Exception, match="Symbol.*cannot be used"):
+        with pytest.raises(TypeError, match="Symbol.*cannot be used"):
             from_fsm(f)
 
 
@@ -595,6 +599,7 @@ def test_set_ops() -> None:
 
 
 def test_pattern_commonconc() -> None:
+    # pylint: disable=protected-access
     assert str(parse("aa|aa")._commonconc()) == "aa"
     assert str(parse("abc|aa")._commonconc()) == "a"
     assert str(parse("a|bc")._commonconc()) == ""
@@ -605,6 +610,7 @@ def test_pattern_commonconc() -> None:
 
 
 def test_pattern_commonconc_suffix() -> None:
+    # pylint: disable=protected-access
     assert str(parse("a|bc")._commonconc(suffix=True)) == ""
     assert str(parse("aa|bca")._commonconc(suffix=True)) == "a"
     assert str(parse("xyza|abca|a")._commonconc(suffix=True)) == "a"
@@ -842,6 +848,7 @@ def test_bad_reduction_bug() -> None:
     assert parse("0|[1-9]|ab").reduce() == parse("\\d|ab")
     assert parse("0|[1-9]|a{5,7}").reduce() == parse("\\d|a{5,7}")
     assert parse("0|(0|[1-9]|a{5,7})").reduce() == parse("0|(\\d|a{5,7})")
+    # pylint: disable-next=fixme
     # TODO: should do better than this! Merge that 0
 
 
