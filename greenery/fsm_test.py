@@ -5,7 +5,8 @@ from copy import copy
 
 import pytest
 
-from .fsm import ANYTHING_ELSE, AnythingElse, Fsm, epsilon, null
+from .fsm import ANYTHING_ELSE, AnythingElse, Fsm, epsilon, from_charclass, null
+from .charclass import Charclass
 
 # pylint: disable=invalid-name
 
@@ -926,3 +927,12 @@ def test_replace_alphabet() -> None:
         1: {"a": 2, "b": 2, "c": 1, ANYTHING_ELSE: 1},
         2: {"a": 2, "b": 2, "c": 2, ANYTHING_ELSE: 2},
     }
+
+
+def test_charclass_fsm() -> None:
+    # "[^a]"
+    nota = from_charclass(~Charclass("a"))
+    assert nota.alphabet == {"a", ANYTHING_ELSE}
+    assert nota.accepts("b")
+    assert nota.accepts(["b"])
+    assert nota.accepts([ANYTHING_ELSE])

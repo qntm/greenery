@@ -19,7 +19,8 @@ from typing import Iterable, Iterator
 
 from .bound import INF, Bound
 from .charclass import NULLCHARCLASS, Charclass
-from .fsm import ANYTHING_ELSE, AnythingElse, Fsm, StateType, epsilon, null
+from .anything_else import ANYTHING_ELSE, AnythingElse
+from .fsm import Fsm, StateType, epsilon, from_charclass, null
 from .multiplier import ONE, QM, STAR, ZERO, Multiplier
 
 
@@ -868,7 +869,11 @@ class Mult:
         # worked example: (min, max) = (5, 7) or (5, INF)
         # (mandatory, optional) = (5, 2) or (5, INF)
 
-        unit = self.multiplicand.to_fsm(alphabet)
+        unit = (
+            from_charclass(self.multiplicand, alphabet)
+            if isinstance(self.multiplicand, Charclass)
+            else self.multiplicand.to_fsm(alphabet)
+        )
         # accepts e.g. "ab"
 
         # Yuck. `mandatory` cannot be infinite: it's just a natural number.

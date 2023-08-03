@@ -14,7 +14,7 @@ from .charclass import (
     Charclass,
     repartition,
 )
-from .fsm import ANYTHING_ELSE
+from .anything_else import ANYTHING_ELSE
 
 
 def test_charclass_equality() -> None:
@@ -83,15 +83,6 @@ def test_charclass_str() -> None:
     assert str(~Charclass("{")) == "[^{]"
     assert str(~Charclass("\t")) == "[^\\t]"
     assert str(~Charclass("^")) == "[^\\^]"
-
-
-def test_charclass_fsm() -> None:
-    # "[^a]"
-    nota = (~Charclass("a")).to_fsm()
-    assert nota.alphabet == {"a", ANYTHING_ELSE}
-    assert nota.accepts("b")
-    assert nota.accepts(["b"])
-    assert nota.accepts([ANYTHING_ELSE])
 
 
 def test_charclass_negation() -> None:

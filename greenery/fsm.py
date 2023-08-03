@@ -15,10 +15,7 @@ __all__ = (
 )
 
 from dataclasses import dataclass
-from enum import Enum, auto
-from functools import total_ordering
 from typing import (
-    Any,
     Callable,
     ClassVar,
     Collection,
@@ -29,42 +26,8 @@ from typing import (
     Union,
 )
 
-
-@total_ordering
-class AnythingElse(Enum):
-    """
-    This is a surrogate symbol which you can use in your finite state
-    machines to represent "any symbol not in the official alphabet". For
-    example, if your state machine's alphabet is `{"a", "b", "c", "d",
-    fsm.ANYTHING_ELSE}`, then if "e" is passed as a symbol, it will be
-    converted to `fsm.ANYTHING_ELSE` before following the appropriate
-    transition.
-
-    This is an `Enum` to enforce a singleton value, detectable by type
-    checkers, as described in:
-    https://www.python.org/dev/peps/pep-0484/#support-for-singleton-types-in-unions
-    """
-
-    TOKEN = auto()
-
-    def __lt__(self, _: Any, /) -> bool:
-        """Ensure `fsm.ANYTHING_ELSE` always sorts last"""
-        return False
-
-    def __eq__(self, other: Any, /) -> bool:
-        return self is other
-
-    def __hash__(self, /) -> int:
-        return hash(type(self))
-
-    def __str__(self, /) -> str:
-        return "ANYTHING_ELSE"
-
-    def __repr__(self, /) -> str:
-        return "ANYTHING_ELSE"
-
-
-ANYTHING_ELSE = AnythingElse.TOKEN
+from .anything_else import ANYTHING_ELSE, AnythingElse
+from .charclass import Charclass
 
 
 AlphaType = Union[str, AnythingElse]
@@ -916,4 +879,33 @@ def crawl(
         initial=0,
         finals=finals,
         map=transitions,
+    )
+
+def from_charclass(
+    charclass,
+    alphabet: Iterable[str | AnythingElse] | None = None,
+) -> Fsm:
+    alphabet = charclass.alphabet() if alphabet is None else frozenset(alphabet)
+
+    # 0 is initial, 1 is final, 2 is dead
+    # If negated, make a singular FSM accepting any other characters
+    # If normal, make a singular FSM accepting only these characters
+    map = {
+        0: dict([
+            (
+                symbol,
+                2 if ((symbol in charclass.chars) == charclass.negated) else 1
+            ) for symbol in alphabet
+        ]),
+        1: dict([(symbol, 2) for symbol in alphabet]),
+        2: dict([(symbol, 2) for symbol in alphabet]),
+    }
+
+    # State 0 is initial, 1 is final
+    return Fsm(
+        alphabet=set(alphabet),
+        states={0, 1, 2},
+        initial=0,
+        finals={1},
+        map=map,
     )

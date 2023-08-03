@@ -18,7 +18,7 @@ __all__ = (
 from dataclasses import dataclass
 from typing import ClassVar, Iterable, Mapping
 
-from .fsm import ANYTHING_ELSE, AnythingElse, Fsm
+from .anything_else import ANYTHING_ELSE, AnythingElse
 
 
 @dataclass(frozen=True, init=False)
@@ -173,36 +173,6 @@ class Charclass:
             output += record_range()
 
         return output
-
-    def to_fsm(
-        self,
-        /,
-        alphabet: Iterable[str | AnythingElse] | None = None,
-    ) -> Fsm:
-        alphabet = self.alphabet() if alphabet is None else frozenset(alphabet)
-
-        # 0 is initial, 1 is final, 2 is dead
-        # If negated, make a singular FSM accepting any other characters
-        # If normal, make a singular FSM accepting only these characters
-        map = {
-            0: dict([
-                (
-                    symbol,
-                    2 if ((symbol in self.chars) == self.negated) else 1
-                ) for symbol in alphabet
-            ]),
-            1: dict([(symbol, 2) for symbol in alphabet]),
-            2: dict([(symbol, 2) for symbol in alphabet]),
-        }
-
-        # State 0 is initial, 1 is final
-        return Fsm(
-            alphabet=set(alphabet),
-            states={0, 1, 2},
-            initial=0,
-            finals={1},
-            map=map,
-        )
 
     def __repr__(self, /) -> str:
         sign = "~" if self.negated else ""
