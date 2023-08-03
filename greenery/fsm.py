@@ -174,7 +174,7 @@ class Fsm:
         """
         state = self.initial
         for symbol in symbols:
-            actual_symbol = ANYTHING_ELSE if symbol not in self.alphabet else symbol
+            actual_symbol = symbol if symbol in self.alphabet else ANYTHING_ELSE
             state = self.map[state][actual_symbol]
         return state in self.finals
 
@@ -826,7 +826,7 @@ def parallel(
     ) -> Mapping[int, StateType]:
         next_states = {}
         for i, fsm in enumerate(fsms):
-            actual_symbol = ANYTHING_ELSE if symbol not in fsm.alphabet else symbol
+            actual_symbol = symbol if symbol in fsm.alphabet else ANYTHING_ELSE
             if (
                 i in current
                 and current[i] in fsm.map
