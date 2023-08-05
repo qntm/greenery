@@ -42,8 +42,13 @@ def get_anything_else_charclass(alphabet):
     for symbol in alphabet:
         if symbol is ANYTHING_ELSE:
             continue
-        for char in symbol.chars:
-            chars.add(char)
+        elif isinstance(symbol, Charclass):
+            for char in symbol.chars:
+                chars.add(char)
+        elif len(symbol) == 1:
+            chars.add(symbol)
+        else:
+            raise Exception('Bad symbol')
     return ~Charclass(chars)
 
 
@@ -53,6 +58,7 @@ def eliminate_anything_else(alphabet):
     new_alphabet_map = {}
     for symbol in alphabet:
         if symbol is ANYTHING_ELSE:
+            raise Exception('nope')
             new_symbol = get_anything_else_charclass(alphabet)
         else:
             new_symbol = symbol
@@ -140,8 +146,10 @@ class Fsm:
         omitted transitions, a non-final "oblivion" state is simulated.
         """
         allchars = frozenset(alphabet)
+        anything_else_charclass = get_anything_else_charclass(alphabet)
+
         actual_alphabet = frozenset(
-            ANYTHING_ELSE if symbol is ANYTHING_ELSE
+            anything_else_charclass if symbol is ANYTHING_ELSE
             else symbol if isinstance(symbol, Charclass)
             else Charclass(symbol)
             for symbol
@@ -154,7 +162,7 @@ class Fsm:
         for state in map:
             actual_map[state] = {}
             for symbol in map[state]:
-                actual_symbol = ANYTHING_ELSE if symbol is ANYTHING_ELSE \
+                actual_symbol = anything_else_charclass if symbol is ANYTHING_ELSE \
                 else symbol if isinstance(symbol, Charclass) \
                 else Charclass(symbol)
                 actual_map[state][actual_symbol] = map[state][symbol]
@@ -190,8 +198,6 @@ class Fsm:
             for actual_symbol in actual_alphabet:
                 if actual_symbol not in actual_map[state]:
                     raise Exception(f"Symbol {actual_symbol!r} missing from map[{state!r}]")
-        if not ANYTHING_ELSE in alphabet:
-            raise Exception(f"Need ANYTHING_ELSE")
 
         # Initialise the hard way due to immutability.
         object.__setattr__(self, "alphabet", actual_alphabet)
@@ -212,14 +218,12 @@ class Fsm:
         state = self.initial
         for symbol in symbols:
             found = None
-            for actual_symbol in self.map[state]:
-                if actual_symbol is not ANYTHING_ELSE \
-                and not actual_symbol.negated \
-                and symbol in actual_symbol.chars:
-                    found = actual_symbol
+            for charclass in self.map[state]:
+                if (symbol in charclass.chars) != charclass.negated:
+                    found = charclass
                     break
             if found is None:
-                found = ANYTHING_ELSE
+                raise Exception('This should be impossible')
             state = self.map[state][found]
         return state in self.finals
 
@@ -349,12 +353,14 @@ class Fsm:
             next_metastate: set[tuple[int, StateType]] = set()
             for i, substate in current:
                 fsm = fsms[i]
+
+                # TODO: this `if` can probably go?
                 if substate in fsm.map:
-                    actual_symbol = symbol if symbol in fsm.alphabet else ANYTHING_ELSE
-                    next_metastate.update(connect_all(i, fsm.map[substate][actual_symbol]))
+                    next_metastate.update(connect_all(i, fsm.map[substate][symbol]))
+
             return frozenset(next_metastate)
 
-        alphabet = fsms[0].alphabet if len(fsms) > 0 else {ANYTHING_ELSE}
+        alphabet = fsms[0].alphabet if len(fsms) > 0 else {~Charclass()}
 
         return crawl(alphabet, initial, final, follow).reduce()
 
@@ -625,24 +631,13 @@ class Fsm:
         while i < len(strings):
             cstring, cstate = strings[i]
 
-            for actual_symbol in sorted(self.map[cstate], key=lambda charclass: str(charclass)):
-                if actual_symbol is ANYTHING_ELSE:
-                    continue
-                nstate = self.map[cstate][actual_symbol]
-                for symbol in sorted(actual_symbol.chars):
-                    nstring = cstring + [symbol]
-                    if nstate in livestates:
-                        if nstate in self.finals:
-                            yield nstring
-                        strings.append((nstring, nstate))
-
-            # Handle ANYTHING_ELSE separately
-            nstate = self.map[cstate][ANYTHING_ELSE]
-            nstring = cstring + [ANYTHING_ELSE]
-            if nstate in livestates:
-                if nstate in self.finals:
-                    yield nstring
-                strings.append((nstring, nstate))
+            for charclass in sorted(self.map[cstate], key=lambda charclass: str(charclass)):
+                nstate = self.map[cstate][charclass]
+                nstring = cstring + [charclass]
+                if nstate in livestates:
+                    if nstate in self.finals:
+                        yield nstring
+                    strings.append((nstring, nstate))
             i += 1
 
     def __iter__(self, /) -> Iterator[list[AlphaType]]:
@@ -814,17 +809,8 @@ class Fsm:
         """
         # Consume the input string.
         state = self.initial
-        for symbol in symbols:
-            found = None
-            for actual_symbol in self.alphabet:
-                if actual_symbol is not ANYTHING_ELSE \
-                and not actual_symbol.negated and \
-                symbol in actual_symbol.chars:
-                    found = actual_symbol
-                    break
-            if found is None:
-                found = ANYTHING_ELSE
-            state = self.map[state][found]
+        for charclass in symbols:
+            state = self.map[state][charclass]
 
         # OK so now we have consumed that string, use the new location as
         # the starting point.
@@ -916,13 +902,13 @@ def parallel(
     ) -> Mapping[int, StateType]:
         next_states = {}
         for i, fsm in enumerate(fsms):
-            actual_symbol = symbol if symbol in fsm.alphabet else ANYTHING_ELSE
+            # TODO: this `if` can probably go
             if (
                 i in current
                 and current[i] in fsm.map
-                and actual_symbol in fsm.map[current[i]]
+                and symbol in fsm.map[current[i]]
             ):
-                next_states[i] = fsm.map[current[i]][actual_symbol]
+                next_states[i] = fsm.map[current[i]][symbol]
         return next_states
 
     # Determine the "is final?" condition of each substate, then pass it to the
@@ -931,7 +917,7 @@ def parallel(
         accepts = [i in state and state[i] in fsm.finals for i, fsm in enumerate(fsms)]
         return test(accepts)
 
-    alphabet = fsms[0].alphabet if len(fsms) > 0 else {ANYTHING_ELSE}
+    alphabet = fsms[0].alphabet if len(fsms) > 0 else {~Charclass()}
 
     return crawl(alphabet, initial, final, follow).reduce()
 

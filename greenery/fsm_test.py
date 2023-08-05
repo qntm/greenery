@@ -285,7 +285,7 @@ def test_star_advanced() -> None:
     assert starred.alphabet == frozenset([
         Charclass("a"),
         Charclass("b"),
-        ANYTHING_ELSE
+        ~Charclass("ab"),
     ])
     assert starred.accepts("")
     assert not starred.accepts("a")
@@ -378,13 +378,13 @@ def test_reverse_brzozowski() -> None:
 
     # Test string generator functionality.
     gen = b2.strings()
-    assert next(gen) == ["a", "a"]
-    assert next(gen) == ["b", "a"]
-    assert next(gen) == ["a", "a", "a"]
-    assert next(gen) == ["a", "a", "b"]
-    assert next(gen) == ["b", "a", "a"]
-    assert next(gen) == ["b", "a", "b"]
-    assert next(gen) == ["a", "a", "a", "a"]
+    assert next(gen) == [Charclass("a"), Charclass("a")]
+    assert next(gen) == [Charclass("b"), Charclass("a")]
+    assert next(gen) == [Charclass("a"), Charclass("a"), Charclass("a")]
+    assert next(gen) == [Charclass("a"), Charclass("a"), Charclass("b")]
+    assert next(gen) == [Charclass("b"), Charclass("a"), Charclass("a")]
+    assert next(gen) == [Charclass("b"), Charclass("a"), Charclass("b")]
+    assert next(gen) == [Charclass("a"), Charclass("a"), Charclass("a"), Charclass("a")]
 
 
 def test_reverse_epsilon() -> None:
@@ -496,8 +496,8 @@ def test_difference(a: FixtureA, b: FixtureB) -> None:
 
     assert not list((a ^ a).strings())
     assert not list((b ^ b).strings())
-    assert list((a ^ b).strings()) == [["a"], ["b"]]
-    assert list((aorb ^ a).strings()) == [["b"]]
+    assert list((a ^ b).strings()) == [[Charclass("a")], [Charclass("b")]]
+    assert list((aorb ^ a).strings()) == [[Charclass("b")]]
 
 
 def test_empty(a: FixtureA, b: FixtureB) -> None:
@@ -592,14 +592,14 @@ def test_dead_default() -> None:
     assert not blockquote.accepts(["*", "*", "whatever", "*", "/"])
     assert (
         str(blockquote)
-        == "  name final? / ANYTHING_ELSE \\* \n"
-        + "---------------------------------\n"
-        + "* 0    False  1 5             5  \n"
-        + "  1    False  5 5             2  \n"
-        + "  2    False  2 2             3  \n"
-        + "  3    False  4 2             3  \n"
-        + "  4    True   5 5             5  \n"
-        + "  5    False  5 5             5  \n"
+        == "  name final? / [^*/] \\* \n"
+        + "-------------------------\n"
+        + "* 0    False  1 5     5  \n"
+        + "  1    False  5 5     2  \n"
+        + "  2    False  2 2     3  \n"
+        + "  3    False  4 2     3  \n"
+        + "  4    True   5 5     5  \n"
+        + "  5    False  5 5     5  \n"
     )
     _ = blockquote | blockquote
     _ = blockquote & blockquote
@@ -620,7 +620,7 @@ def test_dead_default() -> None:
     assert blockquote.islive(4)
     assert not blockquote.islive(5)
     gen = blockquote.strings()
-    assert next(gen) == ["/", "*", "*", "/"]
+    assert next(gen) == [Charclass("/"), Charclass("*"), Charclass("*"), Charclass("/")]
 
 
 def test_alphabet_unions() -> None:
@@ -676,9 +676,14 @@ def test_new_set_methods(a: FixtureA, b: FixtureB) -> None:
     # List comprehension!
     four = (a | b) * 2
     for string in four:
-        assert string == ["a", "a"]
+        assert string == [Charclass("a"), Charclass("a")]
         break
-    assert tuple(four) == (["a", "a"], ["a", "b"], ["b", "a"], ["b", "b"])
+    assert tuple(four) == (
+        [Charclass("a"), Charclass("a")],
+        [Charclass("a"), Charclass("b")],
+        [Charclass("b"), Charclass("a")],
+        [Charclass("b"), Charclass("b")],
+    )
 
     # set.union() imitation
     assert Fsm.union(a, b) == a.union(b)
@@ -710,9 +715,17 @@ def test_new_set_methods(a: FixtureA, b: FixtureB) -> None:
     assert (a | b) > a
     assert (a | b) >= a
 
-    assert list(a.concatenate(a, a).strings()) == [["a", "a", "a"]]
-    assert list(a.concatenate().strings()) == [["a"]]
-    assert list(Fsm.concatenate(b, a, b).strings()) == [["b", "a", "b"]]
+    assert list(a.concatenate(a, a).strings()) == [[
+        Charclass("a"),
+        Charclass("a"),
+        Charclass("a"),
+    ]]
+    assert list(a.concatenate().strings()) == [[Charclass("a")]]
+    assert list(Fsm.concatenate(b, a, b).strings()) == [[
+        Charclass("b"),
+        Charclass("a"),
+        Charclass("b"),
+    ]]
     assert not list(Fsm.concatenate().strings())
 
 
@@ -766,11 +779,11 @@ def test_concatenate_bug(a: FixtureA) -> None:
 
 def test_derive(a: FixtureA) -> None:
     # Just some basic tests because this is mainly a regex thing.
-    assert a.derive("a") == epsilon({"a", "b", ANYTHING_ELSE})
-    assert a.derive("b") == null({"a", "b", ANYTHING_ELSE})
+    assert a.derive([Charclass("a")]) == epsilon({"a", "b", ANYTHING_ELSE})
+    assert a.derive([Charclass("b")]) == null({"a", "b", ANYTHING_ELSE})
 
-    assert (a * 3).derive("a") == a * 2
-    assert (a.star() - epsilon({"a", "b", ANYTHING_ELSE})).derive("a") == a.star()
+    assert (a * 3).derive([Charclass("a")]) == a * 2
+    assert (a.star() - epsilon({"a", "b", ANYTHING_ELSE})).derive([Charclass("a")]) == a.star()
 
 
 def test_bug_36() -> None:
@@ -797,7 +810,7 @@ def test_bug_36() -> None:
     both = etc1 & etc2
     assert etc1.accepts(["s"])
     assert etc2.accepts(["s"])
-    assert both.alphabet == {ANYTHING_ELSE, Charclass("s")}
+    assert both.alphabet == {~Charclass("s"), Charclass("s")}
     assert both.accepts(["s"])
 
 
@@ -852,12 +865,7 @@ def test_anything_else_pickle() -> None:
     # but equivalent.
     assert fsm1 == fsm1_unpickled
 
-    # The first letter is "z" (since "anything else" always sorts last).
-    letter_z, anything_else = sorted(fsm1_unpickled.alphabet)
-    assert letter_z == Charclass("z")
-
-    # Stronger singleton assertion:
-    assert anything_else is ANYTHING_ELSE
+    assert fsm1_unpickled.alphabet == {Charclass("z"), ~Charclass("z")}
 
 
 def test_replace_alphabet() -> None:
@@ -876,13 +884,13 @@ def test_replace_alphabet() -> None:
 
     fsm2 = fsm1.replace_alphabet({
         Charclass("z"): ["a", "b"],
-        ANYTHING_ELSE: ["c", ANYTHING_ELSE]
+        ~Charclass("z"): ["c", ANYTHING_ELSE]
     })
 
     assert fsm2.map == {
-        0: {Charclass("a"): 2, Charclass("b"): 2, Charclass("c"): 1, ANYTHING_ELSE: 1},
-        1: {Charclass("a"): 2, Charclass("b"): 2, Charclass("c"): 1, ANYTHING_ELSE: 1},
-        2: {Charclass("a"): 2, Charclass("b"): 2, Charclass("c"): 2, ANYTHING_ELSE: 2},
+        0: {Charclass("a"): 2, Charclass("b"): 2, Charclass("c"): 1, ~Charclass("abc"): 1},
+        1: {Charclass("a"): 2, Charclass("b"): 2, Charclass("c"): 1, ~Charclass("abc"): 1},
+        2: {Charclass("a"): 2, Charclass("b"): 2, Charclass("c"): 2, ~Charclass("abc"): 2},
     }
 
 def test_replace_alphabet_2() -> None:
@@ -901,20 +909,20 @@ def test_replace_alphabet_2() -> None:
 
     fsm2 = fsm1.replace_alphabet({
         Charclass("z"): [ANYTHING_ELSE],
-        ANYTHING_ELSE: []
+        ~Charclass("z"): []
     })
 
     assert fsm2.map == {
-        0: {ANYTHING_ELSE: 2},
-        1: {ANYTHING_ELSE: 2},
-        2: {ANYTHING_ELSE: 2},
+        0: {~Charclass(): 2},
+        1: {~Charclass(): 2},
+        2: {~Charclass(): 2},
     }
 
 
 def test_charclass_fsm() -> None:
     # "[^a]"
     nota = from_charclass(~Charclass("a"))
-    assert nota.alphabet == {Charclass("a"), ANYTHING_ELSE}
+    assert nota.alphabet == {Charclass("a"), ~Charclass("a")}
     assert nota.accepts("b")
     assert nota.accepts(["b"])
     assert nota.accepts([ANYTHING_ELSE])
@@ -932,7 +940,7 @@ def test_unify_alphabets() -> None:
             2: {"a": 2, ANYTHING_ELSE: 2},
         },
     )
-    assert a.alphabet == {Charclass("a"), ANYTHING_ELSE}
+    assert a.alphabet == {Charclass("a"), ~Charclass("a")}
 
     b = Fsm(
         alphabet={"b", ANYTHING_ELSE},
@@ -945,18 +953,18 @@ def test_unify_alphabets() -> None:
             2: {"b": 2, ANYTHING_ELSE: 2},
         },
     )
-    assert b.alphabet == {Charclass("b"), ANYTHING_ELSE}
+    assert b.alphabet == {Charclass("b"), ~Charclass("b")}
 
     [a2, b2] = unify_alphabets((a, b))
-    assert a2.alphabet == {Charclass("a"), Charclass("b"), ANYTHING_ELSE}
+    assert a2.alphabet == {Charclass("a"), Charclass("b"), ~Charclass("ab")}
     assert a2.map == {
-        0: {Charclass("a"): 1, Charclass("b"): 2, ANYTHING_ELSE: 2},
-        1: {Charclass("a"): 2, Charclass("b"): 2, ANYTHING_ELSE: 2},
-        2: {Charclass("a"): 2, Charclass("b"): 2, ANYTHING_ELSE: 2},
+        0: {Charclass("a"): 1, Charclass("b"): 2, ~Charclass("ab"): 2},
+        1: {Charclass("a"): 2, Charclass("b"): 2, ~Charclass("ab"): 2},
+        2: {Charclass("a"): 2, Charclass("b"): 2, ~Charclass("ab"): 2},
     }
-    assert b2.alphabet == {Charclass("a"), Charclass("b"), ANYTHING_ELSE}
+    assert b2.alphabet == {Charclass("a"), Charclass("b"), ~Charclass("ab")}
     assert b2.map == {
-        0: {Charclass("a"): 2, Charclass("b"): 1, ANYTHING_ELSE: 2},
-        1: {Charclass("a"): 2, Charclass("b"): 2, ANYTHING_ELSE: 2},
-        2: {Charclass("a"): 2, Charclass("b"): 2, ANYTHING_ELSE: 2},
+        0: {Charclass("a"): 2, Charclass("b"): 1, ~Charclass("ab"): 2},
+        1: {Charclass("a"): 2, Charclass("b"): 2, ~Charclass("ab"): 2},
+        2: {Charclass("a"): 2, Charclass("b"): 2, ~Charclass("ab"): 2},
     }

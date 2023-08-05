@@ -77,9 +77,4 @@ def test_anything_else_pickle() -> None:
     # but equivalent.
     assert fsm1 == fsm1_unpickled
 
-    # The first letter is "z" (since "anything else" always sorts last).
-    letter_z, anything_else = sorted(fsm1_unpickled.alphabet)
-    assert letter_z == Charclass("z")
-
-    # Stronger singleton assertion:
-    assert anything_else is ANYTHING_ELSE
+    assert fsm1_unpickled.alphabet == {Charclass("z"), ~Charclass("z")}

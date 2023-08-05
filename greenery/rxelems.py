@@ -276,12 +276,12 @@ def from_fsm(f: Fsm) -> Pattern:
     """
     # pylint: disable=too-many-branches
 
-    # Make sure the supplied alphabet is kosher. It must contain only single-
-    # character Charclasses or `ANYTHING_ELSE`.
+    # Make sure the supplied alphabet is kosher.
     for symbol in f.alphabet:
-        if symbol is ANYTHING_ELSE:
-            continue
-        if isinstance(symbol, Charclass) and len(symbol.chars) == 1:
+        if isinstance(symbol, Charclass) and (
+            len(symbol.chars) == 1 or
+            symbol.negated
+        ):
             continue
         raise TypeError(f"Symbol {symbol!r} cannot be used in a regular expression")
 
@@ -682,7 +682,8 @@ class Pattern:
         return from_fsm(self.to_fsm().everythingbut())
 
     def derive(self, string: str, /) -> Pattern:
-        return from_fsm(self.to_fsm().derive(string))
+        charclasses = [Charclass(char) for char in string]
+        return from_fsm(self.to_fsm().derive(charclasses))
 
     def isdisjoint(self, other: Pattern, /) -> bool:
         """
@@ -734,12 +735,14 @@ class Pattern:
             # Have to represent `ANYTHING_ELSE` somehow.
             chars = []
             for symbol in symbols:
-                if isinstance(symbol, str):
-                    char = symbol
-                elif otherchar is not None:
+                if symbol.negated:
+                    if otherchar is None:
+                        raise TypeError("Please choose an `otherchar`")
                     char = otherchar
                 else:
-                    raise TypeError("Please choose an `otherchar`")
+                    if len(symbol.chars) != 1:
+                        raise Exception('Need to replumb this...')
+                    (char,) = symbol.chars # Python lacks the Axiom of Choice
                 chars.append(char)
 
             yield "".join(chars)
