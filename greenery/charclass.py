@@ -18,8 +18,6 @@ __all__ = (
 from dataclasses import dataclass
 from typing import ClassVar, Iterable, Mapping
 
-from .anything_else import ANYTHING_ELSE, AnythingElse
-
 
 @dataclass(frozen=True, init=False)
 class Charclass:
@@ -185,9 +183,6 @@ class Charclass:
 
     def get_chars(self):
         return self.chars
-
-    def alphabet(self, /) -> frozenset[str | AnythingElse]:
-        return self.chars | {ANYTHING_ELSE}
 
     def empty(self, /) -> bool:
         return not self.chars and not self.negated

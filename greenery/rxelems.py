@@ -19,7 +19,6 @@ from typing import Iterable, Iterator
 
 from .bound import INF, Bound
 from .charclass import NULLCHARCLASS, Charclass
-from .anything_else import ANYTHING_ELSE, AnythingElse
 from .fsm import Fsm, StateType, epsilon, from_charclass, null
 from .multiplier import ONE, QM, STAR, ZERO, Multiplier
 
@@ -155,10 +154,7 @@ class Conc:
 
         return self
 
-    def to_fsm(self, /, alphabet: Iterable[str | AnythingElse] | None = None) -> Fsm:
-        if alphabet is None:
-            alphabet = self.alphabet()
-
+    def to_fsm(self, /, alphabet: Iterable[str | Charclass] | None = None) -> Fsm:
         # start with a component accepting only the empty string
         fsm1 = epsilon(alphabet)
         for mult in self.mults:
@@ -167,10 +163,6 @@ class Conc:
 
     def get_chars(self):
         return frozenset().union(*(mult.get_chars() for mult in self.mults))
-
-    def alphabet(self, /) -> frozenset[str | AnythingElse]:
-        components = self.mults
-        return frozenset().union(*(c.alphabet() for c in components)) | {ANYTHING_ELSE}
 
     def empty(self, /) -> bool:
         return any(mult.empty() for mult in self.mults)
@@ -331,20 +323,8 @@ def from_fsm(f: Fsm) -> Pattern:
 
     # Populate it with some initial data.
     for a in f.map:
-        for symbol in f.map[a]:
-            b = f.map[a][symbol]
-
-            if symbol is ANYTHING_ELSE:
-                chars = set()
-                for symbol in f.alphabet:
-                    if symbol is ANYTHING_ELSE:
-                        continue
-                    for char in symbol.chars:
-                        chars.add(char)
-                charclass = ~Charclass(chars)
-            else:
-                charclass = symbol
-
+        for charclass in f.map[a]:
+            b = f.map[a][charclass]
             brz[a][b] = Pattern(*brz[a][b].concs, Conc(Mult(charclass, ONE))).reduce()
 
     # Now perform our back-substitution
@@ -420,10 +400,6 @@ class Pattern:
 
     def get_chars(self, /):
         return frozenset().union(*(conc.get_chars() for conc in self.concs))
-
-    def alphabet(self, /) -> frozenset[str | AnythingElse]:
-        components = self.concs
-        return frozenset().union(*(c.alphabet() for c in components)) | {ANYTHING_ELSE}
 
     def empty(self, /) -> bool:
         return all(conc.empty() for conc in self.concs)
@@ -632,7 +608,7 @@ class Pattern:
 
         return reduce(lambda x, y: x.common(y, suffix=suffix), self.concs)
 
-    def to_fsm(self, /, alphabet: Iterable[str | AnythingElse] | None = None) -> Fsm:
+    def to_fsm(self, /, alphabet: Iterable[str | Charclass] | None = None) -> Fsm:
         if alphabet is None:
             chars = self.get_chars()
             alphabet = chars | {~Charclass(chars)}
@@ -732,7 +708,6 @@ class Pattern:
         # single example. You must supply your own "otherchar" to stand in for
         # all of these possibilities.
         for symbols in self.to_fsm().strings():
-            # Have to represent `ANYTHING_ELSE` somehow.
             chars = []
             for symbol in symbols:
                 if symbol.negated:
@@ -811,10 +786,6 @@ class Mult:
     def get_chars(self):
         return self.multiplicand.get_chars()
 
-    def alphabet(self, /) -> frozenset[str | AnythingElse]:
-        components = (self.multiplicand,)
-        return frozenset().union(*(c.alphabet() for c in components)) | {ANYTHING_ELSE}
-
     def empty(self, /) -> bool:
         return self.multiplicand.empty() and self.multiplier.min > Bound(0)
 
@@ -873,10 +844,7 @@ class Mult:
             return f"{self.multiplicand}{self.multiplier}"
         raise TypeError(f"Unknown type {type(self.multiplicand)}")
 
-    def to_fsm(self, /, alphabet: Iterable[str | AnythingElse] | None = None) -> Fsm:
-        if alphabet is None:
-            alphabet = self.alphabet()
-
+    def to_fsm(self, /, alphabet: Iterable[str | Charclass] | None = None) -> Fsm:
         # worked example: (min, max) = (5, 7) or (5, INF)
         # (mandatory, optional) = (5, 2) or (5, INF)
 

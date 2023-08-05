@@ -14,7 +14,6 @@ from .charclass import (
     Charclass,
     repartition,
 )
-from .anything_else import ANYTHING_ELSE
 
 
 def test_charclass_equality() -> None:
@@ -25,9 +24,6 @@ def test_charclass_equality() -> None:
 
 
 def test_charclass_ctor() -> None:
-    with pytest.raises(TypeError):
-        Charclass(frozenset({"a", ANYTHING_ELSE}))  # type: ignore
-
     with pytest.raises(ValueError):
         Charclass(frozenset({"a", "aa"}))
 

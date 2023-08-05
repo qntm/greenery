@@ -5,9 +5,7 @@ Finite state machine library, intended to be used by `greenery` only
 from __future__ import annotations
 
 __all__ = (
-    "ANYTHING_ELSE",
     "AlphaType",
-    "AnythingElse",
     "Fsm",
     "StateType",
     "epsilon",
@@ -26,77 +24,27 @@ from typing import (
     Union,
 )
 
-from .anything_else import ANYTHING_ELSE, AnythingElse
 from .charclass import Charclass, repartition
 
 
-AlphaType = Union[str, AnythingElse]
+AlphaType = Union[str, Charclass]
 
 StateType = Union[int, str]
 
 M = TypeVar("M")
 """Meta-state type for crawl(). Can be anything."""
 
-def get_anything_else_charclass(alphabet):
-    chars = set()
-    for symbol in alphabet:
-        if symbol is ANYTHING_ELSE:
-            continue
-        elif isinstance(symbol, Charclass):
-            for char in symbol.chars:
-                chars.add(char)
-        elif len(symbol) == 1:
-            chars.add(symbol)
-        else:
-            raise Exception('Bad symbol')
-    return ~Charclass(chars)
 
-
-# Scrap `ANYTHING_ELSE` from the alphabet and replace it with a suitable
-# negated Charclass, creating an alphabet with only Charclasses
-def eliminate_anything_else(alphabet):
-    new_alphabet_map = {}
-    for symbol in alphabet:
-        if symbol is ANYTHING_ELSE:
-            raise Exception('nope')
-            new_symbol = get_anything_else_charclass(alphabet)
-        else:
-            new_symbol = symbol
-        new_alphabet_map[symbol] = new_symbol
-    return new_alphabet_map
-
-
-# Each Fsm will have a different alphabet. Most of the symbols in each alphabet
-# are Charclasses, but one of the symbols is ANYTHING_ELSE. Unfortunately,
-# ANYTHING_ELSE means different things to different Fsms. This operation first
-# figures out what ANYTHING_ELSE represents for each individual Fsm,
-# then replaces all the symbols.
-# THIS IS A NIGHTMARE which will get easier when ANYTHING_ELSE is gone.
 def unify_alphabets(fsms):
     charclasses = set()
-    new_alphabet_maps = {}
-    for i in range(len(fsms)):
-        new_alphabet_maps[i] = eliminate_anything_else(fsms[i].alphabet)
-    for new_alphabet_map in new_alphabet_maps.values():
-        for charclass in new_alphabet_map.values():
+    for fsm in fsms:
+        for charclass in fsm.alphabet:
             charclasses.add(charclass)
 
     partition = repartition(charclasses)
     # maps old Charclasses to collections of new Charclasses
 
-    new_fsms = []
-    for fsm in fsms:
-        replacement_symbols = {}
-        for symbol in fsm.alphabet:
-            replacement_symbols[symbol] = []
-            if symbol is ANYTHING_ELSE:
-                charclass = get_anything_else_charclass(fsm.alphabet)
-            else:
-                charclass = symbol
-            for replacement_charclass in partition[charclass]:
-                replacement_symbols[symbol].append(replacement_charclass)
-        new_fsms.append(fsm.replace_alphabet(replacement_symbols))
-    return new_fsms
+    return [fsm.replace_alphabet(partition) for fsm in fsms]
 
 # pylint: disable=too-many-public-methods
 @dataclass(frozen=True, init=False)
@@ -141,14 +89,10 @@ class Fsm:
         `map` may be sparse (i.e. it may omit transitions). In the case of
         omitted transitions, a non-final "oblivion" state is simulated.
         """
-        if ANYTHING_ELSE in alphabet:
-            raise Exception()
         allchars = frozenset(alphabet)
-        anything_else_charclass = get_anything_else_charclass(alphabet)
 
         actual_alphabet = frozenset(
-            anything_else_charclass if symbol is ANYTHING_ELSE
-            else symbol if isinstance(symbol, Charclass)
+            symbol if isinstance(symbol, Charclass)
             else Charclass(symbol)
             for symbol
             in alphabet
@@ -160,8 +104,7 @@ class Fsm:
         for state in map:
             actual_map[state] = {}
             for symbol in map[state]:
-                actual_symbol = anything_else_charclass if symbol is ANYTHING_ELSE \
-                else symbol if isinstance(symbol, Charclass) \
+                actual_symbol = symbol if isinstance(symbol, Charclass) \
                 else Charclass(symbol)
                 actual_map[state][actual_symbol] = map[state][symbol]
 
@@ -209,9 +152,7 @@ class Fsm:
         Test whether the present FSM accepts the supplied string (iterable
         of symbols). Equivalently, consider `self` as a possibly-infinite
         set of strings and test whether `string` is a member of it. This is
-        actually mainly used for unit testing purposes. If `ANYTHING_ELSE`
-        is in your alphabet, then any symbol not in your alphabet will be
-        converted to `ANYTHING_ELSE`.
+        actually mainly used for unit testing purposes.
         """
         state = self.initial
         for symbol in symbols:
@@ -971,7 +912,7 @@ def crawl(
 
 def from_charclass(
     charclass,
-    alphabet: Iterable[str | AnythingElse] | None = None,
+    alphabet: Iterable[str | Charclass] | None = None,
 ) -> Fsm:
     if alphabet is None:
         # TODO: once we support multi-char non-negated charclasses, simplify

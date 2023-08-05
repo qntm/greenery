@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 
 from .charclass import DIGIT, NONDIGITCHAR, WORDCHAR, NONWORDCHAR, Charclass
-from .fsm import ANYTHING_ELSE, Fsm
+from .fsm import Fsm
 from .parse import parse
 from .rxelems import from_fsm
 
@@ -49,11 +49,6 @@ def test_parse_str_round_trip() -> None:
 # Test to_fsm() and alphabet-related functionality
 
 
-def test_alphabet() -> None:
-    # `.alphabet()` should include `ANYTHING_ELSE`
-    assert parse("").alphabet() == {ANYTHING_ELSE}
-
-
 def test_pattern_fsm() -> None:
     # "a[^a]"
     anota = parse("a[^a]").to_fsm()
@@ -66,7 +61,7 @@ def test_pattern_fsm() -> None:
     assert not anota.accepts(["a", "a"])
     assert anota.accepts("ab")
     assert anota.accepts(["a", "b"])
-    assert anota.accepts(["a", ANYTHING_ELSE])
+    assert anota.accepts(["a", "c"])
     assert not anota.accepts("ba")
     assert not anota.accepts("bb")
 
