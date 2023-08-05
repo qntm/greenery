@@ -282,7 +282,11 @@ def test_star_advanced() -> None:
             },
         },
     ).star()
-    assert starred.alphabet == frozenset(["a", "b", ANYTHING_ELSE])
+    assert starred.alphabet == frozenset([
+        Charclass("a"),
+        Charclass("b"),
+        ANYTHING_ELSE
+    ])
     assert starred.accepts("")
     assert not starred.accepts("a")
     assert not starred.accepts("b")
@@ -588,14 +592,14 @@ def test_dead_default() -> None:
     assert not blockquote.accepts(["*", "*", "whatever", "*", "/"])
     assert (
         str(blockquote)
-        == "  name final? * / ANYTHING_ELSE \n"
-        + "--------------------------------\n"
-        + "* 0    False  5 1 5             \n"
-        + "  1    False  2 5 5             \n"
-        + "  2    False  3 2 2             \n"
-        + "  3    False  3 4 2             \n"
-        + "  4    True   5 5 5             \n"
-        + "  5    False  5 5 5             \n"
+        == "  name final? / ANYTHING_ELSE \\* \n"
+        + "---------------------------------\n"
+        + "* 0    False  1 5             5  \n"
+        + "  1    False  5 5             2  \n"
+        + "  2    False  2 2             3  \n"
+        + "  3    False  4 2             3  \n"
+        + "  4    True   5 5             5  \n"
+        + "  5    False  5 5             5  \n"
     )
     _ = blockquote | blockquote
     _ = blockquote & blockquote
@@ -793,7 +797,7 @@ def test_bug_36() -> None:
     both = etc1 & etc2
     assert etc1.accepts(["s"])
     assert etc2.accepts(["s"])
-    assert both.alphabet == {ANYTHING_ELSE, "s"}
+    assert both.alphabet == {ANYTHING_ELSE, Charclass("s")}
     assert both.accepts(["s"])
 
 
@@ -850,7 +854,7 @@ def test_anything_else_pickle() -> None:
 
     # The first letter is "z" (since "anything else" always sorts last).
     letter_z, anything_else = sorted(fsm1_unpickled.alphabet)
-    assert letter_z == "z"
+    assert letter_z == Charclass("z")
 
     # Stronger singleton assertion:
     assert anything_else is ANYTHING_ELSE
@@ -871,21 +875,46 @@ def test_replace_alphabet() -> None:
     )
 
     fsm2 = fsm1.replace_alphabet({
-        "z": ["a", "b"],
+        Charclass("z"): ["a", "b"],
         ANYTHING_ELSE: ["c", ANYTHING_ELSE]
     })
 
     assert fsm2.map == {
-        0: {"a": 2, "b": 2, "c": 1, ANYTHING_ELSE: 1},
-        1: {"a": 2, "b": 2, "c": 1, ANYTHING_ELSE: 1},
-        2: {"a": 2, "b": 2, "c": 2, ANYTHING_ELSE: 2},
+        0: {Charclass("a"): 2, Charclass("b"): 2, Charclass("c"): 1, ANYTHING_ELSE: 1},
+        1: {Charclass("a"): 2, Charclass("b"): 2, Charclass("c"): 1, ANYTHING_ELSE: 1},
+        2: {Charclass("a"): 2, Charclass("b"): 2, Charclass("c"): 2, ANYTHING_ELSE: 2},
+    }
+
+def test_replace_alphabet_2() -> None:
+    # [^z]*
+    fsm1 = Fsm(
+        alphabet={"z", ANYTHING_ELSE},
+        states={0, 1, 2},
+        initial=0,
+        finals={1},
+        map={
+            0: {"z": 2, ANYTHING_ELSE: 1},
+            1: {"z": 2, ANYTHING_ELSE: 1},
+            2: {"z": 2, ANYTHING_ELSE: 2},
+        },
+    )
+
+    fsm2 = fsm1.replace_alphabet({
+        Charclass("z"): [ANYTHING_ELSE],
+        ANYTHING_ELSE: []
+    })
+
+    assert fsm2.map == {
+        0: {ANYTHING_ELSE: 2},
+        1: {ANYTHING_ELSE: 2},
+        2: {ANYTHING_ELSE: 2},
     }
 
 
 def test_charclass_fsm() -> None:
     # "[^a]"
     nota = from_charclass(~Charclass("a"))
-    assert nota.alphabet == {"a", ANYTHING_ELSE}
+    assert nota.alphabet == {Charclass("a"), ANYTHING_ELSE}
     assert nota.accepts("b")
     assert nota.accepts(["b"])
     assert nota.accepts([ANYTHING_ELSE])

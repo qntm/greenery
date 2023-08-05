@@ -277,11 +277,11 @@ def from_fsm(f: Fsm) -> Pattern:
     # pylint: disable=too-many-branches
 
     # Make sure the supplied alphabet is kosher. It must contain only single-
-    # character strings or `ANYTHING_ELSE`.
+    # character Charclasses or `ANYTHING_ELSE`.
     for symbol in f.alphabet:
         if symbol is ANYTHING_ELSE:
             continue
-        if isinstance(symbol, str) and len(symbol) == 1:
+        if isinstance(symbol, Charclass) and len(symbol.chars) == 1:
             continue
         raise TypeError(f"Symbol {symbol!r} cannot be used in a regular expression")
 
@@ -307,7 +307,7 @@ def from_fsm(f: Fsm) -> Pattern:
     while i < len(states):
         current = states[i]
         if current in f.map:
-            for symbol in sorted(f.map[current]):
+            for symbol in sorted(f.map[current], key=lambda charclass: str(charclass)):
                 next_state = f.map[current][symbol]
                 if next_state not in states:
                     states.append(next_state)
@@ -331,11 +331,16 @@ def from_fsm(f: Fsm) -> Pattern:
         for symbol in f.map[a]:
             b = f.map[a][symbol]
 
-            charclass = (
-                ~Charclass(frozenset(s for s in f.alphabet if s is not ANYTHING_ELSE))
-                if symbol is ANYTHING_ELSE
-                else Charclass(frozenset((symbol,)))
-            )
+            if symbol is ANYTHING_ELSE:
+                chars = set()
+                for symbol in f.alphabet:
+                    if symbol is ANYTHING_ELSE:
+                        continue
+                    for char in symbol.chars:
+                        chars.add(char)
+                charclass = ~Charclass(chars)
+            else:
+                charclass = symbol
 
             brz[a][b] = Pattern(*brz[a][b].concs, Conc(Mult(charclass, ONE))).reduce()
 

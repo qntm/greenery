@@ -55,7 +55,7 @@ class Fsm:
     The majority of these methods are available using operator overloads.
     """
 
-    alphabet: frozenset[AlphaType]
+    alphabet: frozenset[Charclass]
     states: frozenset[StateType]
     initial: StateType
     finals: frozenset[StateType]
@@ -81,9 +81,25 @@ class Fsm:
         `map` may be sparse (i.e. it may omit transitions). In the case of
         omitted transitions, a non-final "oblivion" state is simulated.
         """
-        alphabet = frozenset(alphabet)
+        allchars = frozenset(alphabet)
+        actual_alphabet = frozenset(
+            ANYTHING_ELSE if symbol is ANYTHING_ELSE
+            else symbol if isinstance(symbol, Charclass)
+            else Charclass(symbol)
+            for symbol
+            in alphabet
+        )
         states = frozenset(states)
         finals = frozenset(finals)
+
+        actual_map = {}
+        for state in map:
+            actual_map[state] = {}
+            for symbol in map[state]:
+                actual_symbol = ANYTHING_ELSE if symbol is ANYTHING_ELSE \
+                else symbol if isinstance(symbol, Charclass) \
+                else Charclass(symbol)
+                actual_map[state][actual_symbol] = map[state][symbol]
 
         # Validation. Thanks to immutability, this only needs to be carried out
         # once.
@@ -91,13 +107,13 @@ class Fsm:
             raise ValueError(f"Initial state {initial!r} must be one of {states!r}")
         if not finals.issubset(states):
             raise ValueError(f"Final states {finals!r} must be a subset of {states!r}")
-        for state, state_trans in map.items():
+        for state, state_trans in actual_map.items():
             if state not in states:
                 raise ValueError(f"Transition from unknown state {state!r}")
-            for symbol, dest in state_trans.items():
-                if symbol not in alphabet:
+            for actual_symbol, dest in state_trans.items():
+                if actual_symbol not in actual_alphabet:
                     raise ValueError(
-                        f"Invalid symbol {symbol!r}"
+                        f"Invalid symbol {actual_symbol!r}"
                         f" in transition from {state!r}"
                         f" to {dest!r}"
                     )
@@ -111,20 +127,20 @@ class Fsm:
         for state in states:
             if state is None:
                 raise Exception("Can't have a None state")
-            if state not in map:
+            if state not in actual_map:
                 raise Exception(f"State {state!r} missing from map")
-            for symbol in alphabet:
-                if symbol not in map[state]:
-                    raise Exception(f"Symbol {symbol!r} missing from map[{state!r}]")
+            for actual_symbol in actual_alphabet:
+                if actual_symbol not in actual_map[state]:
+                    raise Exception(f"Symbol {actual_symbol!r} missing from map[{state!r}]")
         if not ANYTHING_ELSE in alphabet:
             raise Exception(f"Need ANYTHING_ELSE")
 
         # Initialise the hard way due to immutability.
-        object.__setattr__(self, "alphabet", alphabet)
+        object.__setattr__(self, "alphabet", actual_alphabet)
         object.__setattr__(self, "states", states)
         object.__setattr__(self, "initial", initial)
         object.__setattr__(self, "finals", finals)
-        object.__setattr__(self, "map", map)
+        object.__setattr__(self, "map", actual_map)
 
     def accepts(self, symbols: Iterable[AlphaType], /) -> bool:
         """
@@ -137,8 +153,16 @@ class Fsm:
         """
         state = self.initial
         for symbol in symbols:
-            actual_symbol = symbol if symbol in self.alphabet else ANYTHING_ELSE
-            state = self.map[state][actual_symbol]
+            found = None
+            for actual_symbol in self.map[state]:
+                if actual_symbol is not ANYTHING_ELSE \
+                and not actual_symbol.negated \
+                and symbol in actual_symbol.chars:
+                    found = actual_symbol
+                    break
+            if found is None:
+                found = ANYTHING_ELSE
+            state = self.map[state][found]
         return state in self.finals
 
     def __contains__(self, string: Iterable[AlphaType], /) -> bool:
@@ -179,7 +203,8 @@ class Fsm:
     def __str__(self, /) -> str:
         rows = []
 
-        sorted_alphabet = sorted(self.alphabet)
+        # TODO: actual sorting of Charclasses by content, with negated last
+        sorted_alphabet = sorted(self.alphabet, key=lambda charclass: str(charclass))
 
         # top row
         row = ["", "name", "final?"]
@@ -539,13 +564,25 @@ class Fsm:
         i = 0
         while i < len(strings):
             cstring, cstate = strings[i]
-            for symbol in sorted(self.map[cstate]):
-                nstate = self.map[cstate][symbol]
-                nstring = cstring + [symbol]
-                if nstate in livestates:
-                    if nstate in self.finals:
-                        yield nstring
-                    strings.append((nstring, nstate))
+
+            for actual_symbol in sorted(self.map[cstate], key=lambda charclass: str(charclass)):
+                if actual_symbol is ANYTHING_ELSE:
+                    continue
+                nstate = self.map[cstate][actual_symbol]
+                for symbol in sorted(actual_symbol.chars):
+                    nstring = cstring + [symbol]
+                    if nstate in livestates:
+                        if nstate in self.finals:
+                            yield nstring
+                        strings.append((nstring, nstate))
+
+            # Handle ANYTHING_ELSE separately
+            nstate = self.map[cstate][ANYTHING_ELSE]
+            nstring = cstring + [ANYTHING_ELSE]
+            if nstate in livestates:
+                if nstate in self.finals:
+                    yield nstring
+                strings.append((nstring, nstate))
             i += 1
 
     def __iter__(self, /) -> Iterator[list[AlphaType]]:
@@ -721,8 +758,16 @@ class Fsm:
         # Consume the input string.
         state = self.initial
         for symbol in symbols:
-            actual_symbol = symbol if symbol in self.alphabet else ANYTHING_ELSE
-            state = self.map[state][actual_symbol]
+            found = None
+            for actual_symbol in self.alphabet:
+                if actual_symbol is not ANYTHING_ELSE \
+                and not actual_symbol.negated and \
+                symbol in actual_symbol.chars:
+                    found = actual_symbol
+                    break
+            if found is None:
+                found = ANYTHING_ELSE
+            state = self.map[state][found]
 
         # OK so now we have consumed that string, use the new location as
         # the starting point.
@@ -860,7 +905,7 @@ def crawl(
 
         # compute map for this state
         transitions[i] = {}
-        for symbol in sorted(alphabet):
+        for symbol in sorted(alphabet, key=lambda charclass: str(charclass)):
             next_state = follow(state, symbol)
 
             try:
