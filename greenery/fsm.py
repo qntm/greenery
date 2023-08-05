@@ -738,8 +738,7 @@ class Fsm:
         )
 
     def replace_alphabet(
-        self,
-        replacements: Mapping[AlphaType, Iterable[AlphaType]]
+        self, replacements: Mapping[AlphaType, Iterable[AlphaType]]
     ) -> Fsm:
         """
         Returns a new FSM which uses a different alphabet. If one original
@@ -793,8 +792,8 @@ def epsilon(alphabet: Iterable[AlphaType]) -> Fsm:
         initial=0,
         finals={0},
         map={
-            0: {symbol : 1 for symbol in alphabet},
-            1: {symbol : 1 for symbol in alphabet},
+            0: {symbol: 1 for symbol in alphabet},
+            1: {symbol: 1 for symbol in alphabet},
         },
     )
 
@@ -821,9 +820,7 @@ def parallel(
         current: Mapping[int, StateType],
         symbol: AlphaType,
     ) -> Mapping[int, StateType]:
-        return {
-            i : fsm.map[current[i]][symbol] for i, fsm in enumerate(unified_fsms)
-        }
+        return {i: fsm.map[current[i]][symbol] for i, fsm in enumerate(unified_fsms)}
 
     # Determine the "is final?" condition of each substate, then pass it to the
     # test to determine finality of the overall FSM.
@@ -898,11 +895,11 @@ def from_charclass(charclass: Charclass) -> Fsm:
     # If normal, make a singular FSM accepting only these characters
     transitions = {
         0: {
-            symbol : 1 if (symbol.negated == charclass.negated) else 2
+            symbol: 1 if (symbol.negated == charclass.negated) else 2
             for symbol in alphabet
         },
-        1: {symbol : 2 for symbol in alphabet},
-        2: {symbol : 2 for symbol in alphabet},
+        1: {symbol: 2 for symbol in alphabet},
+        2: {symbol: 2 for symbol in alphabet},
     }
 
     # State 0 is initial, 1 is final

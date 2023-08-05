@@ -295,7 +295,7 @@ def repartition(
             signatures[signature] = []
         signatures[signature].append(char)
 
-    newcharclasses = (Charclass(chars) for chars in signatures.values())
+    newcharclasses = [Charclass(chars) for chars in signatures.values()]
 
     # And one last thing
     newcharclasses.append(~Charclass(alphabet))
