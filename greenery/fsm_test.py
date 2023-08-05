@@ -67,7 +67,7 @@ def test_addbug() -> None:
     )
     assert int5B.accepts("c")
 
-    int5C = int5A + int5B
+    int5C = int5A.concatenate(int5B)
     assert int5C.accepts("c")
     # assert int5C.initial == 0
 
@@ -121,13 +121,13 @@ def test_b(b: FixtureB) -> None:
 
 
 def test_concatenation_aa(a: FixtureA) -> None:
-    concAA = a + a
+    concAA = a.concatenate(a)
     assert not concAA.accepts("")
     assert not concAA.accepts("a")
     assert concAA.accepts("aa")
     assert not concAA.accepts("aaa")
 
-    concAA = EPSILON + a + a
+    concAA = EPSILON.concatenate(a).concatenate(a)
     assert not concAA.accepts("")
     assert not concAA.accepts("a")
     assert concAA.accepts("aa")
@@ -135,7 +135,7 @@ def test_concatenation_aa(a: FixtureA) -> None:
 
 
 def test_concatenation_ab(a: FixtureA, b: FixtureB) -> None:
-    concAB = a + b
+    concAB = a.concatenate(b)
     assert not concAB.accepts("")
     assert not concAB.accepts("a")
     assert not concAB.accepts("b")
@@ -171,20 +171,20 @@ def test_star(a: FixtureA) -> None:
 
 
 def test_multiply_0(a: FixtureA) -> None:
-    zeroA = a * 0
+    zeroA = a.times(0)
     assert zeroA.accepts("")
     assert not zeroA.accepts("a")
 
 
 def test_multiply_1(a: FixtureA) -> None:
-    oneA = a * 1
+    oneA = a.times(1)
     assert not oneA.accepts("")
     assert oneA.accepts("a")
     assert not oneA.accepts("aa")
 
 
 def test_multiply_2(a: FixtureA) -> None:
-    twoA = a * 2
+    twoA = a.times(2)
     assert not twoA.accepts("")
     assert not twoA.accepts("a")
     assert twoA.accepts("aa")
@@ -192,14 +192,14 @@ def test_multiply_2(a: FixtureA) -> None:
 
 
 def test_multiply_7(a: FixtureA) -> None:
-    sevenA = a * 7
+    sevenA = a.times(7)
     assert not sevenA.accepts("aaaaaa")
     assert sevenA.accepts("aaaaaaa")
     assert not sevenA.accepts("aaaaaaaa")
 
 
 def test_optional_mul(a: FixtureA, b: FixtureB) -> None:
-    unit = a + b
+    unit = a.concatenate(b)
     # accepts "ab"
 
     optional = EPSILON | unit
@@ -210,7 +210,7 @@ def test_optional_mul(a: FixtureA, b: FixtureB) -> None:
     assert optional.accepts(["a", "b"])
     assert not optional.accepts(["a", "a"])
 
-    optional = optional * 2
+    optional = optional.times(2)
     # accepts "(ab)?(ab)?"
     assert optional.accepts([])
     assert not optional.accepts(["a"])
@@ -428,14 +428,14 @@ def test_reverse_brzozowski() -> None:
     assert not b2.accepts("bbbbbbbbbbbb")
 
     # Test string generator functionality.
-    gen = b2.strings()
-    assert next(gen) == [Charclass("a"), Charclass("a")]
-    assert next(gen) == [Charclass("b"), Charclass("a")]
-    assert next(gen) == [Charclass("a"), Charclass("a"), Charclass("a")]
-    assert next(gen) == [Charclass("a"), Charclass("a"), Charclass("b")]
-    assert next(gen) == [Charclass("b"), Charclass("a"), Charclass("a")]
-    assert next(gen) == [Charclass("b"), Charclass("a"), Charclass("b")]
-    assert next(gen) == [Charclass("a"), Charclass("a"), Charclass("a"), Charclass("a")]
+    gen = b2.strings([])
+    assert next(gen) == "aa"
+    assert next(gen) == "ba"
+    assert next(gen) == "aaa"
+    assert next(gen) == "aab"
+    assert next(gen) == "baa"
+    assert next(gen) == "bab"
+    assert next(gen) == "aaaa"
 
 
 def test_reverse_epsilon() -> None:
@@ -530,7 +530,7 @@ def test_invalid_fsms() -> None:
 
 def test_bad_multiplier(a: FixtureA) -> None:
     with pytest.raises(ArithmeticError, match="Can't multiply"):
-        _ = a * -1
+        _ = a.times(-1)
 
 
 def test_anything_else_acceptance() -> None:
@@ -564,10 +564,10 @@ def test_difference(a: FixtureA, b: FixtureB) -> None:
         },
     )
 
-    assert not list((a ^ a).strings())
-    assert not list((b ^ b).strings())
-    assert list((a ^ b).strings()) == [[Charclass("a")], [Charclass("b")]]
-    assert list((aorb ^ a).strings()) == [[Charclass("b")]]
+    assert not list((a ^ a).strings([]))
+    assert not list((b ^ b).strings([]))
+    assert list((a ^ b).strings([])) == ["a", "b"]
+    assert list((aorb ^ a).strings([])) == ["b"]
 
 
 def test_empty(a: FixtureA, b: FixtureB) -> None:
@@ -660,7 +660,6 @@ def test_dead_default() -> None:
     )
     assert blockquote.accepts(["/", "*", "whatever", "*", "/"])
     assert not blockquote.accepts(["*", "*", "whatever", "*", "/"])
-    print(str(blockquote))
     assert (
         str(blockquote)
         == "  name final? \\* / [^*/] \n"
@@ -690,8 +689,8 @@ def test_dead_default() -> None:
     assert blockquote.islive(3)
     assert blockquote.islive(4)
     assert not blockquote.islive(5)
-    gen = blockquote.strings()
-    assert next(gen) == [Charclass("/"), Charclass("*"), Charclass("*"), Charclass("/")]
+    gen = blockquote.strings([])
+    assert next(gen) == "/**/"
 
 
 def test_alphabet_unions() -> None:
@@ -724,7 +723,7 @@ def test_alphabet_unions() -> None:
     assert (a | b).accepts(["a"])
     assert (a | b).accepts(["b"])
     assert (a & b).empty()
-    assert (a + b).accepts(["a", "b"])
+    assert a.concatenate(b).accepts(["a", "b"])
     assert (a ^ b).accepts(["a"])
     assert (a ^ b).accepts(["b"])
 
@@ -735,7 +734,7 @@ def test_new_set_methods(a: FixtureA, b: FixtureB) -> None:
     # https://docs.python.org/3/library/stdtypes.html#set-types-set-frozenset
     # But do they work?
     assert len(a) == 1
-    assert len((a | b) * 4) == 16
+    assert len((a | b).times(4)) == 16
 
     with pytest.raises(OverflowError):
         len(a.star())
@@ -745,15 +744,15 @@ def test_new_set_methods(a: FixtureA, b: FixtureB) -> None:
     assert "a" not in b
 
     # List comprehension!
-    four = (a | b) * 2
+    four = (a | b).times(2)
     for string in four:
-        assert string == [Charclass("a"), Charclass("a")]
+        assert string == "aa"
         break
     assert tuple(four) == (
-        [Charclass("a"), Charclass("a")],
-        [Charclass("a"), Charclass("b")],
-        [Charclass("b"), Charclass("a")],
-        [Charclass("b"), Charclass("b")],
+        "aa",
+        "ab",
+        "ba",
+        "bb",
     )
 
     # set.union() imitation
@@ -786,22 +785,10 @@ def test_new_set_methods(a: FixtureA, b: FixtureB) -> None:
     assert (a | b) > a
     assert (a | b) >= a
 
-    assert list(a.concatenate(a, a).strings()) == [
-        [
-            Charclass("a"),
-            Charclass("a"),
-            Charclass("a"),
-        ]
-    ]
-    assert list(a.concatenate().strings()) == [[Charclass("a")]]
-    assert list(Fsm.concatenate(b, a, b).strings()) == [
-        [
-            Charclass("b"),
-            Charclass("a"),
-            Charclass("b"),
-        ]
-    ]
-    assert not list(Fsm.concatenate().strings())
+    assert list(a.concatenate(a, a).strings([])) == ["aaa"]
+    assert list(a.concatenate().strings([])) == ["a"]
+    assert list(Fsm.concatenate(b, a, b).strings([])) == ["bab"]
+    assert not list(Fsm.concatenate().strings([]))
 
 
 def test_copy(a: FixtureA) -> None:
@@ -856,9 +843,9 @@ def test_oblivion_crawl() -> None:
             },
         },
     )
-    assert len((abc + abc).states) == 8
+    assert len(Fsm.concatenate(abc, abc).states) == 8
     assert len(abc.star().states) == 4
-    assert len((abc * 3).states) == 11
+    assert len(abc.times(3).states) == 11
     assert len(abc.reversed().states) == 5
     assert len((abc | abc).states) == 5
     assert len((abc & abc).states) == 5
@@ -884,7 +871,7 @@ def test_derive(a: FixtureA) -> None:
     assert a.derive([Charclass("a")]) == EPSILON
     assert a.derive([Charclass("b")]) == NULL
 
-    assert (a * 3).derive([Charclass("a")]) == a * 2
+    assert a.times(3).derive([Charclass("a")]) == a.times(2)
     assert (
         a.star() - EPSILON
     ).derive([Charclass("a")]) == a.star()
@@ -952,7 +939,7 @@ def test_add_anything_else() -> None:
             2: {Charclass("b"): 2, ~Charclass("b"): 2},
         },
     )
-    assert (fsm1 + fsm2).accepts("ba")
+    assert fsm1.concatenate(fsm2).accepts("ba")
 
 
 def test_anything_else_pickle() -> None:

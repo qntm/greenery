@@ -51,7 +51,7 @@ def test_odd_bug() -> None:
     assert int5B.accepts("c")
     assert int5B.accepts(["c"])
 
-    int5C = int5A + int5B
+    int5C = int5A.concatenate(int5B)
     assert int5C.accepts("c")
     assert int5C.accepts(["c"])
 

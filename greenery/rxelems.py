@@ -155,11 +155,7 @@ class Conc:
         return self
 
     def to_fsm(self, /) -> Fsm:
-        # start with a component accepting only the empty string
-        fsm1 = EPSILON
-        for mult in self.mults:
-            fsm1 += mult.to_fsm()
-        return fsm1
+        return Fsm.concatenate(EPSILON, *(mult.to_fsm() for mult in self.mults))
 
     def alphabet(self, /) -> Iterable[str]:
         return frozenset().union(*(mult.alphabet() for mult in self.mults))
@@ -692,26 +688,8 @@ class Pattern:
         is raised once all such strings have been returned, although a
         regex with a * in may match infinitely many strings.
         """
-
-        # In the case of a regex like "[^abc]", there are infinitely many
-        # (well, a very large finite number of) single characters which will
-        # match. It's not productive to iterate over all of these giving every
-        # single example. You must supply your own "otherchar" to stand in for
-        # all of these possibilities.
-        for symbols in self.to_fsm().strings():
-            chars = []
-            for symbol in symbols:
-                if symbol.negated:
-                    if otherchar is None:
-                        raise TypeError("Please choose an `otherchar`")
-                    char = otherchar
-                else:
-                    if len(symbol.chars) != 1:
-                        raise Exception("Need to replumb this...")
-                    (char,) = symbol.chars  # Python lacks the Axiom of Choice
-                chars.append(char)
-
-            yield "".join(chars)
+        otherchars = [] if otherchar is None else [otherchar]
+        return self.to_fsm().strings(otherchars)
 
     def __iter__(self, /) -> Iterator[str]:
         """
@@ -851,7 +829,7 @@ class Mult:
         assert self.multiplier.mandatory.v is not None
 
         # accepts "ababababab"
-        mandatory = unit * self.multiplier.mandatory.v
+        mandatory = unit.times(self.multiplier.mandatory.v)
 
         # unlimited additional copies
         if self.multiplier.optional == INF:
@@ -865,10 +843,10 @@ class Mult:
             # Implied by `!= INF`.
             assert self.multiplier.optional.v is not None
 
-            optional *= self.multiplier.optional.v
+            optional = optional.times(self.multiplier.optional.v)
             # accepts "(ab)?(ab)?"
 
-        return mandatory + optional
+        return mandatory.concatenate(optional)
 
     def reversed(self, /) -> Mult:
         return Mult(self.multiplicand.reversed(), self.multiplier)

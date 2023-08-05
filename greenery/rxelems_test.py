@@ -372,25 +372,11 @@ def test_even_star_bug1() -> None:
     assert elesscomplex.accepts("a")
     assert not elesscomplex.accepts("aa")
     assert elesscomplex.accepts("aaa")
-    gen = elesscomplex.strings()
-    assert next(gen) == [Charclass("a")]
-    assert next(gen) == [Charclass("a"), Charclass("a"), Charclass("a")]
-    assert next(gen) == [
-        Charclass("a"),
-        Charclass("a"),
-        Charclass("a"),
-        Charclass("a"),
-        Charclass("a"),
-    ]
-    assert next(gen) == [
-        Charclass("a"),
-        Charclass("a"),
-        Charclass("a"),
-        Charclass("a"),
-        Charclass("a"),
-        Charclass("a"),
-        Charclass("a"),
-    ]
+    gen = elesscomplex.strings([])
+    assert next(gen) == "a"
+    assert next(gen) == "aaa"
+    assert next(gen) == "aaaaa"
+    assert next(gen) == "aaaaaaa"
 
 
 def test_binary_3() -> None:

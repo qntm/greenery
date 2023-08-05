@@ -226,6 +226,9 @@ class Fsm:
     def concatenate(*fsms: Fsm) -> Fsm:
         """
         Concatenate arbitrarily many finite state machines together.
+        For example, if self accepts "0*" and other accepts "1+(0|1)",
+        will return a finite state machine accepting "0*1+(0|1)".
+        Accomplished by effectively following non-deterministically.
         """
         unified_fsms = unify_alphabets(fsms)
 
@@ -280,16 +283,6 @@ class Fsm:
         alphabet = unified_fsms[0].alphabet if len(unified_fsms) > 0 else {~Charclass()}
 
         return crawl(alphabet, initial, final, follow).reduce()
-
-    def __add__(self, other: Fsm, /) -> Fsm:
-        """
-        Concatenate two finite state machines together.
-        For example, if self accepts "0*" and other accepts "1+(0|1)",
-        will return a finite state machine accepting "0*1+(0|1)".
-        Accomplished by effectively following non-deterministically.
-        Call using "fsm3 = fsm1 + fsm2"
-        """
-        return self.concatenate(other)
 
     def star(self, /) -> Fsm:
         """
@@ -359,12 +352,6 @@ class Fsm:
             return frozenset(next_metastate)
 
         return crawl(alphabet, initial, final, follow).reduce()
-
-    def __mul__(self, multiplier: int, /) -> Fsm:
-        """
-        Given an FSM and a multiplier, return the multiplied FSM.
-        """
-        return self.times(multiplier)
 
     def union(*fsms: Fsm) -> Fsm:
         """
@@ -474,13 +461,6 @@ class Fsm:
         return crawl(alphabet, initial, final, follow)
         # Do not reduce() the result, since reduce() calls us in turn
 
-    def __reversed__(self, /) -> Fsm:
-        """
-        Return a new FSM such that for every string that self accepts (e.g.
-        "beer", the new FSM accepts the reversed string ("reeb").
-        """
-        return self.reversed()
-
     def islive(self, /, state: StateType) -> bool:
         """A state is "live" if a final state can be reached from it."""
         reachable = [state]
@@ -507,9 +487,12 @@ class Fsm:
         """
         return not self.islive(self.initial)
 
-    def strings(self, /) -> Iterator[list[AlphaType]]:
+    def strings(self, otherchars: Iterable[str]) -> Iterator[str]:
         """
-        Generate strings (lists of symbols) that this FSM accepts. Since
+        Generate strings that this FSM accepts. Note that for our purposes a
+        string is a sequence of Unicode characters, NOT a list of Charclasses.
+
+        Since
         there may be infinitely many of these we use a generator instead of
         constructing a static list. Strings will be sorted in order of
         length and then lexically. This procedure uses arbitrary amounts of
@@ -518,7 +501,8 @@ class Fsm:
         comprehensions.
         """
 
-        # Many FSMs have "dead states". Once you reach a dead state, you can no
+        # Most FSMs have at least one "dead state".
+        # Once you reach a dead state, you can no
         # longer reach a final state. Since many strings may end up here, it's
         # advantageous to constrain our search to live states only.
         livestates = set(state for state in self.states if self.islive(state))
@@ -531,7 +515,7 @@ class Fsm:
 
         # Initial entry (or possibly not, in which case this is a short one)
         cstate: StateType = self.initial
-        cstring: list[AlphaType] = []
+        cstring: str = ""
         if cstate in livestates:
             if cstate in self.finals:
                 yield cstring
@@ -543,20 +527,24 @@ class Fsm:
             cstring, cstate = strings[i]
 
             for charclass in sorted(self.map[cstate]):
-                print(charclass)
-                nstate = self.map[cstate][charclass]
-                nstring = cstring + [charclass]
-                if nstate in livestates:
-                    if nstate in self.finals:
-                        yield nstring
-                    strings.append((nstring, nstate))
+                if charclass.negated:
+                    chars = otherchars
+                else:
+                    chars = charclass.chars
+                for char in chars:
+                    nstate = self.map[cstate][charclass]
+                    nstring = cstring + char
+                    if nstate in livestates:
+                        if nstate in self.finals:
+                            yield nstring
+                        strings.append((nstring, nstate))
             i += 1
 
     def __iter__(self, /) -> Iterator[list[AlphaType]]:
         """
         This allows you to do `for string in fsm1` as a list comprehension!
         """
-        return self.strings()
+        return self.strings([])
 
     def equivalent(self, other: Fsm, /) -> bool:
         """
