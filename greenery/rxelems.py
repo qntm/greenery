@@ -154,11 +154,11 @@ class Conc:
 
         return self
 
-    def to_fsm(self, /, alphabet: Iterable[str | Charclass] | None = None) -> Fsm:
+    def to_fsm(self, /) -> Fsm:
         # start with a component accepting only the empty string
-        fsm1 = epsilon(alphabet)
+        fsm1 = epsilon({~Charclass()})
         for mult in self.mults:
-            fsm1 += mult.to_fsm(alphabet)
+            fsm1 += mult.to_fsm()
         return fsm1
 
     def get_chars(self):
@@ -608,14 +608,10 @@ class Pattern:
 
         return reduce(lambda x, y: x.common(y, suffix=suffix), self.concs)
 
-    def to_fsm(self, /, alphabet: Iterable[str | Charclass] | None = None) -> Fsm:
-        if alphabet is None:
-            chars = self.get_chars()
-            alphabet = chars | {~Charclass(chars)}
-
-        fsm1 = null(alphabet)
+    def to_fsm(self, /) -> Fsm:
+        fsm1 = null({~Charclass()})
         for conc in self.concs:
-            fsm1 |= conc.to_fsm(alphabet)
+            fsm1 |= conc.to_fsm()
         return fsm1
 
     def reversed(self, /) -> Pattern:
@@ -844,14 +840,14 @@ class Mult:
             return f"{self.multiplicand}{self.multiplier}"
         raise TypeError(f"Unknown type {type(self.multiplicand)}")
 
-    def to_fsm(self, /, alphabet: Iterable[str | Charclass] | None = None) -> Fsm:
+    def to_fsm(self, /) -> Fsm:
         # worked example: (min, max) = (5, 7) or (5, INF)
         # (mandatory, optional) = (5, 2) or (5, INF)
 
         unit = (
-            from_charclass(self.multiplicand, alphabet)
+            from_charclass(self.multiplicand)
             if isinstance(self.multiplicand, Charclass)
-            else self.multiplicand.to_fsm(alphabet)
+            else self.multiplicand.to_fsm()
         )
         # accepts e.g. "ab"
 
@@ -868,7 +864,7 @@ class Mult:
             # accepts "(ab)*"
 
         else:
-            optional = epsilon(alphabet) | unit
+            optional = epsilon({~Charclass()}) | unit
             # accepts "(ab)?"
 
             # Implied by `!= INF`.

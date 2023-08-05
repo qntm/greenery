@@ -892,16 +892,14 @@ def crawl(
     )
 
 def from_charclass(
-    charclass,
-    alphabet: Iterable[str | Charclass] | None = None,
+    charclass
 ) -> Fsm:
-    if alphabet is None:
-        # TODO: once we support multi-char non-negated charclasses, simplify
-        # this massively
-        alphabet = set()
-        for char in charclass.chars:
-            alphabet.add(Charclass(char))
-        alphabet.add(~Charclass(charclass.chars))
+    # TODO: once we support multi-char non-negated charclasses, simplify
+    # this massively
+    alphabet = set()
+    for char in charclass.chars:
+        alphabet.add(Charclass(char))
+    alphabet.add(~Charclass(charclass.chars))
 
     # 0 is initial, 1 is final, 2 is dead
     # If negated, make a singular FSM accepting any other characters
@@ -910,7 +908,7 @@ def from_charclass(
         0: dict([
             (
                 symbol,
-                2 if ((symbol in charclass.chars) == charclass.negated) else 1
+                1 if (symbol.negated == charclass.negated) else 2
             ) for symbol in alphabet
         ]),
         1: dict([(symbol, 2) for symbol in alphabet]),

@@ -40,14 +40,14 @@ def test_odd_bug() -> None:
     int5A = Mult(
         Charclass("bc"),
         STAR,
-    ).to_fsm({"a", "b", "c", ~Charclass("abc")})
+    ).to_fsm()
     assert int5A.accepts([])
     assert int5A.accepts("")
 
     int5B = Mult(
         Charclass("c"),
         ONE,
-    ).to_fsm({"a", "b", "c", ~Charclass("abc")})
+    ).to_fsm()
     assert int5B.accepts("c")
     assert int5B.accepts(["c"])
 

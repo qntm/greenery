@@ -18,26 +18,26 @@ FixtureB = Fsm
 def test_addbug() -> None:
     # Odd bug with Fsm.__add__(), exposed by "[bc]*c"
     int5A = Fsm(
-        alphabet={"a", "b", "c", ~Charclass("abc")},
+        alphabet={Charclass("a"), Charclass("b"), Charclass("c"), ~Charclass("abc")},
         states={0, 1},
         initial=1,
         finals={1},
         map={
-            0: {~Charclass("abc"): 0, "a": 0, "b": 0, "c": 0},
-            1: {~Charclass("abc"): 0, "a": 0, "b": 1, "c": 1},
+            0: {~Charclass("abc"): 0, Charclass("a"): 0, Charclass("b"): 0, Charclass("c"): 0},
+            1: {~Charclass("abc"): 0, Charclass("a"): 0, Charclass("b"): 1, Charclass("c"): 1},
         },
     )
     assert int5A.accepts("")
 
     int5B = Fsm(
-        alphabet={"a", "b", "c", ~Charclass("abc")},
+        alphabet={Charclass("a"), Charclass("b"), Charclass("c"), ~Charclass("abc")},
         states={0, 1, 2},
         initial=1,
         finals={0},
         map={
-            0: {~Charclass("abc"): 2, "a": 2, "b": 2, "c": 2},
-            1: {~Charclass("abc"): 2, "a": 2, "b": 2, "c": 0},
-            2: {~Charclass("abc"): 2, "a": 2, "b": 2, "c": 2},
+            0: {~Charclass("abc"): 2, Charclass("a"): 2, Charclass("b"): 2, Charclass("c"): 2},
+            1: {~Charclass("abc"): 2, Charclass("a"): 2, Charclass("b"): 2, Charclass("c"): 0},
+            2: {~Charclass("abc"): 2, Charclass("a"): 2, Charclass("b"): 2, Charclass("c"): 2},
         },
     )
     assert int5B.accepts("c")
@@ -48,22 +48,22 @@ def test_addbug() -> None:
 
 
 def test_builtins() -> None:
-    assert not null({"a", ~Charclass("a")}).accepts("a")
-    assert epsilon({"a", ~Charclass("a")}).accepts("")
-    assert not epsilon({"a", ~Charclass("a")}).accepts("a")
+    assert not null({Charclass("a"), ~Charclass("a")}).accepts("a")
+    assert epsilon({Charclass("a"), ~Charclass("a")}).accepts("")
+    assert not epsilon({Charclass("a"), ~Charclass("a")}).accepts("a")
 
 
 @pytest.fixture(name="a")
 def fixture_a() -> FixtureA:
     return Fsm(
-        alphabet={"a", "b", ~Charclass("ab")},
+        alphabet={Charclass("a"), Charclass("b"), ~Charclass("ab")},
         states={0, 1, "ob"},
         initial=0,
         finals={1},
         map={
-            0: {"a": 1, "b": "ob", ~Charclass("ab"): "ob"},
-            1: {"a": "ob", "b": "ob", ~Charclass("ab"): "ob"},
-            "ob": {"a": "ob", "b": "ob", ~Charclass("ab"): "ob"},
+            0: {Charclass("a"): 1, Charclass("b"): "ob", ~Charclass("ab"): "ob"},
+            1: {Charclass("a"): "ob", Charclass("b"): "ob", ~Charclass("ab"): "ob"},
+            "ob": {Charclass("a"): "ob", Charclass("b"): "ob", ~Charclass("ab"): "ob"},
         },
     )
 
@@ -77,14 +77,14 @@ def test_a(a: FixtureA) -> None:
 @pytest.fixture(name="b")
 def fixture_b() -> FixtureB:
     return Fsm(
-        alphabet={"a", "b", ~Charclass("ab")},
+        alphabet={Charclass("a"), Charclass("b"), ~Charclass("ab")},
         states={0, 1, "ob"},
         initial=0,
         finals={1},
         map={
-            0: {"a": "ob", "b": 1, ~Charclass("ab"): "ob"},
-            1: {"a": "ob", "b": "ob", ~Charclass("ab"): "ob"},
-            "ob": {"a": "ob", "b": "ob", ~Charclass("ab"): "ob"},
+            0: {Charclass("a"): "ob", Charclass("b"): 1, ~Charclass("ab"): "ob"},
+            1: {Charclass("a"): "ob", Charclass("b"): "ob", ~Charclass("ab"): "ob"},
+            "ob": {Charclass("a"): "ob", Charclass("b"): "ob", ~Charclass("ab"): "ob"},
         },
     )
 
@@ -102,7 +102,7 @@ def test_concatenation_aa(a: FixtureA) -> None:
     assert concAA.accepts("aa")
     assert not concAA.accepts("aaa")
 
-    concAA = epsilon({"a", "b", ~Charclass("ab")}) + a + a
+    concAA = epsilon({Charclass("a"), Charclass("b"), ~Charclass("ab")}) + a + a
     assert not concAA.accepts("")
     assert not concAA.accepts("a")
     assert concAA.accepts("aa")
@@ -121,7 +121,7 @@ def test_concatenation_ab(a: FixtureA, b: FixtureB) -> None:
 
 
 def test_alternation_a(a: FixtureA) -> None:
-    altA = a | null({"a", "b", ~Charclass("ab")})
+    altA = a | null({Charclass("a"), Charclass("b"), ~Charclass("ab")})
     assert not altA.accepts("")
     assert altA.accepts("a")
 
@@ -220,18 +220,18 @@ def test_crawl_reduction() -> None:
     # states 1 and 2&3 also behave identically, so they, too should be resolved
     # (this is impossible to spot before 2 and 3 have been combined).
     merged = Fsm(
-        alphabet={"0", "1", ~Charclass("01")},
+        alphabet={Charclass("0"), Charclass("1"), ~Charclass("01")},
         states={1, 2, 3, 4, "oblivion"},
         initial=1,
         finals={4},
         map={
-            1: {"0": 2, "1": 4, ~Charclass("01"): "oblivion"},
-            2: {"0": 3, "1": 4, ~Charclass("01"): "oblivion"},
-            3: {"0": 3, "1": 4, ~Charclass("01"): "oblivion"},
-            4: {"0": "oblivion", "1": "oblivion", ~Charclass("01"): "oblivion"},
+            1: {Charclass("0"): 2, Charclass("1"): 4, ~Charclass("01"): "oblivion"},
+            2: {Charclass("0"): 3, Charclass("1"): 4, ~Charclass("01"): "oblivion"},
+            3: {Charclass("0"): 3, Charclass("1"): 4, ~Charclass("01"): "oblivion"},
+            4: {Charclass("0"): "oblivion", Charclass("1"): "oblivion", ~Charclass("01"): "oblivion"},
             "oblivion": {
-                "0": "oblivion",
-                "1": "oblivion",
+                Charclass("0"): "oblivion",
+                Charclass("1"): "oblivion",
                 ~Charclass("01"): "oblivion",
             },
         },
@@ -242,14 +242,14 @@ def test_crawl_reduction() -> None:
 def test_bug_28() -> None:
     # This is (ab*)* and it caused some defects.
     abstar = Fsm(
-        alphabet={"a", "b", ~Charclass("ab")},
+        alphabet={Charclass("a"), Charclass("b"), ~Charclass("ab")},
         states={0, 1, 2},
         initial=0,
         finals={1},
         map={
-            0: {"a": 1, "b": 2, ~Charclass("ab"): 2},
-            1: {"a": 2, "b": 1, ~Charclass("ab"): 2},
-            2: {"a": 2, "b": 2, ~Charclass("ab"): 2},
+            0: {Charclass("a"): 1, Charclass("b"): 2, ~Charclass("ab"): 2},
+            1: {Charclass("a"): 2, Charclass("b"): 1, ~Charclass("ab"): 2},
+            2: {Charclass("a"): 2, Charclass("b"): 2, ~Charclass("ab"): 2},
         },
     )
     assert abstar.accepts("a")
@@ -267,17 +267,17 @@ def test_star_advanced() -> None:
     # This is (a*ba)*. Naively connecting the final states to the initial state
     # gives the incorrect result here.
     starred = Fsm(
-        alphabet={"a", "b", ~Charclass("ab")},
+        alphabet={Charclass("a"), Charclass("b"), ~Charclass("ab")},
         states={0, 1, 2, "oblivion"},
         initial=0,
         finals={2},
         map={
-            0: {"a": 0, "b": 1, ~Charclass("ab"): "oblivion"},
-            1: {"a": 2, "b": "oblivion", ~Charclass("ab"): "oblivion"},
-            2: {"a": "oblivion", "b": "oblivion", ~Charclass("ab"): "oblivion"},
+            0: {Charclass("a"): 0, Charclass("b"): 1, ~Charclass("ab"): "oblivion"},
+            1: {Charclass("a"): 2, Charclass("b"): "oblivion", ~Charclass("ab"): "oblivion"},
+            2: {Charclass("a"): "oblivion", Charclass("b"): "oblivion", ~Charclass("ab"): "oblivion"},
             "oblivion": {
-                "a": "oblivion",
-                "b": "oblivion",
+                Charclass("a"): "oblivion",
+                Charclass("b"): "oblivion",
                 ~Charclass("ab"): "oblivion",
             },
         },
@@ -301,14 +301,14 @@ def test_star_advanced() -> None:
 def test_reduce() -> None:
     # FSM accepts no strings but has 3 states, needs only 1
     asdf = Fsm(
-        alphabet={"x", ~Charclass("x")},
+        alphabet={Charclass("x"), ~Charclass("x")},
         states={0, 1, 2},
         initial=0,
         finals={1},
         map={
-            0: {"x": 2, ~Charclass("x"): 2},
-            1: {"x": 2, ~Charclass("x"): 2},
-            2: {"x": 2, ~Charclass("x"): 2},
+            0: {Charclass("x"): 2, ~Charclass("x"): 2},
+            1: {Charclass("x"): 2, ~Charclass("x"): 2},
+            2: {Charclass("x"): 2, ~Charclass("x"): 2},
         },
     )
     asdf = asdf.reduce()
@@ -317,16 +317,16 @@ def test_reduce() -> None:
 
 def test_reverse_abc() -> None:
     abc = Fsm(
-        alphabet={"a", "b", "c", ~Charclass("abc")},
+        alphabet={Charclass("a"), Charclass("b"), Charclass("c"), ~Charclass("abc")},
         states={0, 1, 2, 3, 4},
         initial=0,
         finals={3},
         map={
-            0: {"a": 1, "b": 4, "c": 4, ~Charclass("abc"): 4},
-            1: {"a": 4, "b": 2, "c": 4, ~Charclass("abc"): 4},
-            2: {"a": 4, "b": 4, "c": 3, ~Charclass("abc"): 4},
-            3: {"a": 4, "b": 4, "c": 4, ~Charclass("abc"): 4},
-            4: {"a": 4, "b": 4, "c": 4, ~Charclass("abc"): 4},
+            0: {Charclass("a"): 1, Charclass("b"): 4, Charclass("c"): 4, ~Charclass("abc"): 4},
+            1: {Charclass("a"): 4, Charclass("b"): 2, Charclass("c"): 4, ~Charclass("abc"): 4},
+            2: {Charclass("a"): 4, Charclass("b"): 4, Charclass("c"): 3, ~Charclass("abc"): 4},
+            3: {Charclass("a"): 4, Charclass("b"): 4, Charclass("c"): 4, ~Charclass("abc"): 4},
+            4: {Charclass("a"): 4, Charclass("b"): 4, Charclass("c"): 4, ~Charclass("abc"): 4},
         },
     )
     cba = abc.reversed()
@@ -336,17 +336,17 @@ def test_reverse_abc() -> None:
 def test_reverse_brzozowski() -> None:
     # This is (a|b)*a(a|b)
     brzozowski = Fsm(
-        alphabet={"a", "b", ~Charclass("ab")},
+        alphabet={Charclass("a"), Charclass("b"), ~Charclass("ab")},
         states={"A", "B", "C", "D", "E", "F"},
         initial="A",
         finals={"C", "E"},
         map={
-            "A": {"a": "B", "b": "D", ~Charclass("ab"): "F"},
-            "B": {"a": "C", "b": "E", ~Charclass("ab"): "F"},
-            "C": {"a": "C", "b": "E", ~Charclass("ab"): "F"},
-            "D": {"a": "B", "b": "D", ~Charclass("ab"): "F"},
-            "E": {"a": "B", "b": "D", ~Charclass("ab"): "F"},
-            "F": {"a": "F", "b": "F", ~Charclass("ab"): "F"},
+            "A": {Charclass("a"): "B", Charclass("b"): "D", ~Charclass("ab"): "F"},
+            "B": {Charclass("a"): "C", Charclass("b"): "E", ~Charclass("ab"): "F"},
+            "C": {Charclass("a"): "C", Charclass("b"): "E", ~Charclass("ab"): "F"},
+            "D": {Charclass("a"): "B", Charclass("b"): "D", ~Charclass("ab"): "F"},
+            "E": {Charclass("a"): "B", Charclass("b"): "D", ~Charclass("ab"): "F"},
+            "F": {Charclass("a"): "F", Charclass("b"): "F", ~Charclass("ab"): "F"},
         },
     )
     assert brzozowski.accepts("aa")
@@ -388,7 +388,7 @@ def test_reverse_brzozowski() -> None:
 
 def test_reverse_epsilon() -> None:
     # epsilon reversed is epsilon
-    assert epsilon({"a", ~Charclass("a")}).reversed().accepts("")
+    assert epsilon({Charclass("a"), ~Charclass("a")}).reversed().accepts("")
 
 
 def test_binary_3() -> None:
@@ -396,17 +396,17 @@ def test_binary_3() -> None:
     # Disallows the empty string
     # Allows "0" on its own, but not leading zeroes.
     div3 = Fsm(
-        alphabet={"0", "1", ~Charclass("01")},
+        alphabet={Charclass("0"), Charclass("1"), ~Charclass("01")},
         states={"initial", "zero", 0, 1, 2, 3},
         initial="initial",
         finals={"zero", 0},
         map={
-            "initial": {"0": "zero", "1": 1, ~Charclass("01"): 3},
-            "zero": {"0": 3, "1": 3, ~Charclass("01"): 3},
-            0: {"0": 0, "1": 1, ~Charclass("01"): 3},
-            1: {"0": 2, "1": 0, ~Charclass("01"): 3},
-            2: {"0": 1, "1": 2, ~Charclass("01"): 3},
-            3: {"0": 3, "1": 3, ~Charclass("01"): 3},
+            "initial": {Charclass("0"): "zero", Charclass("1"): 1, ~Charclass("01"): 3},
+            "zero": {Charclass("0"): 3, Charclass("1"): 3, ~Charclass("01"): 3},
+            0: {Charclass("0"): 0, Charclass("1"): 1, ~Charclass("01"): 3},
+            1: {Charclass("0"): 2, Charclass("1"): 0, ~Charclass("01"): 3},
+            2: {Charclass("0"): 1, Charclass("1"): 2, ~Charclass("01"): 3},
+            3: {Charclass("0"): 3, Charclass("1"): 3, ~Charclass("01"): 3},
         },
     )
     assert not div3.accepts("")
@@ -447,20 +447,20 @@ def test_invalid_fsms() -> None:
 
     # invalid transition for state 1, symbol "a"
     with pytest.raises(ValueError, match="Transition.+leads to.+not a state"):
-        Fsm(alphabet={"a"}, states={1}, initial=1, finals=(), map={1: {"a": 2}})
+        Fsm(alphabet={Charclass("a")}, states={1}, initial=1, finals=(), map={1: {Charclass("a"): 2}})
 
     # invalid transition from unknown state
     with pytest.raises(ValueError, match="Transition.+unknown state"):
-        Fsm(alphabet={"a"}, states={1, 2}, initial=1, finals=(), map={3: {"a": 2}})
+        Fsm(alphabet={Charclass("a")}, states={1, 2}, initial=1, finals=(), map={3: {Charclass("a"): 2}})
 
     # invalid transition table includes symbol outside of alphabet
     with pytest.raises(ValueError, match="Invalid symbol"):
         Fsm(
-            alphabet={"a"},
+            alphabet={Charclass("a")},
             states={1, 2},
             initial=1,
             finals=(),
-            map={1: {"a": 2, "b": 2}},
+            map={1: {Charclass("a"): 2, Charclass("b"): 2}},
         )
 
 
@@ -471,25 +471,25 @@ def test_bad_multiplier(a: FixtureA) -> None:
 
 def test_anything_else_acceptance() -> None:
     a = Fsm(
-        alphabet={"a", "b", "c", ~Charclass("abc")},
+        alphabet={Charclass("a"), Charclass("b"), Charclass("c"), ~Charclass("abc")},
         states={1},
         initial=1,
         finals={1},
-        map={1: {"a": 1, "b": 1, "c": 1, ~Charclass("abc"): 1}},
+        map={1: {Charclass("a"): 1, Charclass("b"): 1, Charclass("c"): 1, ~Charclass("abc"): 1}},
     )
     assert a.accepts("d")
 
 
 def test_difference(a: FixtureA, b: FixtureB) -> None:
     aorb = Fsm(
-        alphabet={"a", "b", ~Charclass("ab")},
+        alphabet={Charclass("a"), Charclass("b"), ~Charclass("ab")},
         states={0, 1, 2},
         initial=0,
         finals={1},
         map={
-            0: {"a": 1, "b": 1, ~Charclass("ab"): 2},
-            1: {"a": 2, "b": 2, ~Charclass("ab"): 2},
-            2: {"a": 2, "b": 2, ~Charclass("ab"): 2},
+            0: {Charclass("a"): 1, Charclass("b"): 1, ~Charclass("ab"): 2},
+            1: {Charclass("a"): 2, Charclass("b"): 2, ~Charclass("ab"): 2},
+            2: {Charclass("a"): 2, Charclass("b"): 2, ~Charclass("ab"): 2},
         },
     )
 
@@ -520,15 +520,15 @@ def test_empty(a: FixtureA, b: FixtureB) -> None:
     ).empty()
 
     assert Fsm(
-        alphabet={"a", "b", ~Charclass("ab")},
+        alphabet={Charclass("a"), Charclass("b"), ~Charclass("ab")},
         states={0, 1, 2, 3},
         initial=0,
         finals={3},
         map={
-            0: {"a": 1, "b": 1, ~Charclass("ab"): 2},
-            1: {"a": 2, "b": 2, ~Charclass("ab"): 2},
-            2: {"a": 2, "b": 2, ~Charclass("ab"): 2},
-            3: {"a": 2, "b": 2, ~Charclass("ab"): 2},
+            0: {Charclass("a"): 1, Charclass("b"): 1, ~Charclass("ab"): 2},
+            1: {Charclass("a"): 2, Charclass("b"): 2, ~Charclass("ab"): 2},
+            2: {Charclass("a"): 2, Charclass("b"): 2, ~Charclass("ab"): 2},
+            3: {Charclass("a"): 2, Charclass("b"): 2, ~Charclass("ab"): 2},
         },
     ).empty()
 
@@ -574,17 +574,17 @@ def test_dead_default() -> None:
     Old test from when you used to be able to have sparse maps
     """
     blockquote = Fsm(
-        alphabet={"/", "*", ~Charclass("/*")},
+        alphabet={Charclass("/"), Charclass("*"), ~Charclass("/*")},
         states={0, 1, 2, 3, 4, 5},
         initial=0,
         finals={4},
         map={
-            0: {"/": 1, ~Charclass("/*"): 5, "*": 5},
-            1: {"/": 5, ~Charclass("/*"): 5, "*": 2},
-            2: {"/": 2, ~Charclass("/*"): 2, "*": 3},
-            3: {"/": 4, ~Charclass("/*"): 2, "*": 3},
-            4: {"/": 5, ~Charclass("/*"): 5, "*": 5},
-            5: {"/": 5, ~Charclass("/*"): 5, "*": 5},
+            0: {Charclass("/"): 1, ~Charclass("/*"): 5, Charclass("*"): 5},
+            1: {Charclass("/"): 5, ~Charclass("/*"): 5, Charclass("*"): 2},
+            2: {Charclass("/"): 2, ~Charclass("/*"): 2, Charclass("*"): 3},
+            3: {Charclass("/"): 4, ~Charclass("/*"): 2, Charclass("*"): 3},
+            4: {Charclass("/"): 5, ~Charclass("/*"): 5, Charclass("*"): 5},
+            5: {Charclass("/"): 5, ~Charclass("/*"): 5, Charclass("*"): 5},
         },
     )
     assert blockquote.accepts(["/", "*", "whatever", "*", "/"])
@@ -626,26 +626,26 @@ def test_alphabet_unions() -> None:
     # It should now be possible to compute the union of
     # FSMs with disagreeing alphabets!
     a = Fsm(
-        alphabet={"a", ~Charclass("a")},
+        alphabet={Charclass("a"), ~Charclass("a")},
         states={0, 1, 2},
         initial=0,
         finals={1},
         map={
-            0: {"a": 1, ~Charclass("a"): 2},
-            1: {"a": 1, ~Charclass("a"): 2},
-            2: {"a": 2, ~Charclass("a"): 2},
+            0: {Charclass("a"): 1, ~Charclass("a"): 2},
+            1: {Charclass("a"): 1, ~Charclass("a"): 2},
+            2: {Charclass("a"): 2, ~Charclass("a"): 2},
         },
     )
 
     b = Fsm(
-        alphabet={"b", ~Charclass("b")},
+        alphabet={Charclass("b"), ~Charclass("b")},
         states={0, 1, 2},
         initial=0,
         finals={1},
         map={
-            0: {"b": 1, ~Charclass("b"): 2},
-            1: {"b": 1, ~Charclass("b"): 2},
-            2: {"b": 2, ~Charclass("b"): 2},
+            0: {Charclass("b"): 1, ~Charclass("b"): 2},
+            1: {Charclass("b"): 1, ~Charclass("b"): 2},
+            2: {Charclass("b"): 2, ~Charclass("b"): 2},
         },
     )
 
@@ -704,7 +704,7 @@ def test_new_set_methods(a: FixtureA, b: FixtureB) -> None:
         (a | b).difference(a, b)
         == Fsm.difference((a | b), a, b)
         == (a | b) - a - b
-        == null({"a", "b", ~Charclass("ab")})
+        == null({Charclass("a"), Charclass("b"), ~Charclass("ab")})
     )
     assert a.symmetric_difference(b) == Fsm.symmetric_difference(a, b) == a ^ b
     assert a.isdisjoint(b)
@@ -743,16 +743,16 @@ def test_copy(a: FixtureA) -> None:
 def test_oblivion_crawl() -> None:
     # Old test from when we used to have a suppressed/secret "oblivion state"
     abc = Fsm(
-        alphabet={"a", "b", "c", ~Charclass("abc")},
+        alphabet={Charclass("a"), Charclass("b"), Charclass("c"), ~Charclass("abc")},
         states={0, 1, 2, 3, 4},
         initial=0,
         finals={3},
         map={
-            0: {"a": 1, "b": 2, "c": 4, ~Charclass("abc"): 4},
-            1: {"a": 4, "b": 2, "c": 4, ~Charclass("abc"): 4},
-            2: {"a": 4, "b": 4, "c": 3, ~Charclass("abc"): 4},
-            3: {"a": 4, "b": 4, "c": 4, ~Charclass("abc"): 4},
-            4: {"a": 4, "b": 4, "c": 4, ~Charclass("abc"): 4},
+            0: {Charclass("a"): 1, Charclass("b"): 2, Charclass("c"): 4, ~Charclass("abc"): 4},
+            1: {Charclass("a"): 4, Charclass("b"): 2, Charclass("c"): 4, ~Charclass("abc"): 4},
+            2: {Charclass("a"): 4, Charclass("b"): 4, Charclass("c"): 3, ~Charclass("abc"): 4},
+            3: {Charclass("a"): 4, Charclass("b"): 4, Charclass("c"): 4, ~Charclass("abc"): 4},
+            4: {Charclass("a"): 4, Charclass("b"): 4, Charclass("c"): 4, ~Charclass("abc"): 4},
         },
     )
     assert len((abc + abc).states) == 8
@@ -767,22 +767,22 @@ def test_oblivion_crawl() -> None:
 
 def test_concatenate_bug(a: FixtureA) -> None:
     # This exposes a defect in Fsm.concatenate.
-    assert Fsm.concatenate(a, epsilon({"a", ~Charclass("a")}), a).accepts("aa")
+    assert Fsm.concatenate(a, epsilon({Charclass("a"), ~Charclass("a")}), a).accepts("aa")
     assert Fsm.concatenate(
         a,
-        epsilon({"a", ~Charclass("a")}),
-        epsilon({"a", ~Charclass("a")}),
+        epsilon({Charclass("a"), ~Charclass("a")}),
+        epsilon({Charclass("a"), ~Charclass("a")}),
         a
     ).accepts("aa")
 
 
 def test_derive(a: FixtureA) -> None:
     # Just some basic tests because this is mainly a regex thing.
-    assert a.derive([Charclass("a")]) == epsilon({"a", "b", ~Charclass("ab")})
-    assert a.derive([Charclass("b")]) == null({"a", "b", ~Charclass("ab")})
+    assert a.derive([Charclass("a")]) == epsilon({Charclass("a"), Charclass("b"), ~Charclass("ab")})
+    assert a.derive([Charclass("b")]) == null({Charclass("a"), Charclass("b"), ~Charclass("ab")})
 
     assert (a * 3).derive([Charclass("a")]) == a * 2
-    assert (a.star() - epsilon({"a", "b", ~Charclass("ab")})).derive([Charclass("a")]) == a.star()
+    assert (a.star() - epsilon({Charclass("a"), Charclass("b"), ~Charclass("ab")})).derive([Charclass("a")]) == a.star()
 
 
 def test_bug_36() -> None:
@@ -799,14 +799,14 @@ def test_bug_36() -> None:
 
     # This is /s.*/
     etc2 = Fsm(
-        alphabet={"s", ~Charclass("s")},
+        alphabet={Charclass("s"), ~Charclass("s")},
         states={0, 1, 2},
         initial=0,
         finals={1},
         map={
-            0: {"s": 1, ~Charclass("s"): 2},
-            1: {"s": 1, ~Charclass("s"): 1},
-            2: {"s": 2, ~Charclass("s"): 2},
+            0: {Charclass("s"): 1, ~Charclass("s"): 2},
+            1: {Charclass("s"): 1, ~Charclass("s"): 1},
+            2: {Charclass("s"): 2, ~Charclass("s"): 2},
         },
     )
 
@@ -824,27 +824,27 @@ def test_bug_36() -> None:
 def test_add_anything_else() -> None:
     # [^a]
     fsm1 = Fsm(
-        alphabet={"a", ~Charclass("a")},
+        alphabet={Charclass("a"), ~Charclass("a")},
         states={0, 1, 2},
         initial=0,
         finals={1},
         map={
-            0: {"a": 2, ~Charclass("a"): 1},
-            1: {"a": 2, ~Charclass("a"): 1},
-            2: {"a": 2, ~Charclass("a"): 2},
+            0: {Charclass("a"): 2, ~Charclass("a"): 1},
+            1: {Charclass("a"): 2, ~Charclass("a"): 1},
+            2: {Charclass("a"): 2, ~Charclass("a"): 2},
         },
     )
 
     # [^b]
     fsm2 = Fsm(
-        alphabet={"b", ~Charclass("b")},
+        alphabet={Charclass("b"), ~Charclass("b")},
         states={0, 1, 2},
         initial=0,
         finals={1},
         map={
-            0: {"b": 2, ~Charclass("b"): 1},
-            1: {"b": 2, ~Charclass("b"): 1},
-            2: {"b": 2, ~Charclass("b"): 2},
+            0: {Charclass("b"): 2, ~Charclass("b"): 1},
+            1: {Charclass("b"): 2, ~Charclass("b"): 1},
+            2: {Charclass("b"): 2, ~Charclass("b"): 2},
         },
     )
     assert (fsm1 + fsm2).accepts("ba")
@@ -853,14 +853,14 @@ def test_add_anything_else() -> None:
 def test_anything_else_pickle() -> None:
     # [^z]*
     fsm1 = Fsm(
-        alphabet={"z", ~Charclass("z")},
+        alphabet={Charclass("z"), ~Charclass("z")},
         states={0, 1, 2},
         initial=0,
         finals={1},
         map={
-            0: {"z": 2, ~Charclass("z"): 1},
-            1: {"z": 2, ~Charclass("z"): 1},
-            2: {"z": 2, ~Charclass("z"): 2},
+            0: {Charclass("z"): 2, ~Charclass("z"): 1},
+            1: {Charclass("z"): 2, ~Charclass("z"): 1},
+            2: {Charclass("z"): 2, ~Charclass("z"): 2},
         },
     )
 
@@ -878,20 +878,20 @@ def test_anything_else_pickle() -> None:
 def test_replace_alphabet() -> None:
     # [^z]*
     fsm1 = Fsm(
-        alphabet={"z", ~Charclass("z")},
+        alphabet={Charclass("z"), ~Charclass("z")},
         states={0, 1, 2},
         initial=0,
         finals={1},
         map={
-            0: {"z": 2, ~Charclass("z"): 1},
-            1: {"z": 2, ~Charclass("z"): 1},
-            2: {"z": 2, ~Charclass("z"): 2},
+            0: {Charclass("z"): 2, ~Charclass("z"): 1},
+            1: {Charclass("z"): 2, ~Charclass("z"): 1},
+            2: {Charclass("z"): 2, ~Charclass("z"): 2},
         },
     )
 
     fsm2 = fsm1.replace_alphabet({
-        Charclass("z"): ["a", "b"],
-        ~Charclass("z"): ["c", ~Charclass("abc")]
+        Charclass("z"): [Charclass("a"), Charclass("b")],
+        ~Charclass("z"): [Charclass("c"), ~Charclass("abc")]
     })
 
     assert fsm2.map == {
@@ -903,7 +903,7 @@ def test_replace_alphabet() -> None:
 def test_replace_alphabet_2() -> None:
     # [^z]*
     fsm1 = Fsm(
-        alphabet={"z", ~Charclass("z")},
+        alphabet={Charclass("z"), ~Charclass("z")},
         states={0, 1, 2},
         initial=0,
         finals={1},
@@ -935,29 +935,49 @@ def test_charclass_fsm() -> None:
     assert nota.accepts(["c"])
 
 
+def test_charclass_fsm_2() -> None:
+    bc = from_charclass(Charclass("bc"))
+    assert bc.alphabet == {Charclass("b"), Charclass("c"), ~Charclass("bc")}
+    assert bc.map == {
+        0: {Charclass("b"): 1, Charclass("c"): 1, ~Charclass("bc"): 2},
+        1: {Charclass("b"): 2, Charclass("c"): 2, ~Charclass("bc"): 2},
+        2: {Charclass("b"): 2, Charclass("c"): 2, ~Charclass("bc"): 2},
+    }
+
+
+def test_charclass_fsm_3() -> None:
+    notbc = from_charclass(~Charclass("bc"))
+    assert notbc.alphabet == {Charclass("b"), Charclass("c"), ~Charclass("bc")}
+    assert notbc.map == {
+        0: {Charclass("b"): 2, Charclass("c"): 2, ~Charclass("bc"): 1},
+        1: {Charclass("b"): 2, Charclass("c"): 2, ~Charclass("bc"): 2},
+        2: {Charclass("b"): 2, Charclass("c"): 2, ~Charclass("bc"): 2},
+    }
+
+
 def test_unify_alphabets() -> None:
     a = Fsm(
-        alphabet={"a", ~Charclass("a")},
+        alphabet={Charclass("a"), ~Charclass("a")},
         states={0, 1, 2},
         initial=0,
         finals={1},
         map={
-            0: {"a": 1, ~Charclass("a"): 2},
-            1: {"a": 2, ~Charclass("a"): 2},
-            2: {"a": 2, ~Charclass("a"): 2},
+            0: {Charclass("a"): 1, ~Charclass("a"): 2},
+            1: {Charclass("a"): 2, ~Charclass("a"): 2},
+            2: {Charclass("a"): 2, ~Charclass("a"): 2},
         },
     )
     assert a.alphabet == {Charclass("a"), ~Charclass("a")}
 
     b = Fsm(
-        alphabet={"b", ~Charclass("b")},
+        alphabet={Charclass("b"), ~Charclass("b")},
         states={0, 1, 2},
         initial=0,
         finals={1},
         map={
-            0: {"b": 1, ~Charclass("b"): 2},
-            1: {"b": 2, ~Charclass("b"): 2},
-            2: {"b": 2, ~Charclass("b"): 2},
+            0: {Charclass("b"): 1, ~Charclass("b"): 2},
+            1: {Charclass("b"): 2, ~Charclass("b"): 2},
+            2: {Charclass("b"): 2, ~Charclass("b"): 2},
         },
     )
     assert b.alphabet == {Charclass("b"), ~Charclass("b")}
