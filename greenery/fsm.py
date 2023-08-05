@@ -18,13 +18,11 @@ from typing import (
     ClassVar,
     Collection,
     Dict,
-    Generator,
     Iterable,
     Iterator,
     List,
     Mapping,
     TypeVar,
-    Union,
 )
 
 from .charclass import Charclass, repartition
@@ -120,13 +118,11 @@ class Fsm:
                         " which is not a state"
                     )
         for state in states:
-            if not isinstance(state, int):
-                raise Exception(f"Bad state {state!r}")
             if state not in map:
-                raise Exception(f"State {state!r} missing from map")
+                raise ValueError(f"State {state!r} missing from map")
             for symbol in alphabet:
                 if symbol not in map[state]:
-                    raise Exception(f"Symbol {symbol!r} missing from map[{state!r}]")
+                    raise ValueError(f"Symbol {symbol!r} missing from map[{state!r}]")
 
         # Initialise the hard way due to immutability.
         object.__setattr__(self, "alphabet", alphabet)
@@ -257,7 +253,9 @@ class Fsm:
         # We start at the start of the first FSM. If this state is final in the
         # first FSM, then we are also at the start of the second FSM. And so
         # on.
-        initial = frozenset(connect_all(0, unified_fsms[0].initial) if unified_fsms else ())
+        initial = frozenset(
+            connect_all(0, unified_fsms[0].initial) if unified_fsms else ()
+        )
 
         def final(state: frozenset[tuple[int, StateType]]) -> bool:
             """If you're in a final state of the final FSM, it's final"""
@@ -276,7 +274,9 @@ class Fsm:
             """
             next_metastate: set[tuple[int, StateType]] = set()
             for i, substate in current:
-                next_metastate.update(connect_all(i, unified_fsms[i].map[substate][symbol]))
+                next_metastate.update(
+                    connect_all(i, unified_fsms[i].map[substate][symbol])
+                )
 
             return frozenset(next_metastate)
 
@@ -737,7 +737,10 @@ class Fsm:
             map=self.map,
         )
 
-    def replace_alphabet(self, replacements: Mapping[AlphaType, Iterable[AlphaType]], /) -> Fsm:
+    def replace_alphabet(
+        self,
+        replacements: Mapping[AlphaType, Iterable[AlphaType]]
+    ) -> Fsm:
         """
         Returns a new FSM which uses a different alphabet. If one original
         symbol converts to two new symbols, there will be multiple identical
@@ -790,8 +793,8 @@ def epsilon(alphabet: Iterable[AlphaType]) -> Fsm:
         initial=0,
         finals={0},
         map={
-            0: dict([(symbol, 1) for symbol in alphabet]),
-            1: dict([(symbol, 1) for symbol in alphabet]),
+            0: {symbol : 1 for symbol in alphabet},
+            1: {symbol : 1 for symbol in alphabet},
         },
     )
 
@@ -808,7 +811,9 @@ def parallel(
     """
     unified_fsms = unify_alphabets(fsms)
 
-    initial: Mapping[int, StateType] = {i: fsm.initial for i, fsm in enumerate(unified_fsms)}
+    initial: Mapping[int, StateType] = {
+        i: fsm.initial for i, fsm in enumerate(unified_fsms)
+    }
 
     # dedicated function accepts a "superset" and returns the next "superset"
     # obtained by following this transition in the new FSM
@@ -816,7 +821,9 @@ def parallel(
         current: Mapping[int, StateType],
         symbol: AlphaType,
     ) -> Mapping[int, StateType]:
-        return dict([(i, fsm.map[current[i]][symbol]) for i, fsm in enumerate(unified_fsms)])
+        return {
+            i : fsm.map[current[i]][symbol] for i, fsm in enumerate(unified_fsms)
+        }
 
     # Determine the "is final?" condition of each substate, then pass it to the
     # test to determine finality of the overall FSM.
@@ -889,15 +896,13 @@ def from_charclass(charclass: Charclass) -> Fsm:
     # 0 is initial, 1 is final, 2 is dead
     # If negated, make a singular FSM accepting any other characters
     # If normal, make a singular FSM accepting only these characters
-    map = {
-        0: dict(
-            [
-                (symbol, 1 if (symbol.negated == charclass.negated) else 2)
-                for symbol in alphabet
-            ]
-        ),
-        1: dict([(symbol, 2) for symbol in alphabet]),
-        2: dict([(symbol, 2) for symbol in alphabet]),
+    transitions = {
+        0: {
+            symbol : 1 if (symbol.negated == charclass.negated) else 2
+            for symbol in alphabet
+        },
+        1: {symbol : 2 for symbol in alphabet},
+        2: {symbol : 2 for symbol in alphabet},
     }
 
     # State 0 is initial, 1 is final
@@ -906,5 +911,5 @@ def from_charclass(charclass: Charclass) -> Fsm:
         states={0, 1, 2},
         initial=0,
         finals={1},
-        map=map,
+        map=transitions,
     )

@@ -16,7 +16,7 @@ __all__ = (
 )
 
 from dataclasses import dataclass
-from typing import Any, ClassVar, Dict, Iterable, List, Mapping, Tuple
+from typing import ClassVar, Dict, Iterable, List, Mapping, Tuple
 
 
 @dataclass(frozen=True, init=False)
@@ -270,7 +270,9 @@ escapes: Mapping[str, str] = {
 }
 
 
-def repartition(charclasses: Iterable[Charclass]) -> Mapping[Charclass, Iterable[Charclass]]:
+def repartition(
+    charclasses: Iterable[Charclass],
+) -> Mapping[Charclass, Iterable[Charclass]]:
     """
     Accept an iterable of `Charclass`es which may overlap somewhat.
     Construct a minimal collection of `Charclass`es which partition the space
@@ -293,7 +295,7 @@ def repartition(charclasses: Iterable[Charclass]) -> Mapping[Charclass, Iterable
             signatures[signature] = []
         signatures[signature].append(char)
 
-    newcharclasses = list(map(lambda chars: Charclass(chars), signatures.values()))
+    newcharclasses = (Charclass(chars) for chars in signatures.values())
 
     # And one last thing
     newcharclasses.append(~Charclass(alphabet))
