@@ -6,7 +6,7 @@ from copy import copy
 import pytest
 
 from .charclass import Charclass, WORDCHAR
-from .fsm import Fsm, epsilon, from_charclass, null, unify_alphabets
+from .fsm import Fsm, EPSILON, from_charclass, NULL, unify_alphabets
 
 # pylint: disable=invalid-name
 
@@ -73,9 +73,9 @@ def test_addbug() -> None:
 
 
 def test_builtins() -> None:
-    assert not null().accepts("a")
-    assert epsilon().accepts("")
-    assert not epsilon().accepts("a")
+    assert not NULL.accepts("a")
+    assert EPSILON.accepts("")
+    assert not EPSILON.accepts("a")
 
 
 @pytest.fixture(name="a")
@@ -127,7 +127,7 @@ def test_concatenation_aa(a: FixtureA) -> None:
     assert concAA.accepts("aa")
     assert not concAA.accepts("aaa")
 
-    concAA = epsilon() + a + a
+    concAA = EPSILON + a + a
     assert not concAA.accepts("")
     assert not concAA.accepts("a")
     assert concAA.accepts("aa")
@@ -146,7 +146,7 @@ def test_concatenation_ab(a: FixtureA, b: FixtureB) -> None:
 
 
 def test_alternation_a(a: FixtureA) -> None:
-    altA = a | null()
+    altA = a | NULL
     assert not altA.accepts("")
     assert altA.accepts("a")
 
@@ -202,7 +202,7 @@ def test_optional_mul(a: FixtureA, b: FixtureB) -> None:
     unit = a + b
     # accepts "ab"
 
-    optional = epsilon() | unit
+    optional = EPSILON | unit
     # accepts "(ab)?
     assert optional.accepts([])
     assert not optional.accepts(["a"])
@@ -439,8 +439,8 @@ def test_reverse_brzozowski() -> None:
 
 
 def test_reverse_epsilon() -> None:
-    # epsilon reversed is epsilon
-    assert epsilon().reversed().accepts("")
+    # EPSILON reversed is EPSILON
+    assert EPSILON.reversed().accepts("")
 
 
 def test_binary_3() -> None:
@@ -776,7 +776,7 @@ def test_new_set_methods(a: FixtureA, b: FixtureB) -> None:
         (a | b).difference(a, b)
         == Fsm.difference((a | b), a, b)
         == (a | b) - a - b
-        == null()
+        == NULL
     )
     assert a.symmetric_difference(b) == Fsm.symmetric_difference(a, b) == a ^ b
     assert a.isdisjoint(b)
@@ -868,25 +868,25 @@ def test_oblivion_crawl() -> None:
 
 def test_concatenate_bug(a: FixtureA) -> None:
     # This exposes a defect in Fsm.concatenate.
-    assert Fsm.concatenate(a, epsilon(), a).accepts(
+    assert Fsm.concatenate(a, EPSILON, a).accepts(
         "aa"
     )
     assert Fsm.concatenate(
         a,
-        epsilon(),
-        epsilon(),
+        EPSILON,
+        EPSILON,
         a,
     ).accepts("aa")
 
 
 def test_derive(a: FixtureA) -> None:
     # Just some basic tests because this is mainly a regex thing.
-    assert a.derive([Charclass("a")]) == epsilon()
-    assert a.derive([Charclass("b")]) == null()
+    assert a.derive([Charclass("a")]) == EPSILON
+    assert a.derive([Charclass("b")]) == NULL
 
     assert (a * 3).derive([Charclass("a")]) == a * 2
     assert (
-        a.star() - epsilon()
+        a.star() - EPSILON
     ).derive([Charclass("a")]) == a.star()
 
 

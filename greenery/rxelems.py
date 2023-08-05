@@ -19,7 +19,7 @@ from typing import Iterable, Iterator
 
 from .bound import INF, Bound
 from .charclass import NULLCHARCLASS, Charclass
-from .fsm import Fsm, StateType, epsilon, from_charclass, null
+from .fsm import Fsm, StateType, EPSILON, from_charclass, NULL
 from .multiplier import ONE, QM, STAR, ZERO, Multiplier
 
 
@@ -156,7 +156,7 @@ class Conc:
 
     def to_fsm(self, /) -> Fsm:
         # start with a component accepting only the empty string
-        fsm1 = epsilon()
+        fsm1 = EPSILON
         for mult in self.mults:
             fsm1 += mult.to_fsm()
         return fsm1
@@ -604,7 +604,7 @@ class Pattern:
         return reduce(lambda x, y: x.common(y, suffix=suffix), self.concs)
 
     def to_fsm(self, /) -> Fsm:
-        fsm1 = null()
+        fsm1 = NULL
         for conc in self.concs:
             fsm1 |= conc.to_fsm()
         return fsm1
@@ -859,7 +859,7 @@ class Mult:
             # accepts "(ab)*"
 
         else:
-            optional = epsilon() | unit
+            optional = EPSILON | unit
             # accepts "(ab)?"
 
             # Implied by `!= INF`.

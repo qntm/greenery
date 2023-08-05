@@ -7,8 +7,8 @@ from __future__ import annotations
 __all__ = (
     "Fsm",
     "StateType",
-    "epsilon",
-    "null",
+    "EPSILON",
+    "NULL",
 )
 
 from dataclasses import dataclass
@@ -320,7 +320,7 @@ class Fsm:
         def final(state: Collection[StateType]) -> bool:
             return any(substate in self.finals for substate in state)
 
-        return crawl(alphabet, initial, final, follow) | epsilon()
+        return crawl(alphabet, initial, final, follow) | EPSILON
 
     def times(self, multiplier: int, /) -> Fsm:
         """
@@ -763,38 +763,35 @@ class Fsm:
         )
 
 
-def null() -> Fsm:
-    """
-    An FSM accepting nothing (not even the empty string). This is
-    demonstrates that this is possible, and is also extremely useful
-    in some situations
-    """
-    return Fsm(
-        alphabet={~Charclass()},
-        states={0},
-        initial=0,
-        finals=(),
-        map={
-            0: {~Charclass(): 0},
-        }
-    )
+"""
+An FSM accepting nothing (not even the empty string). This is
+demonstrates that this is possible, and is also extremely useful
+in some situations
+"""
+NULL = Fsm(
+    alphabet={~Charclass()},
+    states={0},
+    initial=0,
+    finals=(),
+    map={
+        0: {~Charclass(): 0},
+    }
+)
 
-
-def epsilon() -> Fsm:
-    """
-    Return an FSM matching an empty string, "", only.
-    This is very useful in many situations
-    """
-    return Fsm(
-        alphabet={~Charclass()},
-        states={0, 1},
-        initial=0,
-        finals={0},
-        map={
-            0: {~Charclass(): 1},
-            1: {~Charclass(): 1},
-        },
-    )
+"""
+An FSM matching an empty string, "", only.
+This is very useful in many situations
+"""
+EPSILON = Fsm(
+    alphabet={~Charclass()},
+    states={0, 1},
+    initial=0,
+    finals={0},
+    map={
+        0: {~Charclass(): 1},
+        1: {~Charclass(): 1},
+    },
+)
 
 
 def parallel(
