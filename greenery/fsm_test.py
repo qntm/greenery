@@ -57,13 +57,13 @@ def test_builtins() -> None:
 def fixture_a() -> FixtureA:
     return Fsm(
         alphabet={Charclass("a"), Charclass("b"), ~Charclass("ab")},
-        states={0, 1, "ob"},
+        states={0, 1, 2},
         initial=0,
         finals={1},
         map={
-            0: {Charclass("a"): 1, Charclass("b"): "ob", ~Charclass("ab"): "ob"},
-            1: {Charclass("a"): "ob", Charclass("b"): "ob", ~Charclass("ab"): "ob"},
-            "ob": {Charclass("a"): "ob", Charclass("b"): "ob", ~Charclass("ab"): "ob"},
+            0: {Charclass("a"): 1, Charclass("b"): 2, ~Charclass("ab"): 2},
+            1: {Charclass("a"): 2, Charclass("b"): 2, ~Charclass("ab"): 2},
+            2: {Charclass("a"): 2, Charclass("b"): 2, ~Charclass("ab"): 2},
         },
     )
 
@@ -78,13 +78,13 @@ def test_a(a: FixtureA) -> None:
 def fixture_b() -> FixtureB:
     return Fsm(
         alphabet={Charclass("a"), Charclass("b"), ~Charclass("ab")},
-        states={0, 1, "ob"},
+        states={0, 1, 2},
         initial=0,
         finals={1},
         map={
-            0: {Charclass("a"): "ob", Charclass("b"): 1, ~Charclass("ab"): "ob"},
-            1: {Charclass("a"): "ob", Charclass("b"): "ob", ~Charclass("ab"): "ob"},
-            "ob": {Charclass("a"): "ob", Charclass("b"): "ob", ~Charclass("ab"): "ob"},
+            0: {Charclass("a"): 2, Charclass("b"): 1, ~Charclass("ab"): 2},
+            1: {Charclass("a"): 2, Charclass("b"): 2, ~Charclass("ab"): 2},
+            2: {Charclass("a"): 2, Charclass("b"): 2, ~Charclass("ab"): 2},
         },
     )
 
@@ -221,18 +221,18 @@ def test_crawl_reduction() -> None:
     # (this is impossible to spot before 2 and 3 have been combined).
     merged = Fsm(
         alphabet={Charclass("0"), Charclass("1"), ~Charclass("01")},
-        states={1, 2, 3, 4, "oblivion"},
+        states={1, 2, 3, 4, 5},
         initial=1,
         finals={4},
         map={
-            1: {Charclass("0"): 2, Charclass("1"): 4, ~Charclass("01"): "oblivion"},
-            2: {Charclass("0"): 3, Charclass("1"): 4, ~Charclass("01"): "oblivion"},
-            3: {Charclass("0"): 3, Charclass("1"): 4, ~Charclass("01"): "oblivion"},
-            4: {Charclass("0"): "oblivion", Charclass("1"): "oblivion", ~Charclass("01"): "oblivion"},
-            "oblivion": {
-                Charclass("0"): "oblivion",
-                Charclass("1"): "oblivion",
-                ~Charclass("01"): "oblivion",
+            1: {Charclass("0"): 2, Charclass("1"): 4, ~Charclass("01"): 5},
+            2: {Charclass("0"): 3, Charclass("1"): 4, ~Charclass("01"): 5},
+            3: {Charclass("0"): 3, Charclass("1"): 4, ~Charclass("01"): 5},
+            4: {Charclass("0"): 5, Charclass("1"): 5, ~Charclass("01"): 5},
+            5: {
+                Charclass("0"): 5,
+                Charclass("1"): 5,
+                ~Charclass("01"): 5,
             },
         },
     ).reduce()
@@ -268,17 +268,17 @@ def test_star_advanced() -> None:
     # gives the incorrect result here.
     starred = Fsm(
         alphabet={Charclass("a"), Charclass("b"), ~Charclass("ab")},
-        states={0, 1, 2, "oblivion"},
+        states={0, 1, 2, 3},
         initial=0,
         finals={2},
         map={
-            0: {Charclass("a"): 0, Charclass("b"): 1, ~Charclass("ab"): "oblivion"},
-            1: {Charclass("a"): 2, Charclass("b"): "oblivion", ~Charclass("ab"): "oblivion"},
-            2: {Charclass("a"): "oblivion", Charclass("b"): "oblivion", ~Charclass("ab"): "oblivion"},
-            "oblivion": {
-                Charclass("a"): "oblivion",
-                Charclass("b"): "oblivion",
-                ~Charclass("ab"): "oblivion",
+            0: {Charclass("a"): 0, Charclass("b"): 1, ~Charclass("ab"): 3},
+            1: {Charclass("a"): 2, Charclass("b"): 3, ~Charclass("ab"): 3},
+            2: {Charclass("a"): 3, Charclass("b"): 3, ~Charclass("ab"): 3},
+            3: {
+                Charclass("a"): 3,
+                Charclass("b"): 3,
+                ~Charclass("ab"): 3,
             },
         },
     ).star()
@@ -337,16 +337,16 @@ def test_reverse_brzozowski() -> None:
     # This is (a|b)*a(a|b)
     brzozowski = Fsm(
         alphabet={Charclass("a"), Charclass("b"), ~Charclass("ab")},
-        states={"A", "B", "C", "D", "E", "F"},
-        initial="A",
-        finals={"C", "E"},
+        states={0, 1, 2, 3, 4, 5},
+        initial=0,
+        finals={2, 4},
         map={
-            "A": {Charclass("a"): "B", Charclass("b"): "D", ~Charclass("ab"): "F"},
-            "B": {Charclass("a"): "C", Charclass("b"): "E", ~Charclass("ab"): "F"},
-            "C": {Charclass("a"): "C", Charclass("b"): "E", ~Charclass("ab"): "F"},
-            "D": {Charclass("a"): "B", Charclass("b"): "D", ~Charclass("ab"): "F"},
-            "E": {Charclass("a"): "B", Charclass("b"): "D", ~Charclass("ab"): "F"},
-            "F": {Charclass("a"): "F", Charclass("b"): "F", ~Charclass("ab"): "F"},
+            0: {Charclass("a"): 1, Charclass("b"): 3, ~Charclass("ab"): 5},
+            1: {Charclass("a"): 2, Charclass("b"): 4, ~Charclass("ab"): 5},
+            2: {Charclass("a"): 2, Charclass("b"): 4, ~Charclass("ab"): 5},
+            3: {Charclass("a"): 1, Charclass("b"): 3, ~Charclass("ab"): 5},
+            4: {Charclass("a"): 1, Charclass("b"): 3, ~Charclass("ab"): 5},
+            5: {Charclass("a"): 5, Charclass("b"): 5, ~Charclass("ab"): 5},
         },
     )
     assert brzozowski.accepts("aa")
@@ -397,12 +397,12 @@ def test_binary_3() -> None:
     # Allows "0" on its own, but not leading zeroes.
     div3 = Fsm(
         alphabet={Charclass("0"), Charclass("1"), ~Charclass("01")},
-        states={"initial", "zero", 0, 1, 2, 3},
-        initial="initial",
-        finals={"zero", 0},
+        states={-2, -1, 0, 1, 2, 3},
+        initial=-2,
+        finals={-1, 0},
         map={
-            "initial": {Charclass("0"): "zero", Charclass("1"): 1, ~Charclass("01"): 3},
-            "zero": {Charclass("0"): 3, Charclass("1"): 3, ~Charclass("01"): 3},
+            -2: {Charclass("0"): -1, Charclass("1"): 1, ~Charclass("01"): 3},
+            -1: {Charclass("0"): 3, Charclass("1"): 3, ~Charclass("01"): 3},
             0: {Charclass("0"): 0, Charclass("1"): 1, ~Charclass("01"): 3},
             1: {Charclass("0"): 2, Charclass("1"): 0, ~Charclass("01"): 3},
             2: {Charclass("0"): 1, Charclass("1"): 2, ~Charclass("01"): 3},

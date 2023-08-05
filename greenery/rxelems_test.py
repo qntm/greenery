@@ -401,12 +401,12 @@ def test_binary_3() -> None:
     div3 = from_fsm(
         Fsm(
             alphabet={Charclass("0"), Charclass("1"), ~Charclass("01")},
-            states={"initial", "zero", 0, 1, 2, 3},
-            initial="initial",
-            finals={"zero", 0},
+            states={-2, -1, 0, 1, 2, 3},
+            initial=-2,
+            finals={-1, 0},
             map={
-                "initial": {Charclass("0"): "zero", Charclass("1"): 1, ~Charclass("01"): 3},
-                "zero": {Charclass("0"): 3, Charclass("1"): 3, ~Charclass("01"): 3},
+                -2: {Charclass("0"): -1, Charclass("1"): 1, ~Charclass("01"): 3},
+                -1: {Charclass("0"): 3, Charclass("1"): 3, ~Charclass("01"): 3},
                 0: {Charclass("0"): 0, Charclass("1"): 1, ~Charclass("01"): 3},
                 1: {Charclass("0"): 2, Charclass("1"): 0, ~Charclass("01"): 3},
                 2: {Charclass("0"): 1, Charclass("1"): 2, ~Charclass("01"): 3},
@@ -437,16 +437,16 @@ def test_base_N() -> None:
     divN = from_fsm(
         Fsm(
             alphabet=({Charclass(str(i)) for i in range(base)} | {anything_else}),
-            states=frozenset(range(N)) | {"initial", "zero", N},
-            initial="initial",
-            finals={"zero", 0},
+            states=frozenset(range(N)) | {-2, -1, N},
+            initial=-2,
+            finals={-1, 0},
             map={
-                "initial": {
-                    Charclass("0"): "zero",
+                -2: {
+                    Charclass("0"): -1,
                     **{Charclass(str(j)): j % N for j in range(1, base)},
                     anything_else: N,
                 },
-                "zero": {
+                -1: {
                     **{Charclass(str(j)): N for j in range(base)},
                     anything_else: N,
                 },

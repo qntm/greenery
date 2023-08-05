@@ -117,8 +117,8 @@ class Fsm:
                         " which is not a state"
                     )
         for state in states:
-            if state is None:
-                raise Exception("Can't have a None state")
+            if not isinstance(state, int):
+                raise Exception(f"Bad state {state!r}")
             if state not in map:
                 raise Exception(f"State {state!r} missing from map")
             for symbol in alphabet:
