@@ -156,7 +156,7 @@ class Conc:
 
     def to_fsm(self, /) -> Fsm:
         # start with a component accepting only the empty string
-        fsm1 = epsilon({~Charclass()})
+        fsm1 = epsilon()
         for mult in self.mults:
             fsm1 += mult.to_fsm()
         return fsm1
@@ -604,7 +604,7 @@ class Pattern:
         return reduce(lambda x, y: x.common(y, suffix=suffix), self.concs)
 
     def to_fsm(self, /) -> Fsm:
-        fsm1 = null({~Charclass()})
+        fsm1 = null()
         for conc in self.concs:
             fsm1 |= conc.to_fsm()
         return fsm1
@@ -859,7 +859,7 @@ class Mult:
             # accepts "(ab)*"
 
         else:
-            optional = epsilon({~Charclass()}) | unit
+            optional = epsilon() | unit
             # accepts "(ab)?"
 
             # Implied by `!= INF`.

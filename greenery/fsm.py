@@ -5,7 +5,6 @@ Finite state machine library, intended to be used by `greenery` only
 from __future__ import annotations
 
 __all__ = (
-    "AlphaType",
     "Fsm",
     "StateType",
     "epsilon",
@@ -28,9 +27,7 @@ from typing import (
 from .charclass import Charclass, repartition
 
 AlphaType = Charclass
-
 StateType = int
-
 M = TypeVar("M")
 """Meta-state type for crawl(). Can be anything."""
 
@@ -323,7 +320,7 @@ class Fsm:
         def final(state: Collection[StateType]) -> bool:
             return any(substate in self.finals for substate in state)
 
-        return crawl(alphabet, initial, final, follow) | epsilon(alphabet)
+        return crawl(alphabet, initial, final, follow) | epsilon()
 
     def times(self, multiplier: int, /) -> Fsm:
         """
@@ -766,34 +763,36 @@ class Fsm:
         )
 
 
-def null(alphabet: Iterable[AlphaType]) -> Fsm:
+def null() -> Fsm:
     """
     An FSM accepting nothing (not even the empty string). This is
     demonstrates that this is possible, and is also extremely useful
     in some situations
     """
     return Fsm(
-        alphabet=alphabet,
+        alphabet={~Charclass()},
         states={0},
         initial=0,
         finals=(),
-        map={0: {symbol: 0 for symbol in alphabet}},
+        map={
+            0: {~Charclass(): 0},
+        }
     )
 
 
-def epsilon(alphabet: Iterable[AlphaType]) -> Fsm:
+def epsilon() -> Fsm:
     """
     Return an FSM matching an empty string, "", only.
     This is very useful in many situations
     """
     return Fsm(
-        alphabet=alphabet,
+        alphabet={~Charclass()},
         states={0, 1},
         initial=0,
         finals={0},
         map={
-            0: {symbol: 1 for symbol in alphabet},
-            1: {symbol: 1 for symbol in alphabet},
+            0: {~Charclass(): 1},
+            1: {~Charclass(): 1},
         },
     )
 

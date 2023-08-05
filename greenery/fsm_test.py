@@ -5,7 +5,7 @@ from copy import copy
 
 import pytest
 
-from .charclass import Charclass
+from .charclass import Charclass, WORDCHAR
 from .fsm import Fsm, epsilon, from_charclass, null, unify_alphabets
 
 # pylint: disable=invalid-name
@@ -73,9 +73,9 @@ def test_addbug() -> None:
 
 
 def test_builtins() -> None:
-    assert not null({Charclass("a"), ~Charclass("a")}).accepts("a")
-    assert epsilon({Charclass("a"), ~Charclass("a")}).accepts("")
-    assert not epsilon({Charclass("a"), ~Charclass("a")}).accepts("a")
+    assert not null().accepts("a")
+    assert epsilon().accepts("")
+    assert not epsilon().accepts("a")
 
 
 @pytest.fixture(name="a")
@@ -127,7 +127,7 @@ def test_concatenation_aa(a: FixtureA) -> None:
     assert concAA.accepts("aa")
     assert not concAA.accepts("aaa")
 
-    concAA = epsilon({Charclass("a"), Charclass("b"), ~Charclass("ab")}) + a + a
+    concAA = epsilon() + a + a
     assert not concAA.accepts("")
     assert not concAA.accepts("a")
     assert concAA.accepts("aa")
@@ -146,7 +146,7 @@ def test_concatenation_ab(a: FixtureA, b: FixtureB) -> None:
 
 
 def test_alternation_a(a: FixtureA) -> None:
-    altA = a | null({Charclass("a"), Charclass("b"), ~Charclass("ab")})
+    altA = a | null()
     assert not altA.accepts("")
     assert altA.accepts("a")
 
@@ -202,7 +202,7 @@ def test_optional_mul(a: FixtureA, b: FixtureB) -> None:
     unit = a + b
     # accepts "ab"
 
-    optional = epsilon(a.alphabet) | unit
+    optional = epsilon() | unit
     # accepts "(ab)?
     assert optional.accepts([])
     assert not optional.accepts(["a"])
@@ -440,7 +440,7 @@ def test_reverse_brzozowski() -> None:
 
 def test_reverse_epsilon() -> None:
     # epsilon reversed is epsilon
-    assert epsilon({Charclass("a"), ~Charclass("a")}).reversed().accepts("")
+    assert epsilon().reversed().accepts("")
 
 
 def test_binary_3() -> None:
@@ -776,7 +776,7 @@ def test_new_set_methods(a: FixtureA, b: FixtureB) -> None:
         (a | b).difference(a, b)
         == Fsm.difference((a | b), a, b)
         == (a | b) - a - b
-        == null({Charclass("a"), Charclass("b"), ~Charclass("ab")})
+        == null()
     )
     assert a.symmetric_difference(b) == Fsm.symmetric_difference(a, b) == a ^ b
     assert a.isdisjoint(b)
@@ -868,29 +868,25 @@ def test_oblivion_crawl() -> None:
 
 def test_concatenate_bug(a: FixtureA) -> None:
     # This exposes a defect in Fsm.concatenate.
-    assert Fsm.concatenate(a, epsilon({Charclass("a"), ~Charclass("a")}), a).accepts(
+    assert Fsm.concatenate(a, epsilon(), a).accepts(
         "aa"
     )
     assert Fsm.concatenate(
         a,
-        epsilon({Charclass("a"), ~Charclass("a")}),
-        epsilon({Charclass("a"), ~Charclass("a")}),
+        epsilon(),
+        epsilon(),
         a,
     ).accepts("aa")
 
 
 def test_derive(a: FixtureA) -> None:
     # Just some basic tests because this is mainly a regex thing.
-    assert a.derive([Charclass("a")]) == epsilon(
-        {Charclass("a"), Charclass("b"), ~Charclass("ab")}
-    )
-    assert a.derive([Charclass("b")]) == null(
-        {Charclass("a"), Charclass("b"), ~Charclass("ab")}
-    )
+    assert a.derive([Charclass("a")]) == epsilon()
+    assert a.derive([Charclass("b")]) == null()
 
     assert (a * 3).derive([Charclass("a")]) == a * 2
     assert (
-        a.star() - epsilon({Charclass("a"), Charclass("b"), ~Charclass("ab")})
+        a.star() - epsilon()
     ).derive([Charclass("a")]) == a.star()
 
 
@@ -1079,6 +1075,18 @@ def test_charclass_fsm_3() -> None:
         1: {Charclass("b"): 2, Charclass("c"): 2, ~Charclass("bc"): 2},
         2: {Charclass("b"): 2, Charclass("c"): 2, ~Charclass("bc"): 2},
     }
+
+
+def test_charclass_fsm_bad() -> None:
+    wordchar = from_charclass(WORDCHAR)
+    assert len(wordchar.alphabet) == 64
+    assert len(wordchar.map[0].values()) == 64
+
+
+def test_charclass_fsm_worst() -> None:
+    wordchar = from_charclass(WORDCHAR)
+    assert len(wordchar.alphabet) == 64
+    assert len(wordchar.map[0].values()) == 64
 
 
 def test_unify_alphabets() -> None:
