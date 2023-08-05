@@ -5,7 +5,7 @@ from copy import copy
 
 import pytest
 
-from .fsm import ANYTHING_ELSE, AnythingElse, Fsm, combine_alphabets, epsilon, from_charclass, null
+from .fsm import ANYTHING_ELSE, AnythingElse, Fsm, unify_alphabets, epsilon, from_charclass, null
 from .charclass import Charclass
 
 # pylint: disable=invalid-name
@@ -920,7 +920,7 @@ def test_charclass_fsm() -> None:
     assert nota.accepts([ANYTHING_ELSE])
 
 
-def test_combine_alphabets() -> None:
+def test_unify_alphabets() -> None:
     a = Fsm(
         alphabet={"a", ANYTHING_ELSE},
         states={0, 1, 2},
@@ -947,7 +947,7 @@ def test_combine_alphabets() -> None:
     )
     assert b.alphabet == {Charclass("b"), ANYTHING_ELSE}
 
-    [a2, b2] = combine_alphabets((a, b))
+    [a2, b2] = unify_alphabets((a, b))
     assert a2.alphabet == {Charclass("a"), Charclass("b"), ANYTHING_ELSE}
     assert a2.map == {
         0: {Charclass("a"): 1, Charclass("b"): 2, ANYTHING_ELSE: 2},

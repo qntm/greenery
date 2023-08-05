@@ -66,7 +66,7 @@ def eliminate_anything_else(alphabet):
 # figures out what ANYTHING_ELSE represents for each individual Fsm,
 # then replaces all the symbols.
 # THIS IS A NIGHTMARE which will get easier when ANYTHING_ELSE is gone.
-def combine_alphabets(fsms):
+def unify_alphabets(fsms):
     charclasses = set()
     new_alphabet_maps = {}
     for i in range(len(fsms)):
@@ -304,8 +304,7 @@ class Fsm:
         """
         Concatenate arbitrarily many finite state machines together.
         """
-        
-        alphabet = {ANYTHING_ELSE}.union(*[fsm.alphabet for fsm in fsms])
+        fsms = unify_alphabets(fsms)
 
         def connect_all(
             i: int,
@@ -354,6 +353,8 @@ class Fsm:
                     actual_symbol = symbol if symbol in fsm.alphabet else ANYTHING_ELSE
                     next_metastate.update(connect_all(i, fsm.map[substate][actual_symbol]))
             return frozenset(next_metastate)
+
+        alphabet = fsms[0].alphabet if len(fsms) > 0 else {ANYTHING_ELSE}
 
         return crawl(alphabet, initial, final, follow).reduce()
 
@@ -810,9 +811,6 @@ class Fsm:
         Compute the Brzozowski derivative of this FSM with respect to the
         input string of symbols.
         <https://en.wikipedia.org/wiki/Brzozowski_derivative>
-        If any of the symbols are not members of the alphabet, that's a
-        `KeyError`. If you fall into oblivion, then the derivative is an
-        FSM accepting no strings.
         """
         # Consume the input string.
         state = self.initial
@@ -906,7 +904,7 @@ def parallel(
     meta-FSM. To determine whether a state in the larger FSM is final, pass
     all of the finality statuses (e.g. [True, False, False] to `test`.
     """
-    alphabet = {ANYTHING_ELSE}.union(*[fsm.alphabet for fsm in fsms])
+    fsms = unify_alphabets(fsms)
 
     initial: Mapping[int, StateType] = {i: fsm.initial for i, fsm in enumerate(fsms)}
 
@@ -932,6 +930,8 @@ def parallel(
     def final(state: Mapping[int, StateType]) -> bool:
         accepts = [i in state and state[i] in fsm.finals for i, fsm in enumerate(fsms)]
         return test(accepts)
+
+    alphabet = fsms[0].alphabet if len(fsms) > 0 else {ANYTHING_ELSE}
 
     return crawl(alphabet, initial, final, follow).reduce()
 
