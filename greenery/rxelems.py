@@ -161,8 +161,8 @@ class Conc:
             fsm1 += mult.to_fsm()
         return fsm1
 
-    def get_chars(self):
-        return frozenset().union(*(mult.get_chars() for mult in self.mults))
+    def alphabet(self):
+        return frozenset().union(*(mult.alphabet() for mult in self.mults))
 
     def empty(self, /) -> bool:
         return any(mult.empty() for mult in self.mults)
@@ -398,8 +398,8 @@ class Pattern:
         args = ", ".join(repr(conc) for conc in self.concs)
         return f"Pattern({args})"
 
-    def get_chars(self, /):
-        return frozenset().union(*(conc.get_chars() for conc in self.concs))
+    def alphabet(self, /):
+        return frozenset().union(*(conc.alphabet() for conc in self.concs))
 
     def empty(self, /) -> bool:
         return all(conc.empty() for conc in self.concs)
@@ -779,8 +779,8 @@ class Mult:
         # Multiplicands disagree, no common part at all.
         return Mult(NULLCHARCLASS, ZERO)
 
-    def get_chars(self):
-        return self.multiplicand.get_chars()
+    def alphabet(self):
+        return self.multiplicand.alphabet()
 
     def empty(self, /) -> bool:
         return self.multiplicand.empty() and self.multiplier.min > Bound(0)

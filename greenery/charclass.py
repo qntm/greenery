@@ -181,7 +181,7 @@ class Charclass:
         # `Charclass`es cannot be reduced.
         return self
 
-    def get_chars(self):
+    def alphabet(self):
         return self.chars
 
     def empty(self, /) -> bool:
