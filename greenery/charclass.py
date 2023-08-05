@@ -16,7 +16,7 @@ __all__ = (
 )
 
 from dataclasses import dataclass
-from typing import ClassVar, Iterable, Mapping
+from typing import Any, ClassVar, Dict, Iterable, List, Mapping, Tuple
 
 
 @dataclass(frozen=True, init=False)
@@ -45,7 +45,7 @@ class Charclass:
         object.__setattr__(self, "chars", chars)
         object.__setattr__(self, "negated", negated)
 
-    def __lt__(self, other):
+    def __lt__(self, other: Charclass, /) -> bool:
         if self.negated < other.negated:
             return True
         if self.negated == other.negated and min(
@@ -190,7 +190,7 @@ class Charclass:
         # `Charclass`es cannot be reduced.
         return self
 
-    def alphabet(self):
+    def alphabet(self, /) -> Iterable[str]:
         return self.chars
 
     def empty(self, /) -> bool:
@@ -270,7 +270,7 @@ escapes: Mapping[str, str] = {
 }
 
 
-def repartition(charclasses):
+def repartition(charclasses: Iterable[Charclass]) -> Mapping[Charclass, Iterable[Charclass]]:
     """
     Accept an iterable of `Charclass`es which may overlap somewhat.
     Construct a minimal collection of `Charclass`es which partition the space
@@ -286,7 +286,7 @@ def repartition(charclasses):
     # Group all of the possible characters by "signature".
     # A signature is a tuple of Booleans telling us which character classes
     # a particular character is mentioned in.
-    signatures = {}
+    signatures: Dict[Tuple[bool, ...], List[str]] = {}
     for char in sorted(alphabet):
         signature = tuple(char in charclass.chars for charclass in charclasses)
         if signature not in signatures:
@@ -299,7 +299,7 @@ def repartition(charclasses):
     newcharclasses.append(~Charclass(alphabet))
 
     # Now compute the breakdowns
-    partition = {}
+    partition: Dict[Charclass, List[Charclass]] = {}
     for charclass in charclasses:
         partition[charclass] = []
         for newcharclass in newcharclasses:

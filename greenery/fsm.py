@@ -17,8 +17,11 @@ from typing import (
     Callable,
     ClassVar,
     Collection,
+    Dict,
+    Generator,
     Iterable,
     Iterator,
+    List,
     Mapping,
     TypeVar,
     Union,
@@ -26,15 +29,15 @@ from typing import (
 
 from .charclass import Charclass, repartition
 
-AlphaType = Union[str, Charclass]
+AlphaType = Charclass
 
-StateType = Union[int, str]
+StateType = int
 
 M = TypeVar("M")
 """Meta-state type for crawl(). Can be anything."""
 
 
-def unify_alphabets(fsms):
+def unify_alphabets(fsms: Iterable[Fsm], /) -> List[Fsm]:
     charclasses = set()
     for fsm in fsms:
         for charclass in fsm.alphabet:
@@ -132,7 +135,7 @@ class Fsm:
         object.__setattr__(self, "finals", finals)
         object.__setattr__(self, "map", map)
 
-    def accepts(self, chars: Iterable[AlphaType], /) -> bool:
+    def accepts(self, chars: Iterable[str], /) -> bool:
         """
         Test whether the present FSM accepts the supplied string (iterable
         of symbols). Equivalently, consider `self` as a possibly-infinite
@@ -151,7 +154,7 @@ class Fsm:
             state = self.map[state][found]
         return state in self.finals
 
-    def __contains__(self, string: Iterable[AlphaType], /) -> bool:
+    def __contains__(self, string: Iterable[str], /) -> bool:
         """
         This lets you use the syntax `"a" in fsm1` to see whether the
         string "a" is in the set of strings accepted by `fsm1`.
@@ -231,7 +234,7 @@ class Fsm:
         """
         Concatenate arbitrarily many finite state machines together.
         """
-        fsms = unify_alphabets(fsms)
+        unified_fsms = unify_alphabets(fsms)
 
         def connect_all(
             i: int,
@@ -244,9 +247,9 @@ class Fsm:
             FSM, plus...
             """
             result = {(i, substate)}
-            while i < len(fsms) - 1 and substate in fsms[i].finals:
+            while i < len(unified_fsms) - 1 and substate in unified_fsms[i].finals:
                 i += 1
-                substate = fsms[i].initial
+                substate = unified_fsms[i].initial
                 result.add((i, substate))
             return result
 
@@ -254,12 +257,12 @@ class Fsm:
         # We start at the start of the first FSM. If this state is final in the
         # first FSM, then we are also at the start of the second FSM. And so
         # on.
-        initial = frozenset(connect_all(0, fsms[0].initial) if fsms else ())
+        initial = frozenset(connect_all(0, unified_fsms[0].initial) if unified_fsms else ())
 
         def final(state: frozenset[tuple[int, StateType]]) -> bool:
             """If you're in a final state of the final FSM, it's final"""
             return any(
-                i == len(fsms) - 1 and substate in fsms[i].finals
+                i == len(unified_fsms) - 1 and substate in unified_fsms[i].finals
                 for i, substate in state
             )
 
@@ -273,11 +276,11 @@ class Fsm:
             """
             next_metastate: set[tuple[int, StateType]] = set()
             for i, substate in current:
-                next_metastate.update(connect_all(i, fsms[i].map[substate][symbol]))
+                next_metastate.update(connect_all(i, unified_fsms[i].map[substate][symbol]))
 
             return frozenset(next_metastate)
 
-        alphabet = fsms[0].alphabet if len(fsms) > 0 else {~Charclass()}
+        alphabet = unified_fsms[0].alphabet if len(unified_fsms) > 0 else {~Charclass()}
 
         return crawl(alphabet, initial, final, follow).reduce()
 
@@ -427,13 +430,13 @@ class Fsm:
         initial = self.initial
 
         def follow(
-            current: Mapping[int, StateType],
+            current: StateType,
             symbol: AlphaType,
-        ) -> Mapping[int, StateType]:
+        ) -> StateType:
             return self.map[current][symbol]
 
         # state is final unless the original was
-        def final(state: Mapping[int, StateType]) -> bool:
+        def final(state: StateType) -> bool:
             return state not in self.finals
 
         return crawl(alphabet, initial, final, follow).reduce()
@@ -734,7 +737,7 @@ class Fsm:
             map=self.map,
         )
 
-    def replace_alphabet(self, replacements, /) -> Fsm:
+    def replace_alphabet(self, replacements: Mapping[AlphaType, Iterable[AlphaType]], /) -> Fsm:
         """
         Returns a new FSM which uses a different alphabet. If one original
         symbol converts to two new symbols, there will be multiple identical
@@ -744,7 +747,8 @@ class Fsm:
         for symbol in self.alphabet:
             for replacement in replacements[symbol]:
                 new_alphabet.add(replacement)
-        new_map = {}
+
+        new_map: Dict[StateType, Dict[AlphaType, StateType]] = {}
         for state in self.map:
             new_map[state] = {}
             for symbol in self.alphabet:
@@ -802,9 +806,9 @@ def parallel(
     meta-FSM. To determine whether a state in the larger FSM is final, pass
     all of the finality statuses (e.g. [True, False, False] to `test`.
     """
-    fsms = unify_alphabets(fsms)
+    unified_fsms = unify_alphabets(fsms)
 
-    initial: Mapping[int, StateType] = {i: fsm.initial for i, fsm in enumerate(fsms)}
+    initial: Mapping[int, StateType] = {i: fsm.initial for i, fsm in enumerate(unified_fsms)}
 
     # dedicated function accepts a "superset" and returns the next "superset"
     # obtained by following this transition in the new FSM
@@ -812,14 +816,14 @@ def parallel(
         current: Mapping[int, StateType],
         symbol: AlphaType,
     ) -> Mapping[int, StateType]:
-        return dict([(i, fsm.map[current[i]][symbol]) for i, fsm in enumerate(fsms)])
+        return dict([(i, fsm.map[current[i]][symbol]) for i, fsm in enumerate(unified_fsms)])
 
     # Determine the "is final?" condition of each substate, then pass it to the
     # test to determine finality of the overall FSM.
     def final(state: Mapping[int, StateType]) -> bool:
-        return test([state[i] in fsm.finals for i, fsm in enumerate(fsms)])
+        return test([state[i] in fsm.finals for i, fsm in enumerate(unified_fsms)])
 
-    alphabet = fsms[0].alphabet if len(fsms) > 0 else {~Charclass()}
+    alphabet = unified_fsms[0].alphabet if len(unified_fsms) > 0 else {~Charclass()}
 
     return crawl(alphabet, initial, final, follow).reduce()
 
@@ -874,7 +878,7 @@ def crawl(
     )
 
 
-def from_charclass(charclass) -> Fsm:
+def from_charclass(charclass: Charclass) -> Fsm:
     # TODO: once we support multi-char non-negated charclasses, simplify
     # this massively
     alphabet = set()
