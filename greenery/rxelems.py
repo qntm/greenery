@@ -267,12 +267,6 @@ def from_fsm(f: Fsm) -> Pattern:
     """
     # pylint: disable=too-many-branches
 
-    # Make sure the supplied alphabet is kosher.
-    for symbol in f.alphabet:
-        if isinstance(symbol, Charclass) and (len(symbol.chars) == 1 or symbol.negated):
-            continue
-        raise TypeError(f"Symbol {symbol!r} cannot be used in a regular expression")
-
     outside = _Outside.TOKEN
 
     # The set of strings that would be accepted by this FSM if you started
@@ -600,10 +594,7 @@ class Pattern:
         return reduce(lambda x, y: x.common(y, suffix=suffix), self.concs)
 
     def to_fsm(self, /) -> Fsm:
-        fsm1 = NULL
-        for conc in self.concs:
-            fsm1 |= conc.to_fsm()
-        return fsm1
+        return Fsm.union(NULL, *(conc.to_fsm() for conc in self.concs))
 
     def reversed(self, /) -> Pattern:
         return Pattern(*(c.reversed() for c in self.concs))
@@ -645,8 +636,7 @@ class Pattern:
         return from_fsm(self.to_fsm().everythingbut())
 
     def derive(self, string: str, /) -> Pattern:
-        charclasses = [Charclass(char) for char in string]
-        return from_fsm(self.to_fsm().derive(charclasses))
+        return from_fsm(self.to_fsm().derive(string))
 
     def isdisjoint(self, other: Pattern, /) -> bool:
         """

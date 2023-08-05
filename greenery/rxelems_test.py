@@ -264,14 +264,17 @@ def test_forin() -> None:
 def test_cardinality() -> None:
     # pylint: disable-next=compare-to-zero
     assert parse("[]").cardinality() == 0
-    assert parse("[]?").cardinality() == 1
-    assert parse("[]{0,6}").cardinality() == 1
     assert parse("[ab]{3}").cardinality() == 8
     assert parse("[ab]{2,3}").cardinality() == 12
     assert len(parse("abc|def(ghi|jkl)")) == 3
-
     with pytest.raises(OverflowError):
         len(parse(".*"))
+
+
+def test_cardinality_harder() -> None:
+    assert parse("[]?").cardinality() == 1
+    assert parse("[]{0,6}").cardinality() == 1
+    assert parse("[ab]{0,3}").cardinality() == 15
 
 
 ###############################################################################

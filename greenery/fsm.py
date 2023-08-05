@@ -121,6 +121,18 @@ class Fsm:
                 if symbol not in map[state]:
                     raise ValueError(f"Symbol {symbol!r} missing from map[{state!r}]")
 
+        chars = set()
+        negated_chars = set()
+        for symbol in alphabet:
+            target = negated_chars if symbol.negated else chars
+            for char in symbol.chars:
+                if char in target:
+                    raise ValueError(f"Alphabet {alphabet!r} has overlaps")
+                target.add(char)
+
+        if chars != negated_chars:
+            raise ValueError(f"Alphabet {alphabet!r} is not a proper partition")
+
         # Initialise the hard way due to immutability.
         object.__setattr__(self, "alphabet", alphabet)
         object.__setattr__(self, "states", states)
@@ -531,7 +543,7 @@ class Fsm:
                     chars = otherchars
                 else:
                     chars = charclass.chars
-                for char in chars:
+                for char in sorted(chars):
                     nstate = self.map[cstate][charclass]
                     nstring = cstring + char
                     if nstate in livestates:
@@ -595,7 +607,7 @@ class Fsm:
         num_strings: dict[StateType, int | None] = {}
 
         def get_num_strings(state: StateType) -> int:
-            # Many FSMs have at least one oblivion state
+            # Most FSMs have at least one oblivion state
             if self.islive(state):
                 if state in num_strings:
                     if num_strings[state] is None:  # "computing..."
@@ -603,13 +615,18 @@ class Fsm:
                         # recognised
                         raise OverflowError(state)
                     return num_strings[state]  # type: ignore
-                num_strings[state] = None  # i.e. "computing..."
 
+                num_strings[state] = None  # i.e. "computing..."
                 n = 0
-                if state in self.finals:
-                    n += 1
                 for symbol in self.map[state]:
-                    n += get_num_strings(self.map[state][symbol])
+                    if symbol.negated:
+                        num_transitions = (1 << 20) + (1 << 16) - len(symbol.chars)
+                    else:
+                        num_transitions = len(symbol.chars)
+                    nstate = self.map[state][symbol]
+                    if nstate in self.finals:
+                        n += num_transitions
+                    n += num_transitions * get_num_strings(nstate)
                 num_strings[state] = n
 
             else:
@@ -618,7 +635,8 @@ class Fsm:
 
             return num_strings[state]  # type: ignore
 
-        return get_num_strings(self.initial)
+        n = 1 if self.initial in self.finals else 0
+        return n + get_num_strings(self.initial)
 
     def __len__(self, /) -> int:
         """
@@ -701,16 +719,24 @@ class Fsm:
 
     __copy__ = copy
 
-    def derive(self, symbols: Iterable[AlphaType], /) -> Fsm:
+    def derive(self, string: str, /) -> Fsm:
         """
         Compute the Brzozowski derivative of this FSM with respect to the
-        input string of symbols.
+        input string. Note that the FSM uses Charclasses as symbols internally,
+        but the input string is a sequence of Unicode characters
         <https://en.wikipedia.org/wiki/Brzozowski_derivative>
         """
         # Consume the input string.
         state = self.initial
-        for charclass in symbols:
-            state = self.map[state][charclass]
+        for char in string:
+            found = None
+            for charclass in self.map[state]:
+                if (char in charclass.chars) != charclass.negated:
+                    found = charclass
+                    break
+            if found is None:
+                raise Exception("This should be impossible")
+            state = self.map[state][found]
 
         # OK so now we have consumed that string, use the new location as
         # the starting point.
@@ -867,30 +893,15 @@ def crawl(
 
 
 def from_charclass(charclass: Charclass) -> Fsm:
-    # TODO: once we support multi-char non-negated charclasses, simplify
-    # this massively
-    alphabet = set()
-    for char in charclass.chars:
-        alphabet.add(Charclass(char))
-    alphabet.add(~Charclass(charclass.chars))
-
     # 0 is initial, 1 is final, 2 is dead
-    # If negated, make a singular FSM accepting any other characters
-    # If normal, make a singular FSM accepting only these characters
-    transitions = {
-        0: {
-            symbol: 1 if (symbol.negated == charclass.negated) else 2
-            for symbol in alphabet
-        },
-        1: {symbol: 2 for symbol in alphabet},
-        2: {symbol: 2 for symbol in alphabet},
-    }
-
-    # State 0 is initial, 1 is final
     return Fsm(
-        alphabet=set(alphabet),
+        alphabet={charclass, ~charclass},
         states={0, 1, 2},
         initial=0,
         finals={1},
-        map=transitions,
+        map={
+            0: {charclass: 1, ~charclass: 2},
+            1: {charclass: 2, ~charclass: 2},
+            2: {charclass: 2, ~charclass: 2},
+        },
     )

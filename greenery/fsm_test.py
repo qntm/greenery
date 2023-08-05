@@ -868,13 +868,13 @@ def test_concatenate_bug(a: FixtureA) -> None:
 
 def test_derive(a: FixtureA) -> None:
     # Just some basic tests because this is mainly a regex thing.
-    assert a.derive([Charclass("a")]) == EPSILON
-    assert a.derive([Charclass("b")]) == NULL
+    assert a.derive("a") == EPSILON
+    assert a.derive("b") == NULL
 
-    assert a.times(3).derive([Charclass("a")]) == a.times(2)
+    assert a.times(3).derive("a") == a.times(2)
     assert (
         a.star() - EPSILON
-    ).derive([Charclass("a")]) == a.star()
+    ).derive("a") == a.star()
 
 
 def test_bug_36() -> None:
@@ -1024,14 +1024,15 @@ def test_replace_alphabet_2() -> None:
         },
     )
 
-    fsm2 = fsm1.replace_alphabet(
-        {Charclass("z"): [~Charclass("z")], ~Charclass("z"): []}
-    )
+    fsm2 = fsm1.replace_alphabet({
+        Charclass("z"): [~Charclass()],
+        ~Charclass("z"): []
+    })
 
     assert fsm2.map == {
-        0: {~Charclass("z"): 2},
-        1: {~Charclass("z"): 2},
-        2: {~Charclass("z"): 2},
+        0: {~Charclass(): 2},
+        1: {~Charclass(): 2},
+        2: {~Charclass(): 2},
     }
 
 
@@ -1046,34 +1047,40 @@ def test_charclass_fsm() -> None:
 
 def test_charclass_fsm_2() -> None:
     bc = from_charclass(Charclass("bc"))
-    assert bc.alphabet == {Charclass("b"), Charclass("c"), ~Charclass("bc")}
+    assert bc.alphabet == {Charclass("bc"), ~Charclass("bc")}
     assert bc.map == {
-        0: {Charclass("b"): 1, Charclass("c"): 1, ~Charclass("bc"): 2},
-        1: {Charclass("b"): 2, Charclass("c"): 2, ~Charclass("bc"): 2},
-        2: {Charclass("b"): 2, Charclass("c"): 2, ~Charclass("bc"): 2},
+        0: {Charclass("bc"): 1, ~Charclass("bc"): 2},
+        1: {Charclass("bc"): 2, ~Charclass("bc"): 2},
+        2: {Charclass("bc"): 2, ~Charclass("bc"): 2},
     }
+    assert not bc.accepts("")
+    assert not bc.accepts("a")
+    assert bc.accepts("b")
+    assert bc.accepts("c")
+    assert not bc.accepts("d")
+    assert not bc.accepts("bc")
 
 
 def test_charclass_fsm_3() -> None:
     notbc = from_charclass(~Charclass("bc"))
-    assert notbc.alphabet == {Charclass("b"), Charclass("c"), ~Charclass("bc")}
+    assert notbc.alphabet == {Charclass("bc"), ~Charclass("bc")}
     assert notbc.map == {
-        0: {Charclass("b"): 2, Charclass("c"): 2, ~Charclass("bc"): 1},
-        1: {Charclass("b"): 2, Charclass("c"): 2, ~Charclass("bc"): 2},
-        2: {Charclass("b"): 2, Charclass("c"): 2, ~Charclass("bc"): 2},
+        0: {Charclass("bc"): 2, ~Charclass("bc"): 1},
+        1: {Charclass("bc"): 2, ~Charclass("bc"): 2},
+        2: {Charclass("bc"): 2, ~Charclass("bc"): 2},
     }
+    assert not notbc.accepts("")
+    assert notbc.accepts("a")
+    assert not notbc.accepts("b")
+    assert not notbc.accepts("c")
+    assert notbc.accepts("d")
+    assert not notbc.accepts("aa")
 
 
 def test_charclass_fsm_bad() -> None:
     wordchar = from_charclass(WORDCHAR)
-    assert len(wordchar.alphabet) == 64
-    assert len(wordchar.map[0].values()) == 64
-
-
-def test_charclass_fsm_worst() -> None:
-    wordchar = from_charclass(WORDCHAR)
-    assert len(wordchar.alphabet) == 64
-    assert len(wordchar.map[0].values()) == 64
+    assert len(wordchar.alphabet) == 2
+    assert len(wordchar.map[0].values()) == 2
 
 
 def test_unify_alphabets() -> None:
@@ -1116,3 +1123,60 @@ def test_unify_alphabets() -> None:
         1: {Charclass("a"): 2, Charclass("b"): 2, ~Charclass("ab"): 2},
         2: {Charclass("a"): 2, Charclass("b"): 2, ~Charclass("ab"): 2},
     }
+
+
+def test_bad_alphabets() -> None:
+    with pytest.raises(ValueError, match="has overlaps"):
+        Fsm(
+            alphabet={Charclass("a"), Charclass("ab")},
+            states={0},
+            initial=0,
+            finals=(),
+            map={0: {Charclass("a"): 0, Charclass("ab"): 0}}
+        )
+
+    with pytest.raises(ValueError, match="not a proper partition"):
+        Fsm(
+            alphabet={Charclass("a")},
+            states={0},
+            initial=0,
+            finals=(),
+            map={0: {Charclass("a"): 0}}
+        )
+
+    with pytest.raises(ValueError, match="not a proper partition"):
+        Fsm(
+            alphabet={~Charclass("b")},
+            states={0},
+            initial=0,
+            finals=(),
+            map={0: {~Charclass("b"): 0}}
+        )
+
+    with pytest.raises(ValueError, match="not a proper partition"):
+        Fsm(
+            alphabet={Charclass("a"), ~Charclass("b")},
+            states={0},
+            initial=0,
+            finals=(),
+            map={0: {Charclass("a"): 0, ~Charclass("b"): 0}}
+        )
+
+
+def test_larger_charclasses() -> None:
+    aorb = Fsm(
+        alphabet={Charclass("ab"), ~Charclass("ab")},
+        states={0, 1, 2},
+        initial=0,
+        finals={1},
+        map={
+            0: {Charclass("ab"): 1, ~Charclass("ab"): 2},
+            1: {Charclass("ab"): 2, ~Charclass("ab"): 2},
+            2: {Charclass("ab"): 2, ~Charclass("ab"): 2},
+        }
+    )
+    assert not aorb.accepts("")
+    assert aorb.accepts("a")
+    assert aorb.accepts("b")
+    assert not aorb.accepts("c")
+    assert not aorb.accepts("aa")
