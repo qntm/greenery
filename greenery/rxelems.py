@@ -157,9 +157,6 @@ class Conc:
     def to_fsm(self, /) -> Fsm:
         return Fsm.concatenate(EPSILON, *(mult.to_fsm() for mult in self.mults))
 
-    def alphabet(self, /) -> Iterable[str]:
-        return frozenset().union(*(mult.alphabet() for mult in self.mults))
-
     def empty(self, /) -> bool:
         return any(mult.empty() for mult in self.mults)
 
@@ -384,9 +381,6 @@ class Pattern:
     def __repr__(self, /) -> str:
         args = ", ".join(repr(conc) for conc in self.concs)
         return f"Pattern({args})"
-
-    def alphabet(self, /) -> Iterable[str]:
-        return frozenset().union(*(conc.alphabet() for conc in self.concs))
 
     def empty(self, /) -> bool:
         return all(conc.empty() for conc in self.concs)
@@ -655,6 +649,8 @@ class Pattern:
         """
         return self.matches(string)
 
+    # TODO: this is a misuse of __reversed__
+    # and should be removed next major version
     def __reversed__(self, /) -> Pattern:
         return self.reversed()
 
@@ -741,9 +737,6 @@ class Mult:
 
         # Multiplicands disagree, no common part at all.
         return Mult(NULLCHARCLASS, ZERO)
-
-    def alphabet(self) -> Iterable[str]:
-        return self.multiplicand.alphabet()
 
     def empty(self, /) -> bool:
         return self.multiplicand.empty() and self.multiplier.min > Bound(0)

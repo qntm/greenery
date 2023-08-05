@@ -190,9 +190,6 @@ class Charclass:
         # `Charclass`es cannot be reduced.
         return self
 
-    def alphabet(self, /) -> Iterable[str]:
-        return self.chars
-
     def empty(self, /) -> bool:
         return not self.chars and not self.negated
 
