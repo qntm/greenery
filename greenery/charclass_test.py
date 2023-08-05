@@ -171,15 +171,20 @@ def test_repartition_negation() -> None:
 
 
 def test_repartition_advanced() -> None:
-    assert repartition([
-        Charclass("a"), Charclass("bcdef"), ~Charclass("abcdef"),
-        Charclass("abcd"), ~Charclass("abcd"),
-    ]) == {
+    assert repartition(
+        [
+            Charclass("a"),
+            Charclass("bcdef"),
+            ~Charclass("abcdef"),
+            Charclass("abcd"),
+            ~Charclass("abcd"),
+        ]
+    ) == {
         Charclass("a"): [Charclass("a")],
         Charclass("bcdef"): [Charclass("bcd"), Charclass("ef")],
         ~Charclass("abcdef"): [~Charclass("abcdef")],
         Charclass("abcd"): [Charclass("a"), Charclass("bcd")],
-        ~Charclass("abcd"): [Charclass("ef"), ~Charclass("abcdef")]
+        ~Charclass("abcd"): [Charclass("ef"), ~Charclass("abcdef")],
     }
     assert repartition([WORDCHAR, DIGIT, DOT, NONDIGITCHAR, NULLCHARCLASS]) == {
         WORDCHAR: [
@@ -196,7 +201,6 @@ def test_repartition_advanced() -> None:
             Charclass("ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz"),
             NONWORDCHAR,
         ],
-
         # Yup, there's nothing here!
         # This should be impossible or at least cause no problems in practice
         NULLCHARCLASS: [],

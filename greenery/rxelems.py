@@ -273,10 +273,7 @@ def from_fsm(f: Fsm) -> Pattern:
 
     # Make sure the supplied alphabet is kosher.
     for symbol in f.alphabet:
-        if isinstance(symbol, Charclass) and (
-            len(symbol.chars) == 1 or
-            symbol.negated
-        ):
+        if isinstance(symbol, Charclass) and (len(symbol.chars) == 1 or symbol.negated):
             continue
         raise TypeError(f"Symbol {symbol!r} cannot be used in a regular expression")
 
@@ -565,9 +562,7 @@ class Pattern:
         Return a regular expression matching only the strings recognised by
         `self` or `other` but not both.
         """
-        return from_fsm(
-            Fsm.symmetric_difference(*(elem.to_fsm() for elem in elems))
-        )
+        return from_fsm(Fsm.symmetric_difference(*(elem.to_fsm() for elem in elems)))
 
     def __xor__(self, other: Pattern, /) -> Pattern:
         return self.symmetric_difference(other)
@@ -712,8 +707,8 @@ class Pattern:
                     char = otherchar
                 else:
                     if len(symbol.chars) != 1:
-                        raise Exception('Need to replumb this...')
-                    (char,) = symbol.chars # Python lacks the Axiom of Choice
+                        raise Exception("Need to replumb this...")
+                    (char,) = symbol.chars  # Python lacks the Axiom of Choice
                 chars.append(char)
 
             yield "".join(chars)

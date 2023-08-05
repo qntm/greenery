@@ -26,7 +26,6 @@ from typing import (
 
 from .charclass import Charclass, repartition
 
-
 AlphaType = Union[str, Charclass]
 
 StateType = Union[int, str]
@@ -45,6 +44,7 @@ def unify_alphabets(fsms):
     # maps old Charclasses to collections of new Charclasses
 
     return [fsm.replace_alphabet(partition) for fsm in fsms]
+
 
 # pylint: disable=too-many-public-methods
 @dataclass(frozen=True, init=False)
@@ -147,7 +147,7 @@ class Fsm:
                     found = charclass
                     break
             if found is None:
-                raise Exception('This should be impossible')
+                raise Exception("This should be impossible")
             state = self.map[state][found]
         return state in self.finals
 
@@ -873,9 +873,8 @@ def crawl(
         map=transitions,
     )
 
-def from_charclass(
-    charclass
-) -> Fsm:
+
+def from_charclass(charclass) -> Fsm:
     # TODO: once we support multi-char non-negated charclasses, simplify
     # this massively
     alphabet = set()
@@ -887,12 +886,12 @@ def from_charclass(
     # If negated, make a singular FSM accepting any other characters
     # If normal, make a singular FSM accepting only these characters
     map = {
-        0: dict([
-            (
-                symbol,
-                1 if (symbol.negated == charclass.negated) else 2
-            ) for symbol in alphabet
-        ]),
+        0: dict(
+            [
+                (symbol, 1 if (symbol.negated == charclass.negated) else 2)
+                for symbol in alphabet
+            ]
+        ),
         1: dict([(symbol, 2) for symbol in alphabet]),
         2: dict([(symbol, 2) for symbol in alphabet]),
     }

@@ -48,8 +48,9 @@ class Charclass:
     def __lt__(self, other):
         if self.negated < other.negated:
             return True
-        if self.negated == other.negated and \
-            min(ord(char) for char in self.chars) < min(ord(char) for char in other.chars):
+        if self.negated == other.negated and min(
+            ord(char) for char in self.chars
+        ) < min(ord(char) for char in other.chars):
             return True
         return False
 
@@ -267,6 +268,7 @@ escapes: Mapping[str, str] = {
     "\f": "\\f",  # form feed
     "\r": "\\r",  # carriage return
 }
+
 
 def repartition(charclasses):
     """
