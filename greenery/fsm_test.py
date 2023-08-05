@@ -5,7 +5,7 @@ from copy import copy
 
 import pytest
 
-from .fsm import ANYTHING_ELSE, AnythingElse, Fsm, epsilon, from_charclass, null
+from .fsm import ANYTHING_ELSE, AnythingElse, Fsm, combine_alphabets, epsilon, from_charclass, null
 from .charclass import Charclass
 
 # pylint: disable=invalid-name
@@ -918,3 +918,45 @@ def test_charclass_fsm() -> None:
     assert nota.accepts("b")
     assert nota.accepts(["b"])
     assert nota.accepts([ANYTHING_ELSE])
+
+
+def test_combine_alphabets() -> None:
+    a = Fsm(
+        alphabet={"a", ANYTHING_ELSE},
+        states={0, 1, 2},
+        initial=0,
+        finals={1},
+        map={
+            0: {"a": 1, ANYTHING_ELSE: 2},
+            1: {"a": 2, ANYTHING_ELSE: 2},
+            2: {"a": 2, ANYTHING_ELSE: 2},
+        },
+    )
+    assert a.alphabet == {Charclass("a"), ANYTHING_ELSE}
+
+    b = Fsm(
+        alphabet={"b", ANYTHING_ELSE},
+        states={0, 1, 2},
+        initial=0,
+        finals={1},
+        map={
+            0: {"b": 1, ANYTHING_ELSE: 2},
+            1: {"b": 2, ANYTHING_ELSE: 2},
+            2: {"b": 2, ANYTHING_ELSE: 2},
+        },
+    )
+    assert b.alphabet == {Charclass("b"), ANYTHING_ELSE}
+
+    [a2, b2] = combine_alphabets((a, b))
+    assert a2.alphabet == {Charclass("a"), Charclass("b"), ANYTHING_ELSE}
+    assert a2.map == {
+        0: {Charclass("a"): 1, Charclass("b"): 2, ANYTHING_ELSE: 2},
+        1: {Charclass("a"): 2, Charclass("b"): 2, ANYTHING_ELSE: 2},
+        2: {Charclass("a"): 2, Charclass("b"): 2, ANYTHING_ELSE: 2},
+    }
+    assert b2.alphabet == {Charclass("a"), Charclass("b"), ANYTHING_ELSE}
+    assert b2.map == {
+        0: {Charclass("a"): 2, Charclass("b"): 1, ANYTHING_ELSE: 2},
+        1: {Charclass("a"): 2, Charclass("b"): 2, ANYTHING_ELSE: 2},
+        2: {Charclass("a"): 2, Charclass("b"): 2, ANYTHING_ELSE: 2},
+    }
