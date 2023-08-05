@@ -165,6 +165,9 @@ class Conc:
             fsm1 += mult.to_fsm(alphabet)
         return fsm1
 
+    def get_chars(self):
+        return frozenset().union(*(mult.get_chars() for mult in self.mults))
+
     def alphabet(self, /) -> frozenset[str | AnythingElse]:
         components = self.mults
         return frozenset().union(*(c.alphabet() for c in components)) | {ANYTHING_ELSE}
@@ -415,6 +418,9 @@ class Pattern:
         args = ", ".join(repr(conc) for conc in self.concs)
         return f"Pattern({args})"
 
+    def get_chars(self, /):
+        return frozenset().union(*(conc.get_chars() for conc in self.concs))
+
     def alphabet(self, /) -> frozenset[str | AnythingElse]:
         components = self.concs
         return frozenset().union(*(c.alphabet() for c in components)) | {ANYTHING_ELSE}
@@ -423,12 +429,7 @@ class Pattern:
         return all(conc.empty() for conc in self.concs)
 
     def intersection(self, other: Pattern, /) -> Pattern:
-        # A deceptively simple method for an astoundingly difficult operation
-        alphabet = self.alphabet() | other.alphabet()
-
-        # Which means that we can build finite state machines sharing that
-        # alphabet
-        combined = self.to_fsm(alphabet) & other.to_fsm(alphabet)
+        combined = self.to_fsm() & other.to_fsm()
         return from_fsm(combined)
 
     def __and__(self, other: Pattern, /) -> Pattern:
@@ -439,8 +440,7 @@ class Pattern:
         Return a regular expression which matches any string which `self`
         matches but none of the strings which `other` matches.
         """
-        alphabet = frozenset().union(*(elem.alphabet() for elem in elems))
-        return from_fsm(Fsm.difference(*(elem.to_fsm(alphabet) for elem in elems)))
+        return from_fsm(Fsm.difference(*(elem.to_fsm() for elem in elems)))
 
     def __sub__(self, other: Pattern, /) -> Pattern:
         return self.difference(other)
@@ -589,9 +589,8 @@ class Pattern:
         Return a regular expression matching only the strings recognised by
         `self` or `other` but not both.
         """
-        alphabet = frozenset().union(*(elem.alphabet() for elem in elems))
         return from_fsm(
-            Fsm.symmetric_difference(*(elem.to_fsm(alphabet) for elem in elems))
+            Fsm.symmetric_difference(*(elem.to_fsm() for elem in elems))
         )
 
     def __xor__(self, other: Pattern, /) -> Pattern:
@@ -635,7 +634,8 @@ class Pattern:
 
     def to_fsm(self, /, alphabet: Iterable[str | AnythingElse] | None = None) -> Fsm:
         if alphabet is None:
-            alphabet = self.alphabet()
+            chars = self.get_chars()
+            alphabet = chars | {~Charclass(chars)}
 
         fsm1 = null(alphabet)
         for conc in self.concs:
@@ -807,6 +807,9 @@ class Mult:
 
         # Multiplicands disagree, no common part at all.
         return Mult(NULLCHARCLASS, ZERO)
+
+    def get_chars(self):
+        return self.multiplicand.get_chars()
 
     def alphabet(self, /) -> frozenset[str | AnythingElse]:
         components = (self.multiplicand,)

@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from .charclass import DIGIT, WORDCHAR, Charclass
+from .charclass import DIGIT, NONDIGITCHAR, WORDCHAR, NONWORDCHAR, Charclass
 from .fsm import ANYTHING_ELSE, Fsm
 from .parse import parse
 from .rxelems import from_fsm
@@ -71,19 +71,19 @@ def test_pattern_fsm() -> None:
     assert not anota.accepts("bb")
 
     # "0\\d"
-    zeroD = parse("0\\d").to_fsm(DIGIT.chars | {ANYTHING_ELSE})
+    zeroD = parse("0\\d").to_fsm(DIGIT.chars | {NONDIGITCHAR})
     assert zeroD.accepts("01")
     assert not zeroD.accepts("10")
 
     # "\\d{2}"
-    d2 = parse("\\d{2}").to_fsm(DIGIT.chars | {ANYTHING_ELSE})
+    d2 = parse("\\d{2}").to_fsm(DIGIT.chars | {NONDIGITCHAR})
     assert not d2.accepts("")
     assert not d2.accepts("1")
     assert d2.accepts("11")
     assert not d2.accepts("111")
 
     # abc|def(ghi|jkl)
-    conventional = parse("abc|def(ghi|jkl)").to_fsm(WORDCHAR.chars | {ANYTHING_ELSE})
+    conventional = parse("abc|def(ghi|jkl)").to_fsm(WORDCHAR.chars | {NONWORDCHAR})
     assert not conventional.accepts("a")
     assert not conventional.accepts("ab")
     assert conventional.accepts("abc")
@@ -98,7 +98,7 @@ def test_fsm() -> None:
     # context.
     assert parse("a.b").to_fsm().accepts("acb")
 
-    bad = parse("0{2}|1{2}").to_fsm({"0", "1", ANYTHING_ELSE})
+    bad = parse("0{2}|1{2}").to_fsm({"0", "1", ~Charclass("01")})
     assert bad.accepts("00")
     assert bad.accepts("11")
     assert not bad.accepts("01")
@@ -301,13 +301,13 @@ def test_dot() -> None:
 def test_abstar() -> None:
     # Buggggs.
     abstar = Fsm(
-        alphabet={"a", ANYTHING_ELSE, "b"},
+        alphabet={"a", ~Charclass("ab"), "b"},
         states={0, 1},
         initial=0,
         finals={0},
         map={
-            0: {"a": 0, ANYTHING_ELSE: 1, "b": 0},
-            1: {"a": 1, ANYTHING_ELSE: 1, "b": 1},
+            0: {"a": 0, ~Charclass("ab"): 1, "b": 0},
+            1: {"a": 1, ~Charclass("ab"): 1, "b": 1},
         },
     )
     assert str(from_fsm(abstar)) == "[ab]*"
@@ -315,16 +315,16 @@ def test_abstar() -> None:
 
 def test_adotb() -> None:
     adotb = Fsm(
-        alphabet={"a", ANYTHING_ELSE, "b"},
+        alphabet={"a", ~Charclass("ab"), "b"},
         states={0, 1, 2, 3, 4},
         initial=0,
         finals={4},
         map={
-            0: {"a": 2, ANYTHING_ELSE: 1, "b": 1},
-            1: {"a": 1, ANYTHING_ELSE: 1, "b": 1},
-            2: {"a": 3, ANYTHING_ELSE: 3, "b": 3},
-            3: {"a": 1, ANYTHING_ELSE: 1, "b": 4},
-            4: {"a": 1, ANYTHING_ELSE: 1, "b": 1},
+            0: {"a": 2, ~Charclass("ab"): 1, "b": 1},
+            1: {"a": 1, ~Charclass("ab"): 1, "b": 1},
+            2: {"a": 3, ~Charclass("ab"): 3, "b": 3},
+            3: {"a": 1, ~Charclass("ab"): 1, "b": 4},
+            4: {"a": 1, ~Charclass("ab"): 1, "b": 1},
         },
     )
     assert str(from_fsm(adotb)) == "a.b"
@@ -336,15 +336,15 @@ def test_rxelems_recursion_error() -> None:
         str(
             from_fsm(
                 Fsm(
-                    alphabet={"0", "1", ANYTHING_ELSE},
+                    alphabet={"0", "1", ~Charclass("01")},
                     states={0, 1, 2, 3},
                     initial=3,
                     finals={1},
                     map={
-                        0: {"0": 1, "1": 1, ANYTHING_ELSE: 2},
-                        1: {"0": 2, "1": 2, ANYTHING_ELSE: 2},
-                        2: {"0": 2, "1": 2, ANYTHING_ELSE: 2},
-                        3: {"0": 0, "1": 2, ANYTHING_ELSE: 2},
+                        0: {"0": 1, "1": 1, ~Charclass("01"): 2},
+                        1: {"0": 2, "1": 2, ~Charclass("01"): 2},
+                        2: {"0": 2, "1": 2, ~Charclass("01"): 2},
+                        3: {"0": 0, "1": 2, ~Charclass("01"): 2},
                     },
                 )
             )
@@ -358,14 +358,14 @@ def test_even_star_bug1() -> None:
     # row), but when from_fsm() is called, the result is "a+". Turned out to be
     # a fault in the rxelems.multiplier.__mul__() routine
     elesscomplex = Fsm(
-        alphabet={"a", ANYTHING_ELSE},
+        alphabet={"a", ~Charclass("a")},
         states={0, 1, 2},
         initial=0,
         finals={1},
         map={
-            0: {"a": 1, ANYTHING_ELSE: 2},
-            1: {"a": 0, ANYTHING_ELSE: 2},
-            2: {"a": 2, ANYTHING_ELSE: 2},
+            0: {"a": 1, ~Charclass("a"): 2},
+            1: {"a": 0, ~Charclass("a"): 2},
+            2: {"a": 2, ~Charclass("a"): 2},
         },
     )
     assert not elesscomplex.accepts("")
@@ -406,17 +406,17 @@ def test_binary_3() -> None:
     # Allows "0" on its own, but not leading zeroes.
     div3 = from_fsm(
         Fsm(
-            alphabet={"0", "1", ANYTHING_ELSE},
+            alphabet={"0", "1", ~Charclass("01")},
             states={"initial", "zero", 0, 1, 2, 3},
             initial="initial",
             finals={"zero", 0},
             map={
-                "initial": {"0": "zero", "1": 1, ANYTHING_ELSE: 3},
-                "zero": {"0": 3, "1": 3, ANYTHING_ELSE: 3},
-                0: {"0": 0, "1": 1, ANYTHING_ELSE: 3},
-                1: {"0": 2, "1": 0, ANYTHING_ELSE: 3},
-                2: {"0": 1, "1": 2, ANYTHING_ELSE: 3},
-                3: {"0": 3, "1": 3, ANYTHING_ELSE: 3},
+                "initial": {"0": "zero", "1": 1, ~Charclass("01"): 3},
+                "zero": {"0": 3, "1": 3, ~Charclass("01"): 3},
+                0: {"0": 0, "1": 1, ~Charclass("01"): 3},
+                1: {"0": 2, "1": 0, ~Charclass("01"): 3},
+                2: {"0": 1, "1": 2, ~Charclass("01"): 3},
+                3: {"0": 3, "1": 3, ~Charclass("01"): 3},
             },
         )
     )
@@ -439,9 +439,10 @@ def test_base_N() -> None:
     base = 2
     N = 3
     assert base <= 10
+    anything_else = ~Charclass("".join(str(i) for i in range(base)))
     divN = from_fsm(
         Fsm(
-            alphabet=({str(i) for i in range(base)} | {ANYTHING_ELSE}),
+            alphabet=({str(i) for i in range(base)} | {anything_else}),
             states=frozenset(range(N)) | {"initial", "zero", N},
             initial="initial",
             finals={"zero", 0},
@@ -449,21 +450,21 @@ def test_base_N() -> None:
                 "initial": {
                     "0": "zero",
                     **{str(j): j % N for j in range(1, base)},
-                    ANYTHING_ELSE: N,
+                    anything_else: N,
                 },
                 "zero": {
                     **{str(j): N for j in range(base)},
-                    ANYTHING_ELSE: N,
+                    anything_else: N,
                 },
                 **{
                     i: {
                         **{str(j): (i * base + j) % N for j in range(base)},
-                        ANYTHING_ELSE: N,
+                        anything_else: N,
                     } for i in range(N)
                 },
                 N: {
                     **{str(j): N for j in range(base)},
-                    ANYTHING_ELSE: N,
+                    anything_else: N,
                 },
             },
         )
@@ -480,17 +481,17 @@ def test_base_N() -> None:
 def test_dead_default() -> None:
     blockquote = from_fsm(
         Fsm(
-            alphabet={"/", "*", ANYTHING_ELSE},
+            alphabet={"/", "*", ~Charclass("/*")},
             states={0, 1, 2, 3, 4, 5},
             initial=0,
             finals={4},
             map={
-                0: {"/": 1, ANYTHING_ELSE: 5, "*": 5},
-                1: {"/": 5, ANYTHING_ELSE: 5, "*": 2},
-                2: {"/": 2, ANYTHING_ELSE: 2, "*": 3},
-                3: {"/": 4, ANYTHING_ELSE: 2, "*": 3},
-                4: {"/": 5, ANYTHING_ELSE: 5, "*": 5},
-                5: {"/": 5, ANYTHING_ELSE: 5, "*": 5},
+                0: {"/": 1, ~Charclass("/*"): 5, "*": 5},
+                1: {"/": 5, ~Charclass("/*"): 5, "*": 2},
+                2: {"/": 2, ~Charclass("/*"): 2, "*": 3},
+                3: {"/": 4, ~Charclass("/*"): 2, "*": 3},
+                4: {"/": 5, ~Charclass("/*"): 5, "*": 5},
+                5: {"/": 5, ~Charclass("/*"): 5, "*": 5},
             },
         )
     )
@@ -936,7 +937,7 @@ def test_isdisjoint() -> None:
 def test_bug_slow() -> None:
     # issue #43
     m = Fsm(
-        alphabet={"R", "L", "U", "D", ANYTHING_ELSE},
+        alphabet={"R", "L", "U", "D", ~Charclass("RLUD")},
         states={
             0,
             1,
@@ -964,28 +965,28 @@ def test_bug_slow() -> None:
         initial=0,
         finals={20},
         map={
-            0: {"R": 21, "L": 21, "U": 2, "D": 1, ANYTHING_ELSE: 21},
-            1: {"R": 21, "L": 3, "U": 21, "D": 21, ANYTHING_ELSE: 21},
-            2: {"R": 21, "L": 4, "U": 21, "D": 21, ANYTHING_ELSE: 21},
-            3: {"R": 21, "L": 21, "U": 5, "D": 21, ANYTHING_ELSE: 21},
-            4: {"R": 21, "L": 21, "U": 21, "D": 6, ANYTHING_ELSE: 21},
-            5: {"R": 7, "L": 21, "U": 21, "D": 21, ANYTHING_ELSE: 21},
-            6: {"R": 8, "L": 21, "U": 21, "D": 21, ANYTHING_ELSE: 21},
-            7: {"R": 21, "L": 21, "U": 9, "D": 21, ANYTHING_ELSE: 21},
-            8: {"R": 21, "L": 21, "U": 21, "D": 10, ANYTHING_ELSE: 21},
-            9: {"R": 21, "L": 11, "U": 21, "D": 21, ANYTHING_ELSE: 21},
-            10: {"R": 21, "L": 12, "U": 21, "D": 21, ANYTHING_ELSE: 21},
-            11: {"R": 21, "L": 13, "U": 21, "D": 21, ANYTHING_ELSE: 21},
-            12: {"R": 21, "L": 14, "U": 21, "D": 21, ANYTHING_ELSE: 21},
-            13: {"R": 21, "L": 21, "U": 21, "D": 15, ANYTHING_ELSE: 21},
-            14: {"R": 21, "L": 21, "U": 16, "D": 21, ANYTHING_ELSE: 21},
-            15: {"R": 17, "L": 21, "U": 21, "D": 21, ANYTHING_ELSE: 21},
-            16: {"R": 18, "L": 21, "U": 21, "D": 21, ANYTHING_ELSE: 21},
-            17: {"R": 21, "L": 21, "U": 21, "D": 19, ANYTHING_ELSE: 21},
-            18: {"R": 21, "L": 21, "U": 19, "D": 21, ANYTHING_ELSE: 21},
-            19: {"R": 21, "L": 20, "U": 21, "D": 21, ANYTHING_ELSE: 21},
-            20: {"R": 21, "L": 21, "U": 21, "D": 21, ANYTHING_ELSE: 21},
-            21: {"R": 21, "L": 21, "U": 21, "D": 21, ANYTHING_ELSE: 21},
+            0: {"R": 21, "L": 21, "U": 2, "D": 1, ~Charclass("RLUD"): 21},
+            1: {"R": 21, "L": 3, "U": 21, "D": 21, ~Charclass("RLUD"): 21},
+            2: {"R": 21, "L": 4, "U": 21, "D": 21, ~Charclass("RLUD"): 21},
+            3: {"R": 21, "L": 21, "U": 5, "D": 21, ~Charclass("RLUD"): 21},
+            4: {"R": 21, "L": 21, "U": 21, "D": 6, ~Charclass("RLUD"): 21},
+            5: {"R": 7, "L": 21, "U": 21, "D": 21, ~Charclass("RLUD"): 21},
+            6: {"R": 8, "L": 21, "U": 21, "D": 21, ~Charclass("RLUD"): 21},
+            7: {"R": 21, "L": 21, "U": 9, "D": 21, ~Charclass("RLUD"): 21},
+            8: {"R": 21, "L": 21, "U": 21, "D": 10, ~Charclass("RLUD"): 21},
+            9: {"R": 21, "L": 11, "U": 21, "D": 21, ~Charclass("RLUD"): 21},
+            10: {"R": 21, "L": 12, "U": 21, "D": 21, ~Charclass("RLUD"): 21},
+            11: {"R": 21, "L": 13, "U": 21, "D": 21, ~Charclass("RLUD"): 21},
+            12: {"R": 21, "L": 14, "U": 21, "D": 21, ~Charclass("RLUD"): 21},
+            13: {"R": 21, "L": 21, "U": 21, "D": 15, ~Charclass("RLUD"): 21},
+            14: {"R": 21, "L": 21, "U": 16, "D": 21, ~Charclass("RLUD"): 21},
+            15: {"R": 17, "L": 21, "U": 21, "D": 21, ~Charclass("RLUD"): 21},
+            16: {"R": 18, "L": 21, "U": 21, "D": 21, ~Charclass("RLUD"): 21},
+            17: {"R": 21, "L": 21, "U": 21, "D": 19, ~Charclass("RLUD"): 21},
+            18: {"R": 21, "L": 21, "U": 19, "D": 21, ~Charclass("RLUD"): 21},
+            19: {"R": 21, "L": 20, "U": 21, "D": 21, ~Charclass("RLUD"): 21},
+            20: {"R": 21, "L": 21, "U": 21, "D": 21, ~Charclass("RLUD"): 21},
+            21: {"R": 21, "L": 21, "U": 21, "D": 21, ~Charclass("RLUD"): 21},
         },
     )
     t1 = time.time()
@@ -1000,14 +1001,14 @@ def test_bug_48_simpler() -> None:
         str(
             from_fsm(
                 Fsm(
-                    alphabet={"d", ANYTHING_ELSE},
+                    alphabet={"d", ~Charclass("d")},
                     states={0, 1, 2},
                     initial=0,
                     finals={1},
                     map={
-                        0: {"d": 1, ANYTHING_ELSE: 2},
-                        1: {"d": 2, ANYTHING_ELSE: 2},
-                        2: {"d": 2, ANYTHING_ELSE: 2},
+                        0: {"d": 1, ~Charclass("d"): 2},
+                        1: {"d": 2, ~Charclass("d"): 2},
+                        2: {"d": 2, ~Charclass("d"): 2},
                     },
                 )
             )
@@ -1018,25 +1019,25 @@ def test_bug_48_simpler() -> None:
 
 def test_bug_48() -> None:
     machine = Fsm(
-        alphabet={"_", "a", "d", "e", "g", "m", "n", "o", "p", ANYTHING_ELSE},
+        alphabet={"_", "a", "d", "e", "g", "m", "n", "o", "p", ~Charclass("_adegmnop")},
         states={0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13},
         initial=0,
         finals={12},
         map={
-            0: {"_": 13, "a": 13, "d": 1, "e": 13, "g": 13, "m": 13, "n": 13, "o": 13, "p": 13, ANYTHING_ELSE: 13},
-            1: {"_": 13, "a": 2, "d": 13, "e": 13, "g": 13, "m": 13, "n": 13, "o": 13, "p": 13, ANYTHING_ELSE: 13},
-            2: {"_": 13, "a": 13, "d": 13, "e": 13, "g": 13, "m": 3, "n": 13, "o": 13, "p": 13, ANYTHING_ELSE: 13},
-            3: {"_": 13, "a": 4, "d": 13, "e": 13, "g": 13, "m": 13, "n": 13, "o": 13, "p": 13, ANYTHING_ELSE: 13},
-            4: {"_": 13, "a": 13, "d": 13, "e": 13, "g": 5, "m": 13, "n": 13, "o": 13, "p": 13, ANYTHING_ELSE: 13},
-            5: {"_": 13, "a": 13, "d": 13, "e": 6, "g": 13, "m": 13, "n": 13, "o": 13, "p": 13, ANYTHING_ELSE: 13},
-            6: {"_": 7, "a": 13, "d": 13, "e": 13, "g": 13, "m": 13, "n": 13, "o": 13, "p": 13, ANYTHING_ELSE: 13},
-            7: {"_": 13, "a": 13, "d": 13, "e": 13, "g": 13, "m": 13, "n": 13, "o": 8, "p": 13, ANYTHING_ELSE: 13},
-            8: {"_": 13, "a": 13, "d": 13, "e": 13, "g": 13, "m": 13, "n": 9, "o": 13, "p": 13, ANYTHING_ELSE: 13},
-            9: {"_": 10, "a": 13, "d": 13, "e": 13, "g": 13, "m": 13, "n": 13, "o": 13, "p": 13, ANYTHING_ELSE: 13},
-            10: {"_": 13, "a": 13, "d": 13, "e": 13, "g": 13, "m": 11, "n": 13, "o": 13, "p": 13, ANYTHING_ELSE: 13},
-            11: {"_": 13, "a": 13, "d": 13, "e": 13, "g": 13, "m": 13, "n": 13, "o": 13, "p": 12, ANYTHING_ELSE: 13},
-            12: {"_": 13, "a": 13, "d": 13, "e": 13, "g": 13, "m": 13, "n": 13, "o": 13, "p": 13, ANYTHING_ELSE: 13},
-            13: {"_": 13, "a": 13, "d": 13, "e": 13, "g": 13, "m": 13, "n": 13, "o": 13, "p": 13, ANYTHING_ELSE: 13},
+            0: {"_": 13, "a": 13, "d": 1, "e": 13, "g": 13, "m": 13, "n": 13, "o": 13, "p": 13, ~Charclass("_adegmnop"): 13},
+            1: {"_": 13, "a": 2, "d": 13, "e": 13, "g": 13, "m": 13, "n": 13, "o": 13, "p": 13, ~Charclass("_adegmnop"): 13},
+            2: {"_": 13, "a": 13, "d": 13, "e": 13, "g": 13, "m": 3, "n": 13, "o": 13, "p": 13, ~Charclass("_adegmnop"): 13},
+            3: {"_": 13, "a": 4, "d": 13, "e": 13, "g": 13, "m": 13, "n": 13, "o": 13, "p": 13, ~Charclass("_adegmnop"): 13},
+            4: {"_": 13, "a": 13, "d": 13, "e": 13, "g": 5, "m": 13, "n": 13, "o": 13, "p": 13, ~Charclass("_adegmnop"): 13},
+            5: {"_": 13, "a": 13, "d": 13, "e": 6, "g": 13, "m": 13, "n": 13, "o": 13, "p": 13, ~Charclass("_adegmnop"): 13},
+            6: {"_": 7, "a": 13, "d": 13, "e": 13, "g": 13, "m": 13, "n": 13, "o": 13, "p": 13, ~Charclass("_adegmnop"): 13},
+            7: {"_": 13, "a": 13, "d": 13, "e": 13, "g": 13, "m": 13, "n": 13, "o": 8, "p": 13, ~Charclass("_adegmnop"): 13},
+            8: {"_": 13, "a": 13, "d": 13, "e": 13, "g": 13, "m": 13, "n": 9, "o": 13, "p": 13, ~Charclass("_adegmnop"): 13},
+            9: {"_": 10, "a": 13, "d": 13, "e": 13, "g": 13, "m": 13, "n": 13, "o": 13, "p": 13, ~Charclass("_adegmnop"): 13},
+            10: {"_": 13, "a": 13, "d": 13, "e": 13, "g": 13, "m": 11, "n": 13, "o": 13, "p": 13, ~Charclass("_adegmnop"): 13},
+            11: {"_": 13, "a": 13, "d": 13, "e": 13, "g": 13, "m": 13, "n": 13, "o": 13, "p": 12, ~Charclass("_adegmnop"): 13},
+            12: {"_": 13, "a": 13, "d": 13, "e": 13, "g": 13, "m": 13, "n": 13, "o": 13, "p": 13, ~Charclass("_adegmnop"): 13},
+            13: {"_": 13, "a": 13, "d": 13, "e": 13, "g": 13, "m": 13, "n": 13, "o": 13, "p": 13, ~Charclass("_adegmnop"): 13},
         },
     )
 

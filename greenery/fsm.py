@@ -94,11 +94,7 @@ def unify_alphabets(fsms):
             else:
                 charclass = symbol
             for replacement_charclass in partition[charclass]:
-                if replacement_charclass.negated:
-                    replacement_symbol = ANYTHING_ELSE
-                else:
-                    replacement_symbol = replacement_charclass
-                replacement_symbols[symbol].append(replacement_symbol)
+                replacement_symbols[symbol].append(replacement_charclass)
         new_fsms.append(fsm.replace_alphabet(replacement_symbols))
     return new_fsms
 
@@ -145,6 +141,8 @@ class Fsm:
         `map` may be sparse (i.e. it may omit transitions). In the case of
         omitted transitions, a non-final "oblivion" state is simulated.
         """
+        if ANYTHING_ELSE in alphabet:
+            raise Exception()
         allchars = frozenset(alphabet)
         anything_else_charclass = get_anything_else_charclass(alphabet)
 
@@ -975,7 +973,13 @@ def from_charclass(
     charclass,
     alphabet: Iterable[str | AnythingElse] | None = None,
 ) -> Fsm:
-    alphabet = charclass.alphabet() if alphabet is None else frozenset(alphabet)
+    if alphabet is None:
+        # TODO: once we support multi-char non-negated charclasses, simplify
+        # this massively
+        alphabet = set()
+        for char in charclass.chars:
+            alphabet.add(Charclass(char))
+        alphabet.add(~Charclass(charclass.chars))
 
     # 0 is initial, 1 is final, 2 is dead
     # If negated, make a singular FSM accepting any other characters

@@ -183,6 +183,9 @@ class Charclass:
         # `Charclass`es cannot be reduced.
         return self
 
+    def get_chars(self):
+        return self.chars
+
     def alphabet(self, /) -> frozenset[str | AnythingElse]:
         return self.chars | {ANYTHING_ELSE}
 

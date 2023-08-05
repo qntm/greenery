@@ -58,14 +58,14 @@ def test_anything_else_sorts_after(val: object) -> None:
 def test_anything_else_pickle() -> None:
     # [^z]*
     fsm1 = Fsm(
-        alphabet={"z", ANYTHING_ELSE},
+        alphabet={"z", ~Charclass("z")},
         states={0, 1, 2},
         initial=0,
         finals={1},
         map={
-            0: {"z": 2, ANYTHING_ELSE: 1},
-            1: {"z": 2, ANYTHING_ELSE: 1},
-            2: {"z": 2, ANYTHING_ELSE: 2},
+            0: {"z": 2, ~Charclass("z"): 1},
+            1: {"z": 2, ~Charclass("z"): 1},
+            2: {"z": 2, ~Charclass("z"): 2},
         },
     )
 
