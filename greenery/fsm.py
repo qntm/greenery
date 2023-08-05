@@ -91,6 +91,9 @@ class Fsm:
         """
         allchars = frozenset(alphabet)
 
+        for symbol in alphabet:
+            if not isinstance(symbol, Charclass):
+                raise Exception(f"Bad symbol: {symbol!r}")
         actual_alphabet = frozenset(
             symbol if isinstance(symbol, Charclass)
             else Charclass(symbol)
@@ -286,16 +289,10 @@ class Fsm:
             """
             Follow the collection of states through all FSMs at once,
             jumping to the next FSM if we reach the end of the current one
-            TODO: improve all follow() implementations to allow for dead
-            metastates?
             """
             next_metastate: set[tuple[int, StateType]] = set()
             for i, substate in current:
-                fsm = fsms[i]
-
-                # TODO: this `if` can probably go?
-                if substate in fsm.map:
-                    next_metastate.update(connect_all(i, fsm.map[substate][symbol]))
+                next_metastate.update(connect_all(i, fsms[i].map[substate][symbol]))
 
             return frozenset(next_metastate)
 
@@ -444,25 +441,19 @@ class Fsm:
         """
         Return a finite state machine which will accept any string NOT
         accepted by self, and will not accept any string accepted by self.
-        This is more complicated if there are missing transitions, because
-        the missing "dead" state must now be reified.
         """
         alphabet = self.alphabet
-
-        initial: Mapping[int, StateType] = {0: self.initial}
+        initial = self.initial
 
         def follow(
             current: Mapping[int, StateType],
             symbol: AlphaType,
         ) -> Mapping[int, StateType]:
-            next_fsm = {}
-            if 0 in current:
-                next_fsm[0] = self.map[current[0]][symbol]
-            return next_fsm
+            return self.map[current][symbol]
 
         # state is final unless the original was
         def final(state: Mapping[int, StateType]) -> bool:
-            return not (0 in state and state[0] in self.finals)
+            return state not in self.finals
 
         return crawl(alphabet, initial, final, follow).reduce()
 
@@ -839,22 +830,12 @@ def parallel(
         current: Mapping[int, StateType],
         symbol: AlphaType,
     ) -> Mapping[int, StateType]:
-        next_states = {}
-        for i, fsm in enumerate(fsms):
-            # TODO: this `if` can probably go
-            if (
-                i in current
-                and current[i] in fsm.map
-                and symbol in fsm.map[current[i]]
-            ):
-                next_states[i] = fsm.map[current[i]][symbol]
-        return next_states
+        return dict([(i, fsm.map[current[i]][symbol]) for i, fsm in enumerate(fsms)])
 
     # Determine the "is final?" condition of each substate, then pass it to the
     # test to determine finality of the overall FSM.
     def final(state: Mapping[int, StateType]) -> bool:
-        accepts = [i in state and state[i] in fsm.finals for i, fsm in enumerate(fsms)]
-        return test(accepts)
+        return test([state[i] in fsm.finals for i, fsm in enumerate(fsms)])
 
     alphabet = fsms[0].alphabet if len(fsms) > 0 else {~Charclass()}
 
