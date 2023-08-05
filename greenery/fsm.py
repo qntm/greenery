@@ -89,27 +89,9 @@ class Fsm:
         `map` may be sparse (i.e. it may omit transitions). In the case of
         omitted transitions, a non-final "oblivion" state is simulated.
         """
-        allchars = frozenset(alphabet)
-
-        for symbol in alphabet:
-            if not isinstance(symbol, Charclass):
-                raise Exception(f"Bad symbol: {symbol!r}")
-        actual_alphabet = frozenset(
-            symbol if isinstance(symbol, Charclass)
-            else Charclass(symbol)
-            for symbol
-            in alphabet
-        )
+        alphabet = frozenset(alphabet)
         states = frozenset(states)
         finals = frozenset(finals)
-
-        actual_map = {}
-        for state in map:
-            actual_map[state] = {}
-            for symbol in map[state]:
-                actual_symbol = symbol if isinstance(symbol, Charclass) \
-                else Charclass(symbol)
-                actual_map[state][actual_symbol] = map[state][symbol]
 
         # Validation. Thanks to immutability, this only needs to be carried out
         # once.
@@ -117,13 +99,13 @@ class Fsm:
             raise ValueError(f"Initial state {initial!r} must be one of {states!r}")
         if not finals.issubset(states):
             raise ValueError(f"Final states {finals!r} must be a subset of {states!r}")
-        for state, state_trans in actual_map.items():
+        for state, state_trans in map.items():
             if state not in states:
                 raise ValueError(f"Transition from unknown state {state!r}")
-            for actual_symbol, dest in state_trans.items():
-                if actual_symbol not in actual_alphabet:
+            for symbol, dest in state_trans.items():
+                if symbol not in alphabet:
                     raise ValueError(
-                        f"Invalid symbol {actual_symbol!r}"
+                        f"Invalid symbol {symbol!r}"
                         f" in transition from {state!r}"
                         f" to {dest!r}"
                     )
@@ -137,20 +119,20 @@ class Fsm:
         for state in states:
             if state is None:
                 raise Exception("Can't have a None state")
-            if state not in actual_map:
+            if state not in map:
                 raise Exception(f"State {state!r} missing from map")
-            for actual_symbol in actual_alphabet:
-                if actual_symbol not in actual_map[state]:
-                    raise Exception(f"Symbol {actual_symbol!r} missing from map[{state!r}]")
+            for symbol in alphabet:
+                if symbol not in map[state]:
+                    raise Exception(f"Symbol {symbol!r} missing from map[{state!r}]")
 
         # Initialise the hard way due to immutability.
-        object.__setattr__(self, "alphabet", actual_alphabet)
+        object.__setattr__(self, "alphabet", alphabet)
         object.__setattr__(self, "states", states)
         object.__setattr__(self, "initial", initial)
         object.__setattr__(self, "finals", finals)
-        object.__setattr__(self, "map", actual_map)
+        object.__setattr__(self, "map", map)
 
-    def accepts(self, symbols: Iterable[AlphaType], /) -> bool:
+    def accepts(self, chars: Iterable[AlphaType], /) -> bool:
         """
         Test whether the present FSM accepts the supplied string (iterable
         of symbols). Equivalently, consider `self` as a possibly-infinite
@@ -158,10 +140,10 @@ class Fsm:
         actually mainly used for unit testing purposes.
         """
         state = self.initial
-        for symbol in symbols:
+        for char in chars:
             found = None
             for charclass in self.map[state]:
-                if (symbol in charclass.chars) != charclass.negated:
+                if (char in charclass.chars) != charclass.negated:
                     found = charclass
                     break
             if found is None:
