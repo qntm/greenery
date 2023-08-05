@@ -302,7 +302,7 @@ def from_fsm(f: Fsm) -> Pattern:
     while i < len(states):
         current = states[i]
         if current in f.map:
-            for symbol in sorted(f.map[current], key=lambda charclass: str(charclass)):
+            for symbol in sorted(f.map[current]):
                 next_state = f.map[current][symbol]
                 if next_state not in states:
                     states.append(next_state)

@@ -45,6 +45,14 @@ class Charclass:
         object.__setattr__(self, "chars", chars)
         object.__setattr__(self, "negated", negated)
 
+    def __lt__(self, other):
+        if self.negated < other.negated:
+            return True
+        if self.negated == other.negated and \
+            min(ord(char) for char in self.chars) < min(ord(char) for char in other.chars):
+            return True
+        return False
+
     def __eq__(self, other: object, /) -> bool:
         return (
             isinstance(other, Charclass)

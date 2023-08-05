@@ -245,11 +245,10 @@ def test_infinite_generation() -> None:
 
 def test_wildcard_generator() -> None:
     # Generator needs to handle wildcards as well. Wildcards come last.
-    # TODO: Wildcards should come last, they don't, yet
     gen = parse("a.b").strings(otherchar="*")
-    assert next(gen) == "a*b"
     assert next(gen) == "aab"
     assert next(gen) == "abb"
+    assert next(gen) == "a*b"
 
     with pytest.raises(StopIteration):
         next(gen)

@@ -189,8 +189,7 @@ class Fsm:
     def __str__(self, /) -> str:
         rows = []
 
-        # TODO: actual sorting of Charclasses by content, with negated last
-        sorted_alphabet = sorted(self.alphabet, key=lambda charclass: str(charclass))
+        sorted_alphabet = sorted(self.alphabet)
 
         # top row
         row = ["", "name", "final?"]
@@ -543,7 +542,8 @@ class Fsm:
         while i < len(strings):
             cstring, cstate = strings[i]
 
-            for charclass in sorted(self.map[cstate], key=lambda charclass: str(charclass)):
+            for charclass in sorted(self.map[cstate]):
+                print(charclass)
                 nstate = self.map[cstate][charclass]
                 nstring = cstring + [charclass]
                 if nstate in livestates:
@@ -852,7 +852,7 @@ def crawl(
 
         # compute map for this state
         transitions[i] = {}
-        for symbol in sorted(alphabet, key=lambda charclass: str(charclass)):
+        for symbol in sorted(alphabet):
             next_state = follow(state, symbol)
 
             try:
