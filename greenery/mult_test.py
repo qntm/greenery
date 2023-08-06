@@ -41,7 +41,6 @@ def test_odd_bug() -> None:
         Charclass("bc"),
         STAR,
     ).to_fsm()
-    assert int5A.accepts([])
     assert int5A.accepts("")
 
     int5B = Mult(
@@ -49,11 +48,9 @@ def test_odd_bug() -> None:
         ONE,
     ).to_fsm()
     assert int5B.accepts("c")
-    assert int5B.accepts(["c"])
 
     int5C = int5A.concatenate(int5B)
     assert int5C.accepts("c")
-    assert int5C.accepts(["c"])
 
 
 def test_mult_common() -> None:

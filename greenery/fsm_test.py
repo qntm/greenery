@@ -204,23 +204,23 @@ def test_optional_mul(a: FixtureA, b: FixtureB) -> None:
 
     optional = EPSILON | unit
     # accepts "(ab)?
-    assert optional.accepts([])
-    assert not optional.accepts(["a"])
-    assert not optional.accepts(["b"])
-    assert optional.accepts(["a", "b"])
-    assert not optional.accepts(["a", "a"])
+    assert optional.accepts("")
+    assert not optional.accepts("a")
+    assert not optional.accepts("b")
+    assert optional.accepts("ab")
+    assert not optional.accepts("aa")
 
     optional = optional.times(2)
     # accepts "(ab)?(ab)?"
-    assert optional.accepts([])
-    assert not optional.accepts(["a"])
-    assert not optional.accepts(["b"])
-    assert not optional.accepts(["a", "a"])
-    assert optional.accepts(["a", "b"])
-    assert not optional.accepts(["b", "a"])
-    assert not optional.accepts(["b", "b"])
-    assert not optional.accepts(["a", "a", "a"])
-    assert optional.accepts(["a", "b", "a", "b"])
+    assert optional.accepts("")
+    assert not optional.accepts("a")
+    assert not optional.accepts("b")
+    assert not optional.accepts("aa")
+    assert optional.accepts("ab")
+    assert not optional.accepts("ba")
+    assert not optional.accepts("bb")
+    assert not optional.accepts("aaa")
+    assert optional.accepts("abab")
 
 
 def test_intersection_ab(a: FixtureA, b: FixtureB) -> None:
@@ -676,7 +676,7 @@ def test_dead_default() -> None:
     assert not blockquote.everythingbut().accepts("/*whatever*/")
 
     # deliberately seek oblivion
-    assert blockquote.everythingbut().accepts(["*"])
+    assert blockquote.everythingbut().accepts("*")
 
     assert blockquote.islive(3)
     assert blockquote.islive(4)
@@ -712,12 +712,12 @@ def test_alphabet_unions() -> None:
         },
     )
 
-    assert (a | b).accepts(["a"])
-    assert (a | b).accepts(["b"])
+    assert (a | b).accepts("a")
+    assert (a | b).accepts("b")
     assert (a & b).empty()
-    assert a.concatenate(b).accepts(["a", "b"])
-    assert (a ^ b).accepts(["a"])
-    assert (a ^ b).accepts(["b"])
+    assert a.concatenate(b).accepts("ab")
+    assert (a ^ b).accepts("a")
+    assert (a ^ b).accepts("b")
 
 
 def test_new_set_methods(a: FixtureA, b: FixtureB) -> None:
@@ -760,7 +760,7 @@ def test_new_set_methods(a: FixtureA, b: FixtureB) -> None:
     int_none = Fsm.intersection()
     with pytest.raises(OverflowError):
         len(int_none)
-    assert [] in int_none
+    assert "" in int_none
 
     assert (a | b).difference(a) == Fsm.difference((a | b), a) == (a | b) - a == b
     assert (
@@ -891,14 +891,14 @@ def test_bug_36() -> None:
     )
 
     both = etc1 & etc2
-    assert etc1.accepts([])
-    assert etc1.accepts(["s"])
-    assert etc1.accepts(["t", "s"])
-    assert not etc2.accepts([])
-    assert etc2.accepts(["s"])
-    assert not etc2.accepts(["t", "s"])
+    assert etc1.accepts("")
+    assert etc1.accepts("s")
+    assert etc1.accepts("ts")
+    assert not etc2.accepts("")
+    assert etc2.accepts("s")
+    assert not etc2.accepts("ts")
     assert both.alphabet == {~Charclass("s"), Charclass("s")}
-    assert both.accepts(["s"])
+    assert both.accepts("s")
 
 
 def test_add_anything_else() -> None:
@@ -1026,8 +1026,7 @@ def test_charclass_fsm() -> None:
     nota = from_charclass(~Charclass("a"))
     assert nota.alphabet == {Charclass("a"), ~Charclass("a")}
     assert nota.accepts("b")
-    assert nota.accepts(["b"])
-    assert nota.accepts(["c"])
+    assert nota.accepts("c")
 
 
 def test_charclass_fsm_2() -> None:

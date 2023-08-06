@@ -343,18 +343,18 @@ def repartition(
         for first_u, last_u in charclass.ord_ranges:
             ord_range_boundaries.add(first_u)
             ord_range_boundaries.add(last_u + 1)
-    ord_range_boundaries = sorted(ord_range_boundaries)
+    ord_range_boundaries_2 = sorted(ord_range_boundaries)
 
     ord_ranges = []
-    for i, ord_range_boundary in enumerate(ord_range_boundaries):
-        if i + 1 < len(ord_range_boundaries):
-            ord_ranges.append((ord_range_boundary, ord_range_boundaries[i + 1] - 1))
+    for i, ord_range_boundary in enumerate(ord_range_boundaries_2):
+        if i + 1 < len(ord_range_boundaries_2):
+            ord_ranges.append((ord_range_boundary, ord_range_boundaries_2[i + 1] - 1))
 
     # Group all of the possible ranges by "signature".
     # A signature is a tuple of Booleans telling us which character classes
     # a particular range is mentioned in.
     # (Whether it's *accepted* is actually not relevant.)
-    signatures: Dict[Tuple[bool, ...], List[str]] = {}
+    signatures: Dict[Tuple[bool, ...], List[Tuple[int, int]]] = {}
     for ord_range in ord_ranges:
         signature = []
         for charclass in charclasses:
@@ -376,10 +376,10 @@ def repartition(
             tuple((chr(first_u), chr(last_u)) for (first_u, last_u) in ord_ranges)
         )
     )
-    for ord_ranges in signatures.values():
+    for ord_ranges2 in signatures.values():
         newcharclasses.append(
             Charclass(
-                tuple((chr(first_u), chr(last_u)) for (first_u, last_u) in ord_ranges)
+                tuple((chr(first_u), chr(last_u)) for (first_u, last_u) in ord_ranges2)
             )
         )
 

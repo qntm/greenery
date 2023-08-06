@@ -53,14 +53,10 @@ def test_pattern_fsm() -> None:
     anota = parse("a[^a]").to_fsm()
     assert len(anota.states) == 4
     assert not anota.accepts("a")
-    assert not anota.accepts(["a"])
     assert not anota.accepts("b")
-    assert not anota.accepts(["b"])
     assert not anota.accepts("aa")
-    assert not anota.accepts(["a", "a"])
     assert anota.accepts("ab")
-    assert anota.accepts(["a", "b"])
-    assert anota.accepts(["a", "c"])
+    assert anota.accepts("ac")
     assert not anota.accepts("ba")
     assert not anota.accepts("bb")
 
