@@ -18,36 +18,55 @@ __all__ = (
 from dataclasses import dataclass
 from typing import ClassVar, Dict, Iterable, List, Mapping, Tuple
 
+def negate(ord_ranges):
+    u = 0
+    negated = []
+    for ord_range in ord_ranges:
+        if u < ord_range[0]:
+            negated.append((u, ord_range[0] - 1))
+        u = ord_range[1] + 1
+    if u < 1114111:
+        negated.append((u, 1114111))
+    return negated
 
-def add_ord_range(ord_ranges, new_ord_range):
+def add_ord_range(ord_ranges, negated, new_ord_range, new_negated):
     """
     Assume all existing ord ranges are sorted, and also disjoint
     So no cases of [[12, 17], [2, 3]] or [[4, 6], [7, 8]].
     Potentially some performance enhancement is possible here, stop
     cloning `ord_ranges` over and over?
     """
-    # All ranges before this index
-    # fit strictly before the newcomer
-    start = 0
+    # Ranges between those indices will be spliced out and replaced.
+    if negated:
+        raise Exception('not implemented')
+    else:
+        if new_negated:
+            new_ord_ranges = ord_ranges
+            for ord_range in negate([new_ord_range]):
+                (new_ord_ranges, _) = add_ord_range(new_ord_ranges, negated, ord_range, False)
+            return negate(new_ord_ranges), True
+        else:
+            # All ranges before this index
+            # fit strictly before the newcomer
+            start = 0
 
-    # All ranges with this index or larger
-    # fit strictly after the newcomer
-    end = len(ord_ranges)
+            # All ranges with this index or larger
+            # fit strictly after the newcomer
+            end = len(ord_ranges)
 
-    for i in range(len(ord_ranges)):
-        if ord_ranges[i][1] + 1 < new_ord_range[0]:
-            start = i + 1
-        if new_ord_range[1] + 1 < ord_ranges[i][0]:
-            end = i
-            break
+            for i in range(len(ord_ranges)):
+                if ord_ranges[i][1] + 1 < new_ord_range[0]:
+                    start = i + 1
+                if new_ord_range[1] + 1 < ord_ranges[i][0]:
+                    end = i
+                    break
 
-    # Ranges between those indices will be spliced out and replaced:
-    if start < end:
-        new_ord_range = (
-            min(new_ord_range[0], ord_ranges[start][0]),
-            max(new_ord_range[1], ord_ranges[end - 1][1]),
-        )
-    return ord_ranges[:start] + [new_ord_range] + ord_ranges[end:]
+            if start < end:
+                new_ord_range = (
+                    min(new_ord_range[0], ord_ranges[start][0]),
+                    max(new_ord_range[1], ord_ranges[end - 1][1]),
+                )
+            return ord_ranges[:start] + [new_ord_range] + ord_ranges[end:], False
 
 
 @dataclass(frozen=True, init=False)
@@ -77,9 +96,9 @@ class Charclass:
                     raise ValueError("`Charclass` can only contain single chars", char)
 
         # Rebalance ranges!
-        ord_ranges = []
+        (ord_ranges, n) = ([], False)
         for (first, last) in ranges:
-            ord_ranges = add_ord_range(ord_ranges, (ord(first), ord(last)))
+            (ord_ranges, n) = add_ord_range(ord_ranges, n, (ord(first), ord(last)), False)
         ranges = tuple((chr(first_u), chr(last_u)) for (first_u, last_u) in ord_ranges)
 
         object.__setattr__(self, "ranges", ranges)
