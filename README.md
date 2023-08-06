@@ -171,4 +171,4 @@ pytest
 * Update the version in `./setup.py`
 * Trash `./dist`
 * `python -m build` - creates a `./dist` directory with some stuff in it
-* `python -m twine pload dist/*`
+* `python -m twine upload dist/*`
