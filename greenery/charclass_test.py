@@ -149,14 +149,23 @@ def test_repartition_elementary() -> None:
     assert repartition([Charclass("a")]) == {
         Charclass("a"): [Charclass("a")],
     }
-    assert repartition([Charclass("a"), ~Charclass("a")]) == {
+
+
+def test_repartition_elementary_2() -> None:
+    assert repartition([
+        Charclass("a"),
+        ~Charclass("a")
+    ]) == {
         Charclass("a"): [Charclass("a")],
         ~Charclass("a"): [~Charclass("a")],
     }
 
 
 def test_repartition_basic() -> None:
-    assert repartition([Charclass("a"), Charclass("abc")]) == {
+    assert repartition([
+        Charclass("a"),
+        Charclass("abc")
+    ]) == {
         Charclass("a"): [
             Charclass("a"),
         ],
@@ -168,7 +177,11 @@ def test_repartition_basic() -> None:
 
 
 def test_repartition_negation() -> None:
-    assert repartition([Charclass("ab"), Charclass("a"), ~Charclass("ab")]) == {
+    assert repartition([
+        Charclass("ab"),
+        Charclass("a"),
+        ~Charclass("ab")
+    ]) == {
         Charclass("ab"): [
             Charclass("a"),
             Charclass("b"),
@@ -180,7 +193,14 @@ def test_repartition_negation() -> None:
             ~Charclass("ab"),
         ],
     }
-    assert repartition([Charclass("ab"), Charclass("abc"), ~Charclass("ab")]) == {
+
+
+def test_repartition_negation_2() -> None:
+    assert repartition([
+        Charclass("ab"),
+        Charclass("abc"),
+        ~Charclass("ab")
+    ]) == {
         Charclass("ab"): [
             Charclass("ab"),
         ],
@@ -189,8 +209,8 @@ def test_repartition_negation() -> None:
             Charclass("c"),
         ],
         ~Charclass("ab"): [
-            Charclass("c"),
             ~Charclass("abc"),
+            Charclass("c"),
         ],
     }
     assert repartition(
@@ -201,13 +221,13 @@ def test_repartition_negation() -> None:
         ]
     ) == {
         ~Charclass("a"): [
+            ~Charclass("abc"),
             Charclass("b"),
             Charclass("c"),
-            ~Charclass("abc"),
         ],
         ~Charclass("ab"): [
-            Charclass("c"),
             ~Charclass("abc"),
+            Charclass("c"),
         ],
         ~Charclass("abc"): [
             ~Charclass("abc"),
@@ -238,26 +258,40 @@ def test_repartition_advanced() -> None:
             Charclass("bcd"),
         ],
         ~Charclass("abcd"): [
-            Charclass("ef"),
             ~Charclass("abcdef"),
+            Charclass("ef"),
         ],
     }
-    assert repartition([WORDCHAR, DIGIT, DOT, NONDIGITCHAR, NULLCHARCLASS]) == {
+
+
+def test_repartition_advanced_2() -> None:
+    assert repartition([
+        WORDCHAR,
+        DIGIT,
+        DOT,
+        NONDIGITCHAR,
+        NULLCHARCLASS
+    ]) == {
         WORDCHAR: [
             DIGIT,
             Charclass("ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz"),
         ],
-        DIGIT: [DIGIT],
+        DIGIT: [
+            DIGIT
+        ],
         DOT: [
+            ~Charclass("0", "z"),)),
             DIGIT,
+            Charclass(((":", "@"), ("[", "^"), ("`", "`"))),
             Charclass("ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz"),
-            NONWORDCHAR,
         ],
         NONDIGITCHAR: [
+            ~Charclass((("0", "z"),)),
+            Charclass(((":", "@"), ("[", "^"), ("`", "`"))),
             Charclass("ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz"),
-            NONWORDCHAR,
         ],
-        # Yup, there's nothing here!
-        # This should be impossible or at least cause no problems in practice
-        NULLCHARCLASS: [],
+        NULLCHARCLASS: [
+            # Yup, there's nothing here!
+            # This should be impossible or at least cause no problems in practice
+        ],
     }

@@ -19,7 +19,7 @@ __all__ = (
 from dataclasses import dataclass
 from typing import ClassVar, Dict, Iterable, Iterator, List, Mapping, Tuple
 
-NUM_UNICODE_CHARS = (1 << 20) + (1 << 16)
+NUM_UNICODE_CHARS = (1 << 16) + (1 << 20)
 
 
 def negate(ord_ranges: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
@@ -326,32 +326,54 @@ def repartition(
     of all possible characters and can be combined to create all of the
     originals.
     Return a map from each original `Charclass` to its constituent pieces.
-    TODO: performance improvements in the case where there are >1000000
-    possible characters in the alphabet?
     """
-    alphabet = set()
+    ord_range_boundaries = set()
     for charclass in charclasses:
-        for first_u, last_u in charclass.ord_ranges:
-            for u in range(first_u, last_u + 1):
-                alphabet.add(chr(u))
+        for (first_u, last_u) in charclass.ord_ranges:
+            ord_range_boundaries.add(first_u)
+            ord_range_boundaries.add(last_u + 1)
+    ord_range_boundaries = sorted(ord_range_boundaries)
 
-    # Group all of the possible characters by "signature".
+    ord_ranges = []
+    for i, ord_range_boundary in enumerate(ord_range_boundaries):
+        if i + 1 < len(ord_range_boundaries):
+            ord_ranges.append((
+                ord_range_boundary,
+                ord_range_boundaries[i + 1] - 1
+            ))
+
+    # Group all of the possible ranges by "signature".
     # A signature is a tuple of Booleans telling us which character classes
-    # a particular character is mentioned in.
+    # a particular range is mentioned in.
+    # (Whether it's *accepted* is actually not relevant.)
     signatures: Dict[Tuple[bool, ...], List[str]] = {}
-    for char in sorted(alphabet):
-        signature = tuple(charclass.accepts(char) for charclass in charclasses)
+    for ord_range in ord_ranges:
+        signature = []
+        for charclass in charclasses:
+            ord_range_in_charclass = False
+            for x in charclass.ord_ranges:
+                if x[0] <= ord_range[0] and ord_range[1] <= x[1]:
+                    ord_range_in_charclass = True
+                    break
+            signature.append(ord_range_in_charclass)
+        signature = tuple(signature)
         if signature not in signatures:
             signatures[signature] = []
-        signatures[signature].append(char)
+        signatures[signature].append(ord_range)
 
-    newcharclasses = [
-        Charclass(tuple((char, char) for char in chars))
-        for chars in signatures.values()
-    ]
-
-    # And one last thing
-    newcharclasses.append(~Charclass((tuple((char, char) for char in alphabet))))
+    # From the signatures we can gather the new Charclasses
+    newcharclasses = []
+    newcharclasses.append(
+        ~Charclass(tuple(
+            (chr(first_u), chr(last_u)) for (first_u, last_u) in ord_ranges
+        ))
+    )
+    for ord_ranges in signatures.values():
+        newcharclasses.append(
+            Charclass(tuple(
+                (chr(first_u), chr(last_u)) for (first_u, last_u) in ord_ranges
+            ))
+        )
 
     # Now compute the breakdowns
     partition: Dict[Charclass, List[Charclass]] = {}
