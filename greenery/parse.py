@@ -107,21 +107,24 @@ def match_internal_char(string: str, i: int) -> MatchResult[str]:
     return char, j
 
 
-def match_class_interior_1(
+def match_ranges(
     string: str,
     i: int,
 ) -> MatchResult[tuple[frozenset[str], bool]]:
+    """
+    We have to return a tuple of several ranges, because of \\\\w etc.
+    """
     # Attempt 1: shorthand e.g. "\w"
-    for chars, cc_shorthand in Charclass.shorthand.items():
+    for ranges, cc_shorthand in Charclass.shorthand.items():
         try:
-            return (chars, False), static(string, i, cc_shorthand)
+            return (ranges, False), static(string, i, cc_shorthand)
         except NoMatch:
             pass
 
     # Attempt 1B: shorthand e.g. "\W"
-    for chars, cc_shorthand in Charclass.negated_shorthand.items():
+    for ranges, cc_shorthand in Charclass.negated_shorthand.items():
         try:
-            return (chars, True), static(string, i, cc_shorthand)
+            return (ranges, True), static(string, i, cc_shorthand)
         except NoMatch:
             pass
 
@@ -130,38 +133,28 @@ def match_class_interior_1(
         first, j = match_internal_char(string, i)  # `first` is "d"
         k = static(string, j, "-")
         last, k = match_internal_char(string, k)  # `last` is "h"
-
-        first_index = ord(first)  # 100
-        last_index = ord(last)  # 104
-
-        # Be strict here, "d-d" is not allowed
-        if first_index >= last_index:
-            raise NoMatch(f"Range {first!r} to {last!r} not allowed")
-
-        chars = frozenset(chr(i) for i in range(first_index, last_index + 1))
-        return (chars, False), k
+        ranges = ((first, last),)
+        return (ranges, False), k
     except NoMatch:
         pass
 
     # Attempt 3: just a character on its own
     char, j = match_internal_char(string, i)
-    return (frozenset(char), False), j
+    return (((char, char),), False), j
 
 
 def match_class_interior(string: str, i: int) -> MatchResult[Charclass]:
-    predicates = []
+    all_ranges = []
     try:
         while True:
             # Match an internal character, range, or other charclass predicate.
-            (internal, internal_negated), i = match_class_interior_1(string, i)
-            predicates.append(Charclass(
-                tuple((char, char) for char in internal),
-                negated=internal_negated
-            ))
+            (ranges, internal_negated), i = match_ranges(string, i)
+            all_ranges.extend(ranges)
+            # TODO: negation flags
     except NoMatch:
         pass
 
-    return Charclass.union(*predicates), i
+    return Charclass(tuple(all_ranges)), i
 
 
 def match_charclass(string: str, i: int) -> MatchResult[Charclass]:

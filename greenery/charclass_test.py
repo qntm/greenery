@@ -14,7 +14,6 @@ from .charclass import (
     Charclass,
     repartition,
     add_ord_range,
-    subtract_ord_range,
 )
 
 
@@ -52,21 +51,6 @@ def test_add_ord_range_2() -> None:
     assert add_ord_range([(1, 2), (11, 12)], (5, 10)) == [(1, 2), (5, 12)]
     assert add_ord_range([(1, 2), (11, 12)], (-2, -1)) == [(-2, -1), (1, 2), (11, 12)]
     assert add_ord_range([(1, 2), (11, 12)], (0, 20)) == [(0, 20)]
-
-
-def test_subtract_ord_range_0() -> None:
-    assert subtract_ord_range([], (1, 2)) == []
-
-
-def test_subtract_ord_range_1() -> None:
-    assert subtract_ord_range([(5, 16)], (1, 2)) == [(5, 16)]
-    assert subtract_ord_range([(5, 16)], (1, 4)) == [(5, 16)]
-    assert subtract_ord_range([(5, 16)], (1, 5)) == [(6, 16)]
-    assert subtract_ord_range([(5, 16)], (1, 15)) == [(16, 16)]
-    assert subtract_ord_range([(5, 16)], (1, 16)) == []
-    assert subtract_ord_range([(5, 16)], (5, 16)) == []
-    assert subtract_ord_range([(5, 16)], (6, 16)) == [(5, 5)]
-    assert subtract_ord_range([(5, 16)], (7, 12)) == [(5, 6), (13, 16)]
 
 
 def test_charclass_equality() -> None:

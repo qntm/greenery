@@ -50,74 +50,6 @@ def add_ord_range(ord_ranges, new_ord_range):
     return ord_ranges[:start] + [new_ord_range] + ord_ranges[end:]
 
 
-def intersect_ord_range(ord_ranges, new_ord_range):
-    """
-    Assume all existing ord ranges are sorted, and also disjoint
-    So no cases of [[12, 17], [2, 3]] or [[4, 6], [7, 8]].
-    Potentially some performance enhancement is possible here, stop
-    cloning `ord_ranges` over and over?
-    """
-    # All ranges before this index
-    # fit strictly before the newcomer
-    start = 0
-
-    # All ranges with this index or larger
-    # fit strictly after the newcomer
-    end = len(ord_ranges)
-
-    for i in range(len(ord_ranges)):
-        if ord_ranges[i][1] + 1 < new_ord_range[0]:
-            start = i + 1
-        if new_ord_range[1] + 1 < ord_ranges[i][0]:
-            end = i
-            break
-
-    # Ranges between those indices will be spliced out and replaced
-    new_ord_ranges = ord_ranges[start:end]
-    if start < end:
-        new_ord_ranges[start] = (
-            max(new_ord_ranges[start][0], new_ord_range[0]),
-            new_ord_ranges[start][1]
-        )
-        new_ord_ranges[end - 1] = (
-            new_ord_ranges[end - 1][0],
-            min(new_ord_ranges[end - 1][1], new_ord_range[1]),
-        )
-    return new_ord_ranges
-
-
-def subtract_ord_range(ord_ranges, new_ord_range):
-    """
-    Assume all existing ord ranges are sorted, and also disjoint
-    So no cases of [[12, 17], [2, 3]] or [[4, 6], [7, 8]].
-    Potentially some performance enhancement is possible here, stop
-    cloning `ord_ranges` over and over?
-    """
-    # All ranges before this index
-    # fit strictly before the newcomer
-    start = 0
-
-    # All ranges with this index or larger
-    # fit strictly after the newcomer
-    end = len(ord_ranges)
-
-    for i in range(len(ord_ranges)):
-        if ord_ranges[i][1] + 1 < new_ord_range[0]:
-            start = i + 1
-        if new_ord_range[1] + 1 < ord_ranges[i][0]:
-            end = i
-            break
-
-    # Ranges between those indices will be spliced out and maybe replaced:
-    new_ord_ranges = []
-    if start < end:
-        if ord_ranges[start][0] < new_ord_range[0]:
-            new_ord_ranges.append((ord_ranges[start][0], new_ord_range[0] - 1))
-        if ord_ranges[end - 1][1] > new_ord_range[1]:
-            new_ord_ranges.append((new_ord_range[1] + 1, ord_ranges[end - 1][1]))
-    return ord_ranges[:start] + new_ord_ranges + ord_ranges[end:]
-
-
 @dataclass(frozen=True, init=False)
 class Charclass:
     """
@@ -184,12 +116,22 @@ class Charclass:
     # also that the hyphen and caret do NOT appear above.
     classSpecial: ClassVar[frozenset[str]] = frozenset("\\[]^-")
 
-    # Shorthand codes for use inside `Charclass`es e.g. [abc\d]
-    w: ClassVar[frozenset[str]] = frozenset(
-        "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz"
+    # Shorthand ranges for use inside `Charclass`es e.g. [abc\d]
+    w = (
+        ("0", "9"),
+        ("A", "Z"),
+        ("_", "_"),
+        ("a", "z"),
     )
-    d: ClassVar[frozenset[str]] = frozenset("0123456789")
-    s: ClassVar[frozenset[str]] = frozenset("\t\n\v\f\r ")
+    d = (("0", "9"),)
+    s = (
+        ("\t", "\t"),
+        ("\n", "\n"),
+        ("\v", "\v"),
+        ("\f", "\f"),
+        ("\r", "\r"),
+        (" ", " "),
+    )
 
     shorthand: ClassVar[Mapping[frozenset[str], str]] = {
         w: "\\w",
