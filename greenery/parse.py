@@ -154,7 +154,10 @@ def match_class_interior(string: str, i: int) -> MatchResult[Charclass]:
         while True:
             # Match an internal character, range, or other charclass predicate.
             (internal, internal_negated), i = match_class_interior_1(string, i)
-            predicates.append(Charclass(internal, negated=internal_negated))
+            predicates.append(Charclass(
+                tuple((char, char) for char in internal),
+                negated=internal_negated
+            ))
     except NoMatch:
         pass
 
@@ -195,21 +198,21 @@ def match_charclass(string: str, i: int) -> MatchResult[Charclass]:
     # e.g. if seeing "\\t", return "\t"
     for char, escaped_mnemonic in escapes.items():
         try:
-            return Charclass(char), static(string, i, escaped_mnemonic)
+            return Charclass(((char, char),)), static(string, i, escaped_mnemonic)
         except NoMatch:
             pass
 
     # e.g. if seeing "\\{", return "{"
     for char in Charclass.allSpecial:
         try:
-            return Charclass(char), static(string, i, "\\" + char)
+            return Charclass(((char, char),)), static(string, i, "\\" + char)
         except NoMatch:
             pass
 
     # e.g. if seeing "\\x40", return "@"
     try:
         char, j = unescape_hex(string, i)
-        return Charclass(char), j
+        return Charclass(((char, char),)), j
     except NoMatch:
         pass
 
@@ -218,7 +221,7 @@ def match_charclass(string: str, i: int) -> MatchResult[Charclass]:
     if char in Charclass.allSpecial:
         raise NoMatch
 
-    return Charclass(char), i
+    return Charclass(((char, char),)), i
 
 
 def match_multiplicand(string: str, i: int) -> MatchResult[Pattern | Charclass]:

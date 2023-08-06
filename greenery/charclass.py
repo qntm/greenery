@@ -30,18 +30,22 @@ class Charclass:
     combination functions.
     """
 
-    ranges: List[Tuple[str, str]]
+    ranges: Tuple[Tuple[str, str], ...]
     negated: bool
 
-    def __init__(self, chars: Iterable[str] = (), negated: bool = False):
-        # chars should consist only of chars
-        for c in chars:
-            if not isinstance(c, str):
-                raise TypeError(f"Can't put {c!r} in a `Charclass`", c)
-            if len(c) != 1:
-                raise ValueError("`Charclass` can only contain single chars", c)
+    def __init__(self, ranges: Tuple[Tuple[str, str]] = (), negated: bool = False):
+        if not isinstance(ranges, tuple):
+            raise TypeError(f"Bad ranges: {ranges!r}")
+        for range in ranges:
+            if range[0] != range[1]:
+                raise Exception('Bad range')
+            for char in range:
+                if not isinstance(char, str):
+                    raise TypeError(f"Can't put {char!r} in a `Charclass`", char)
+                if len(char) != 1:
+                    raise ValueError("`Charclass` can only contain single chars", char)
 
-        object.__setattr__(self, "ranges", tuple((c, c) for c in sorted(chars)))
+        object.__setattr__(self, "ranges", tuple(sorted(ranges)))
         object.__setattr__(self, "negated", negated)
 
     def __lt__(self, other: Charclass, /) -> bool:
@@ -194,8 +198,7 @@ class Charclass:
 
     def __repr__(self, /) -> str:
         sign = "~" if self.negated else ""
-        chars = "".join(sorted(range[0] for range in self.ranges))
-        return f"{sign}Charclass({chars!r})"
+        return f"{sign}Charclass({self.ranges!r})"
 
     def reduce(self, /) -> Charclass:
         # `Charclass`es cannot be reduced.
@@ -210,7 +213,7 @@ class Charclass:
         Negate the current `Charclass`. e.g. [ab] becomes [^ab]. Call
         using "charclass2 = ~charclass1"
         """
-        return Charclass("".join(range[0] for range in self.ranges), negated=not self.negated)
+        return Charclass(self.ranges, negated=not self.negated)
 
     def __invert__(self, /) -> Charclass:
         return self.negate()
@@ -219,6 +222,7 @@ class Charclass:
         return self
 
     def union(*predicates: Charclass) -> Charclass:
+        # TODO
         closed_sets = [frozenset({range[0] for range in cc.ranges}) for cc in predicates if not cc.negated]
         include = frozenset.union(*closed_sets) if closed_sets else frozenset()
 
@@ -228,7 +232,7 @@ class Charclass:
         is_open = bool(open_sets)
         chars = (exclude - include) if is_open else (include - exclude)
 
-        return Charclass(chars, negated=is_open)
+        return Charclass(tuple((char, char) for char in chars), negated=is_open)
 
     __or__ = union
 
@@ -243,9 +247,15 @@ class Charclass:
 
 
 # Standard character classes
-WORDCHAR = Charclass("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz")
-DIGIT = Charclass("0123456789")
-SPACECHAR = Charclass("\t\n\v\f\r ")
+WORDCHAR = Charclass(
+    tuple((c, c) for c in "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz")
+)
+DIGIT = Charclass(
+    tuple((c, c) for c in "0123456789")
+)
+SPACECHAR = Charclass(
+    tuple((c, c) for c in "\t\n\v\f\r ")
+)
 
 # This `Charclass` expresses "no possibilities at all"
 # and can never match anything.
@@ -306,10 +316,14 @@ def repartition(
             signatures[signature] = []
         signatures[signature].append(char)
 
-    newcharclasses = [Charclass(chars) for chars in signatures.values()]
+    newcharclasses = [Charclass(
+        tuple((char, char) for char in chars)
+    ) for chars in signatures.values()]
 
     # And one last thing
-    newcharclasses.append(~Charclass(alphabet))
+    newcharclasses.append(~Charclass((
+        tuple((char, char) for char in alphabet)
+    )))
 
     # Now compute the breakdowns
     partition: Dict[Charclass, List[Charclass]] = {}
