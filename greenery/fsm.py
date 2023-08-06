@@ -25,7 +25,7 @@ from typing import (
     TypeVar,
 )
 
-from .charclass import Charclass, DOT, repartition
+from .charclass import DOT, Charclass, repartition
 
 AlphaType = Charclass
 StateType = int
