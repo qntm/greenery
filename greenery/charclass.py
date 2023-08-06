@@ -1,3 +1,5 @@
+# pylint: disable=fixme,too-many-locals,too-many-branches
+
 from __future__ import annotations
 
 __all__ = (
@@ -362,10 +364,10 @@ def repartition(
                     ord_range_in_charclass = True
                     break
             signature.append(ord_range_in_charclass)
-        signature = tuple(signature)
-        if signature not in signatures:
-            signatures[signature] = []
-        signatures[signature].append(ord_range)
+        signature2 = tuple(signature)
+        if signature2 not in signatures:
+            signatures[signature2] = []
+        signatures[signature2].append(ord_range)
 
     # From the signatures we can gather the new Charclasses
     newcharclasses = []

@@ -649,6 +649,7 @@ class Pattern:
         """
         return self.matches(string)
 
+    # pylint: disable=fixme
     # TODO: this is a misuse of __reversed__
     # and should be removed next major version
     def __reversed__(self, /) -> Pattern:

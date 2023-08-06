@@ -44,7 +44,7 @@ def unify_alphabets(fsms: Iterable[Fsm], /) -> List[Fsm]:
     return [fsm.replace_alphabet(partition) for fsm in fsms]
 
 
-# pylint: disable=too-many-public-methods
+# pylint: disable=too-many-public-methods,too-many-branches,fixme
 @dataclass(frozen=True, init=False)
 class Fsm:
     """

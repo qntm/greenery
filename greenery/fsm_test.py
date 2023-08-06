@@ -8,7 +8,7 @@ import pytest
 from .charclass import WORDCHAR, Charclass
 from .fsm import EPSILON, NULL, Fsm, from_charclass, unify_alphabets
 
-# pylint: disable=invalid-name
+# pylint: disable=invalid-name,too-many-lines
 
 FixtureA = Fsm
 
