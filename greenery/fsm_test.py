@@ -1271,3 +1271,17 @@ def test_larger_charclasses() -> None:
     assert aorb.accepts("b")
     assert not aorb.accepts("c")
     assert not aorb.accepts("aa")
+
+
+def test_nightmare_charclass() -> None:
+    # This consumes over a million different possible characters
+    # Previously this would bring the package to its knees, not anymore!
+    nightmare = from_charclass(Charclass((
+        ("\t", "\t"),
+        ("\n", "\n"),
+        ("\r", "\r"),
+        (" ", "\uD7FF"),
+        ("\uE000", "\uFFFD"),
+        ("\U00010000", "\U0010FFFF"),
+    )))
+    assert nightmare.accepts("\uE123")
