@@ -125,11 +125,10 @@ class Fsm:
         negated_chars = set()
         for charclass in alphabet:
             target = negated_chars if charclass.negated else chars
-            for range in charclass.ranges:
-                # TODO
-                if range[0] in target:
+            for char in charclass.get_chars():
+                if char in target:
                     raise ValueError(f"Alphabet {alphabet!r} has overlaps")
-                target.add(range[0])
+                target.add(char)
 
         if chars != negated_chars:
             raise ValueError(f"Alphabet {alphabet!r} is not a proper partition")
@@ -539,8 +538,9 @@ class Fsm:
                 if charclass.negated:
                     chars = otherchars
                 else:
-                    chars = [range[0] for range in charclass.ranges]
-                for char in sorted(chars):
+                    # TODO: sorting will not be necessary here soon
+                    chars = sorted([char for char in charclass.get_chars()])
+                for char in chars:
                     nstate = self.map[cstate][charclass]
                     nstring = cstring + char
                     if nstate in livestates:

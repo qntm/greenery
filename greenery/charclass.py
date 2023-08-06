@@ -184,15 +184,20 @@ class Charclass:
 
         return output
 
+    def get_chars(self, /):
+        for (first, last) in self.ranges:
+            for u in range(ord(first), ord(last) + 1):
+                yield chr(u)
+
     def num_chars(self, /) -> int:
         num = 0
-        for range in self.ranges:
-            num += ord(range[1]) - ord(range[0]) + 1
+        for (first, last) in self.ranges:
+            num += ord(last) + 1 - ord(first)
         return num
 
     def has_char(self, char, /) -> Boolean:
-        for range in self.ranges:
-            if range[0] <= char <= range[1]:
+        for (first, last) in self.ranges:
+            if first <= char <= last:
                 return True
         return False
 
