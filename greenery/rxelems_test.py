@@ -297,25 +297,13 @@ def test_dot() -> None:
 def test_abstar() -> None:
     # Buggggs.
     abstar = Fsm(
-        alphabet={
-            Charclass("a"),
-            ~Charclass("ab"),
-            Charclass("b")
-        },
+        alphabet={Charclass("a"), ~Charclass("ab"), Charclass("b")},
         states={0, 1},
         initial=0,
         finals={0},
         map={
-            0: {
-                Charclass("a"): 0,
-                ~Charclass("ab"): 1,
-                Charclass("b"): 0
-            },
-            1: {
-                Charclass("a"): 1,
-                ~Charclass("ab"): 1,
-                Charclass("b"): 1
-            },
+            0: {Charclass("a"): 0, ~Charclass("ab"): 1, Charclass("b"): 0},
+            1: {Charclass("a"): 1, ~Charclass("ab"): 1, Charclass("b"): 1},
         },
     )
     assert str(from_fsm(abstar)) == "[ab]*"
@@ -476,45 +464,17 @@ def test_base_N() -> None:
 def test_dead_default() -> None:
     blockquote = from_fsm(
         Fsm(
-            alphabet={
-                Charclass("/"),
-                Charclass("*"),
-                ~Charclass("/*")
-            },
+            alphabet={Charclass("/"), Charclass("*"), ~Charclass("/*")},
             states={0, 1, 2, 3, 4, 5},
             initial=0,
             finals={4},
             map={
-                0: {
-                    Charclass("/"): 1,
-                    ~Charclass("/*"): 5,
-                    Charclass("*"): 5
-                },
-                1: {
-                    Charclass("/"): 5,
-                    ~Charclass("/*"): 5,
-                    Charclass("*"): 2
-                },
-                2: {
-                    Charclass("/"): 2,
-                    ~Charclass("/*"): 2,
-                    Charclass("*"): 3
-                },
-                3: {
-                    Charclass("/"): 4,
-                    ~Charclass("/*"): 2,
-                    Charclass("*"): 3
-                },
-                4: {
-                    Charclass("/"): 5,
-                    ~Charclass("/*"): 5,
-                    Charclass("*"): 5
-                },
-                5: {
-                    Charclass("/"): 5,
-                    ~Charclass("/*"): 5,
-                    Charclass("*"): 5
-                },
+                0: {Charclass("/"): 1, ~Charclass("/*"): 5, Charclass("*"): 5},
+                1: {Charclass("/"): 5, ~Charclass("/*"): 5, Charclass("*"): 2},
+                2: {Charclass("/"): 2, ~Charclass("/*"): 2, Charclass("*"): 3},
+                3: {Charclass("/"): 4, ~Charclass("/*"): 2, Charclass("*"): 3},
+                4: {Charclass("/"): 5, ~Charclass("/*"): 5, Charclass("*"): 5},
+                5: {Charclass("/"): 5, ~Charclass("/*"): 5, Charclass("*"): 5},
             },
         )
     )

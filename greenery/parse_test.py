@@ -66,19 +66,18 @@ def test_negated_negatives_inside_charclasses() -> None:
 
 
 def test_match_nightmare_charclass() -> None:
-    assert match_charclass(
-        "[\t\n\r -\uD7FF\uE000-\uFFFD\U00010000-\U0010FFFF]",
-        0
-    ) == (
-        Charclass((
-            ("\t", "\t"),
-            ("\n", "\n"),
-            ("\r", "\r"),
-            (" ", "\uD7FF"),
-            ("\uE000", "\uFFFD"),
-            ("\U00010000", "\U0010FFFF"),
-        )),
-        14
+    assert match_charclass("[\t\n\r -\uD7FF\uE000-\uFFFD\U00010000-\U0010FFFF]", 0) == (
+        Charclass(
+            (
+                ("\t", "\t"),
+                ("\n", "\n"),
+                ("\r", "\r"),
+                (" ", "\uD7FF"),
+                ("\uE000", "\uFFFD"),
+                ("\U00010000", "\U0010FFFF"),
+            )
+        ),
+        14,
     )
 
 
@@ -211,15 +210,20 @@ def test_pattern_parsing() -> None:
 
 
 def test_nightmare_pattern() -> None:
-    assert parse('[\t\n\r -\uD7FF\uE000-\uFFFD\U00010000-\U0010FFFF]*') == Pattern(
+    assert parse("[\t\n\r -\uD7FF\uE000-\uFFFD\U00010000-\U0010FFFF]*") == Pattern(
         Conc(
-            Mult(Charclass((
-                ("\t", "\t"),
-                ("\n", "\n"),
-                ("\r", "\r"),
-                (" ", "\uD7FF"),
-                ("\uE000", "\uFFFD"),
-                ("\U00010000", "\U0010FFFF"),
-            )), STAR)
+            Mult(
+                Charclass(
+                    (
+                        ("\t", "\t"),
+                        ("\n", "\n"),
+                        ("\r", "\r"),
+                        (" ", "\uD7FF"),
+                        ("\uE000", "\uFFFD"),
+                        ("\U00010000", "\U0010FFFF"),
+                    )
+                ),
+                STAR,
+            )
         )
     )

@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from greenery import INF, PLUS, QM, STAR, Bound, Multiplier, parse
 
-print(repr(parse("[\t\n\r -\uD7FF\uE000-\uFFFD]*")))
-
 pattern = parse("a")
 print(pattern)  # "a"
 

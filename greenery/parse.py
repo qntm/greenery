@@ -8,7 +8,17 @@ __all__ = (
 from typing import Collection, Tuple, TypeVar
 
 from .bound import INF, Bound
-from .charclass import Charclass, escapes, shorthand, WORDCHAR, DIGIT, SPACECHAR, NONWORDCHAR, NONDIGITCHAR, NONSPACECHAR
+from .charclass import (
+    DIGIT,
+    NONDIGITCHAR,
+    NONSPACECHAR,
+    NONWORDCHAR,
+    SPACECHAR,
+    WORDCHAR,
+    Charclass,
+    escapes,
+    shorthand,
+)
 from .multiplier import Multiplier, symbolic
 from .rxelems import Conc, Mult, Pattern
 
@@ -110,21 +120,22 @@ def match_internal_char(string: str, i: int) -> MatchResult[str]:
 def match_inner_charclass(
     string: str,
     i: int,
-) -> MatchResult[tuple[frozenset[str], bool]]:
+) -> MatchResult[Charclass]:
     """
     We have to return several ranges, because of \\\\w etc.
     """
     # Attempt 1: shorthand
-    shorthand = {
+    inner_shorthand = {
         "\\w": WORDCHAR,
         "\\d": DIGIT,
         "\\s": SPACECHAR,
         "\\W": NONWORDCHAR,
         "\\D": NONDIGITCHAR,
         "\\S": NONSPACECHAR,
+        # no ".": DOT,
     }
 
-    for cc_shorthand, charclass in shorthand.items():
+    for cc_shorthand, charclass in inner_shorthand.items():
         try:
             return charclass, static(string, i, cc_shorthand)
         except NoMatch:
@@ -151,7 +162,6 @@ def match_class_interior(string: str, i: int) -> MatchResult[Charclass]:
             # Match an internal character, range, or other charclass predicate.
             inner_charclass, i = match_inner_charclass(string, i)
             inner_charclasses.append(inner_charclass)
-            # TODO: negation flags
     except NoMatch:
         pass
 

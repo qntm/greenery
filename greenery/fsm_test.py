@@ -5,8 +5,8 @@ from copy import copy
 
 import pytest
 
-from .charclass import Charclass, WORDCHAR
-from .fsm import Fsm, EPSILON, from_charclass, NULL, unify_alphabets
+from .charclass import WORDCHAR, Charclass
+from .fsm import EPSILON, NULL, Fsm, from_charclass, unify_alphabets
 
 # pylint: disable=invalid-name
 
@@ -18,12 +18,7 @@ FixtureB = Fsm
 def test_addbug() -> None:
     # Odd bug with Fsm.__add__(), exposed by "[bc]*c"
     int5A = Fsm(
-        alphabet={
-            Charclass("a"),
-            Charclass("b"),
-            Charclass("c"),
-            ~Charclass("abc")
-        },
+        alphabet={Charclass("a"), Charclass("b"), Charclass("c"), ~Charclass("abc")},
         states={0, 1},
         initial=1,
         finals={1},
@@ -45,12 +40,7 @@ def test_addbug() -> None:
     assert int5A.accepts("")
 
     int5B = Fsm(
-        alphabet={
-            Charclass("a"),
-            Charclass("b"),
-            Charclass("c"),
-            ~Charclass("abc")
-        },
+        alphabet={Charclass("a"), Charclass("b"), Charclass("c"), ~Charclass("abc")},
         states={0, 1, 2},
         initial=1,
         finals={0},
@@ -91,11 +81,7 @@ def test_builtins() -> None:
 @pytest.fixture(name="a")
 def fixture_a() -> FixtureA:
     return Fsm(
-        alphabet={
-            Charclass("a"),
-            Charclass("b"),
-            ~Charclass("ab")
-        },
+        alphabet={Charclass("a"), Charclass("b"), ~Charclass("ab")},
         states={0, 1, 2},
         initial=0,
         finals={1},
@@ -259,35 +245,15 @@ def test_crawl_reduction() -> None:
     # states 1 and 2&3 also behave identically, so they, too should be resolved
     # (this is impossible to spot before 2 and 3 have been combined).
     merged = Fsm(
-        alphabet={
-            Charclass("0"),
-            Charclass("1"),
-            ~Charclass("01")
-        },
+        alphabet={Charclass("0"), Charclass("1"), ~Charclass("01")},
         states={1, 2, 3, 4, 5},
         initial=1,
         finals={4},
         map={
-            1: {
-                Charclass("0"): 2,
-                Charclass("1"): 4,
-                ~Charclass("01"): 5
-            },
-            2: {
-                Charclass("0"): 3,
-                Charclass("1"): 4,
-                ~Charclass("01"): 5
-            },
-            3: {
-                Charclass("0"): 3,
-                Charclass("1"): 4,
-                ~Charclass("01"): 5
-            },
-            4: {
-                Charclass("0"): 5,
-                Charclass("1"): 5,
-                ~Charclass("01"): 5
-            },
+            1: {Charclass("0"): 2, Charclass("1"): 4, ~Charclass("01"): 5},
+            2: {Charclass("0"): 3, Charclass("1"): 4, ~Charclass("01"): 5},
+            3: {Charclass("0"): 3, Charclass("1"): 4, ~Charclass("01"): 5},
+            4: {Charclass("0"): 5, Charclass("1"): 5, ~Charclass("01"): 5},
             5: {
                 Charclass("0"): 5,
                 Charclass("1"): 5,
@@ -301,30 +267,14 @@ def test_crawl_reduction() -> None:
 def test_bug_28() -> None:
     # This is (ab*)* and it caused some defects.
     abstar = Fsm(
-        alphabet={
-            Charclass("a"),
-            Charclass("b"),
-            ~Charclass("ab")
-        },
+        alphabet={Charclass("a"), Charclass("b"), ~Charclass("ab")},
         states={0, 1, 2},
         initial=0,
         finals={1},
         map={
-            0: {
-                Charclass("a"): 1,
-                Charclass("b"): 2,
-                ~Charclass("ab"): 2
-            },
-            1: {
-                Charclass("a"): 2,
-                Charclass("b"): 1,
-                ~Charclass("ab"): 2
-            },
-            2: {
-                Charclass("a"): 2,
-                Charclass("b"): 2,
-                ~Charclass("ab"): 2
-            },
+            0: {Charclass("a"): 1, Charclass("b"): 2, ~Charclass("ab"): 2},
+            1: {Charclass("a"): 2, Charclass("b"): 1, ~Charclass("ab"): 2},
+            2: {Charclass("a"): 2, Charclass("b"): 2, ~Charclass("ab"): 2},
         },
     )
     assert abstar.accepts("a")
@@ -394,12 +344,7 @@ def test_reduce() -> None:
 
 def test_reverse_abc() -> None:
     abc = Fsm(
-        alphabet={
-            Charclass("a"),
-            Charclass("b"),
-            Charclass("c"),
-            ~Charclass("abc")
-        },
+        alphabet={Charclass("a"), Charclass("b"), Charclass("c"), ~Charclass("abc")},
         states={0, 1, 2, 3, 4},
         initial=0,
         finals={3},
@@ -590,12 +535,7 @@ def test_bad_multiplier(a: FixtureA) -> None:
 
 def test_anything_else_acceptance() -> None:
     a = Fsm(
-        alphabet={
-            Charclass("a"),
-            Charclass("b"),
-            Charclass("c"),
-            ~Charclass("abc")
-        },
+        alphabet={Charclass("a"), Charclass("b"), Charclass("c"), ~Charclass("abc")},
         states={1},
         initial=1,
         finals={1},
@@ -866,12 +806,7 @@ def test_copy(a: FixtureA) -> None:
 def test_oblivion_crawl() -> None:
     # Old test from when we used to have a suppressed/secret "oblivion state"
     abc = Fsm(
-        alphabet={
-            Charclass("a"),
-            Charclass("b"),
-            Charclass("c"),
-            ~Charclass("abc")
-        },
+        alphabet={Charclass("a"), Charclass("b"), Charclass("c"), ~Charclass("abc")},
         states={0, 1, 2, 3, 4},
         initial=0,
         finals={3},
@@ -920,9 +855,7 @@ def test_oblivion_crawl() -> None:
 
 def test_concatenate_bug(a: FixtureA) -> None:
     # This exposes a defect in Fsm.concatenate.
-    assert Fsm.concatenate(a, EPSILON, a).accepts(
-        "aa"
-    )
+    assert Fsm.concatenate(a, EPSILON, a).accepts("aa")
     assert Fsm.concatenate(
         a,
         EPSILON,
@@ -937,9 +870,7 @@ def test_derive(a: FixtureA) -> None:
     assert a.derive("b") == NULL
 
     assert a.times(3).derive("a") == a.times(2)
-    assert (
-        a.star() - EPSILON
-    ).derive("a") == a.star()
+    assert (a.star() - EPSILON).derive("a") == a.star()
 
 
 def test_bug_36() -> None:
@@ -1048,14 +979,8 @@ def test_replace_alphabet() -> None:
 
     fsm2 = fsm1.replace_alphabet(
         {
-            Charclass("z"): [
-                Charclass("a"),
-                Charclass("b")
-            ],
-            ~Charclass("z"): [
-                Charclass("c"),
-                ~Charclass("abc")
-            ],
+            Charclass("z"): [Charclass("a"), Charclass("b")],
+            ~Charclass("z"): [Charclass("c"), ~Charclass("abc")],
         }
     )
 
@@ -1095,10 +1020,7 @@ def test_replace_alphabet_2() -> None:
         },
     )
 
-    fsm2 = fsm1.replace_alphabet({
-        Charclass("z"): [~Charclass()],
-        ~Charclass("z"): []
-    })
+    fsm2 = fsm1.replace_alphabet({Charclass("z"): [~Charclass()], ~Charclass("z"): []})
 
     assert fsm2.map == {
         0: {~Charclass(): 2},
@@ -1118,23 +1040,11 @@ def test_charclass_fsm() -> None:
 
 def test_charclass_fsm_2() -> None:
     bc = from_charclass(Charclass("bc"))
-    assert bc.alphabet == {
-        Charclass("bc"),
-        ~Charclass("bc")
-    }
+    assert bc.alphabet == {Charclass("bc"), ~Charclass("bc")}
     assert bc.map == {
-        0: {
-            Charclass("bc"): 1,
-            ~Charclass("bc"): 2
-        },
-        1: {
-            Charclass("bc"): 2,
-            ~Charclass("bc"): 2
-        },
-        2: {
-            Charclass("bc"): 2,
-            ~Charclass("bc"): 2
-        },
+        0: {Charclass("bc"): 1, ~Charclass("bc"): 2},
+        1: {Charclass("bc"): 2, ~Charclass("bc"): 2},
+        2: {Charclass("bc"): 2, ~Charclass("bc"): 2},
     }
     assert not bc.accepts("")
     assert not bc.accepts("a")
@@ -1194,21 +1104,13 @@ def test_unify_alphabets() -> None:
     assert b.alphabet == {Charclass("b"), ~Charclass("b")}
 
     [a2, b2] = unify_alphabets((a, b))
-    assert a2.alphabet == {
-        Charclass("a"),
-        Charclass("b"),
-        ~Charclass("ab")
-    }
+    assert a2.alphabet == {Charclass("a"), Charclass("b"), ~Charclass("ab")}
     assert a2.map == {
         0: {Charclass("a"): 1, Charclass("b"): 2, ~Charclass("ab"): 2},
         1: {Charclass("a"): 2, Charclass("b"): 2, ~Charclass("ab"): 2},
         2: {Charclass("a"): 2, Charclass("b"): 2, ~Charclass("ab"): 2},
     }
-    assert b2.alphabet == {
-        Charclass("a"),
-        Charclass("b"),
-        ~Charclass("ab")
-    }
+    assert b2.alphabet == {Charclass("a"), Charclass("b"), ~Charclass("ab")}
     assert b2.map == {
         0: {Charclass("a"): 2, Charclass("b"): 1, ~Charclass("ab"): 2},
         1: {Charclass("a"): 2, Charclass("b"): 2, ~Charclass("ab"): 2},
@@ -1223,7 +1125,7 @@ def test_bad_alphabets() -> None:
             states={0},
             initial=0,
             finals=(),
-            map={0: {Charclass("a"): 0, Charclass("ab"): 0}}
+            map={0: {Charclass("a"): 0, Charclass("ab"): 0}},
         )
 
     with pytest.raises(ValueError, match="not a proper partition"):
@@ -1232,7 +1134,7 @@ def test_bad_alphabets() -> None:
             states={0},
             initial=0,
             finals=(),
-            map={0: {Charclass("a"): 0}}
+            map={0: {Charclass("a"): 0}},
         )
 
     with pytest.raises(ValueError, match="not a proper partition"):
@@ -1241,7 +1143,7 @@ def test_bad_alphabets() -> None:
             states={0},
             initial=0,
             finals=(),
-            map={0: {~Charclass("b"): 0}}
+            map={0: {~Charclass("b"): 0}},
         )
 
     with pytest.raises(ValueError, match="not a proper partition"):
@@ -1250,7 +1152,7 @@ def test_bad_alphabets() -> None:
             states={0},
             initial=0,
             finals=(),
-            map={0: {Charclass("a"): 0, ~Charclass("b"): 0}}
+            map={0: {Charclass("a"): 0, ~Charclass("b"): 0}},
         )
 
 
@@ -1264,7 +1166,7 @@ def test_larger_charclasses() -> None:
             0: {Charclass("ab"): 1, ~Charclass("ab"): 2},
             1: {Charclass("ab"): 2, ~Charclass("ab"): 2},
             2: {Charclass("ab"): 2, ~Charclass("ab"): 2},
-        }
+        },
     )
     assert not aorb.accepts("")
     assert aorb.accepts("a")
@@ -1276,12 +1178,16 @@ def test_larger_charclasses() -> None:
 def test_nightmare_charclass() -> None:
     # This consumes over a million different possible characters
     # Previously this would bring the package to its knees, not anymore!
-    nightmare = from_charclass(Charclass((
-        ("\t", "\t"),
-        ("\n", "\n"),
-        ("\r", "\r"),
-        (" ", "\uD7FF"),
-        ("\uE000", "\uFFFD"),
-        ("\U00010000", "\U0010FFFF"),
-    )))
+    nightmare = from_charclass(
+        Charclass(
+            (
+                ("\t", "\t"),
+                ("\n", "\n"),
+                ("\r", "\r"),
+                (" ", "\uD7FF"),
+                ("\uE000", "\uFFFD"),
+                ("\U00010000", "\U0010FFFF"),
+            )
+        )
+    )
     assert nightmare.accepts("\uE123")

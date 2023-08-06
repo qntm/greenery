@@ -15,11 +15,11 @@ __all__ = (
 from dataclasses import dataclass
 from enum import Enum, auto
 from functools import reduce
-from typing import Iterable, Iterator
+from typing import Iterator
 
 from .bound import INF, Bound
 from .charclass import NULLCHARCLASS, Charclass
-from .fsm import Fsm, StateType, EPSILON, from_charclass, NULL
+from .fsm import EPSILON, NULL, Fsm, StateType, from_charclass
 from .multiplier import ONE, QM, STAR, ZERO, Multiplier
 
 

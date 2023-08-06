@@ -21,6 +21,7 @@ from typing import (
     Iterator,
     List,
     Mapping,
+    Set,
     TypeVar,
 )
 
@@ -61,7 +62,7 @@ class Fsm:
     The majority of these methods are available using operator overloads.
     """
 
-    alphabet: frozenset[Charclass]
+    alphabet: frozenset[AlphaType]
     states: frozenset[StateType]
     initial: StateType
     finals: frozenset[StateType]
@@ -119,10 +120,12 @@ class Fsm:
                 raise ValueError(f"State {state!r} missing from map")
             for charclass in alphabet:
                 if charclass not in map[state]:
-                    raise ValueError(f"Symbol {charclass!r} missing from map[{state!r}]")
+                    raise ValueError(
+                        f"Symbol {charclass!r} missing from map[{state!r}]"
+                    )
 
-        chars = set()
-        negated_chars = set()
+        chars: Set[str] = set()
+        negated_chars: Set[str] = set()
         for charclass in alphabet:
             target = negated_chars if charclass.negated else chars
             for char in charclass.get_chars():
@@ -150,7 +153,7 @@ class Fsm:
         state = self.initial
         for char in chars:
             for charclass in self.map[state]:
-                if charclass.has_char(char) != charclass.negated:
+                if charclass.accepts(char):
                     state = self.map[state][charclass]
                     break
         return state in self.finals
@@ -519,7 +522,7 @@ class Fsm:
         # the state that this input string leads to. This means we don't have
         # to run the state machine from the very beginning every time we want
         # to check a new string.
-        strings: list[tuple[list[AlphaType], StateType]] = []
+        strings: list[tuple[str, StateType]] = []
 
         # Initial entry (or possibly not, in which case this is a short one)
         cstate: StateType = self.initial
@@ -535,11 +538,8 @@ class Fsm:
             cstring, cstate = strings[i]
 
             for charclass in sorted(self.map[cstate]):
-                if charclass.negated:
-                    chars = otherchars
-                else:
-                    # TODO: sorting will not be necessary here soon
-                    chars = sorted([char for char in charclass.get_chars()])
+                # TODO: scrap otherchars as a concept?
+                chars = otherchars if charclass.negated else charclass.get_chars()
                 for char in chars:
                     nstate = self.map[cstate][charclass]
                     nstring = cstring + char
@@ -549,7 +549,7 @@ class Fsm:
                         strings.append((nstring, nstate))
             i += 1
 
-    def __iter__(self, /) -> Iterator[list[AlphaType]]:
+    def __iter__(self, /) -> Iterator[str]:
         """
         This allows you to do `for string in fsm1` as a list comprehension!
         """
@@ -616,10 +616,7 @@ class Fsm:
                 num_strings[state] = None  # i.e. "computing..."
                 n = 0
                 for charclass in self.map[state]:
-                    if charclass.negated:
-                        num_transitions = (1 << 20) + (1 << 16) - charclass.num_chars()
-                    else:
-                        num_transitions = charclass.num_chars()
+                    num_transitions = charclass.num_chars()
                     nstate = self.map[state][charclass]
                     if nstate in self.finals:
                         n += num_transitions
@@ -727,7 +724,7 @@ class Fsm:
         state = self.initial
         for char in string:
             for charclass in self.map[state]:
-                if charclass.has_char(char) != charclass.negated:
+                if charclass.accepts(char):
                     state = self.map[state][charclass]
                     break
 
@@ -770,11 +767,6 @@ class Fsm:
         )
 
 
-"""
-An FSM accepting nothing (not even the empty string). This is
-demonstrates that this is possible, and is also extremely useful
-in some situations
-"""
 NULL = Fsm(
     alphabet={~Charclass()},
     states={0},
@@ -782,13 +774,14 @@ NULL = Fsm(
     finals=(),
     map={
         0: {~Charclass(): 0},
-    }
+    },
 )
+"""
+An FSM accepting nothing (not even the empty string). This is
+demonstrates that this is possible, and is also extremely useful
+in some situations
+"""
 
-"""
-An FSM matching an empty string, "", only.
-This is very useful in many situations
-"""
 EPSILON = Fsm(
     alphabet={~Charclass()},
     states={0, 1},
@@ -799,6 +792,10 @@ EPSILON = Fsm(
         1: {~Charclass(): 1},
     },
 )
+"""
+An FSM matching an empty string, "", only.
+This is very useful in many situations
+"""
 
 
 def parallel(
