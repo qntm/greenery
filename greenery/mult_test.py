@@ -7,16 +7,16 @@ from .rxelems import Mult
 
 
 def test_mult_equality() -> None:
-    a = Mult(Charclass((("a", "a"),)), ONE)
+    a = Mult(Charclass("a"), ONE)
     # pylint: disable=comparison-with-itself
     assert a == a
-    assert a != Mult(Charclass((("b", "b"),)), ONE)
-    assert a != Mult(Charclass((("a", "a"),)), QM)
-    assert a != Mult(Charclass((("a", "a"),)), Multiplier(Bound(1), Bound(2)))
+    assert a != Mult(Charclass("b"), ONE)
+    assert a != Mult(Charclass("a"), QM)
+    assert a != Mult(Charclass("a"), Multiplier(Bound(1), Bound(2)))
 
 
 def test_mult_str() -> None:
-    a = Charclass((("a", "a"),))
+    a = Charclass("a")
     assert str(Mult(a, ONE)) == "a"
     assert str(Mult(a, Multiplier(Bound(2), Bound(2)))) == "a{2}"
     assert str(Mult(a, Multiplier(Bound(3), Bound(3)))) == "a{3}"
@@ -38,14 +38,14 @@ def test_odd_bug() -> None:
 
     # Odd bug with ([bc]*c)?[ab]*
     int5A = Mult(
-        Charclass((("b", "b"), ("c", "c"))),
+        Charclass("bc"),
         STAR,
     ).to_fsm()
     assert int5A.accepts([])
     assert int5A.accepts("")
 
     int5B = Mult(
-        Charclass((("c", "c"),)),
+        Charclass("c"),
         ONE,
     ).to_fsm()
     assert int5B.accepts("c")
@@ -57,7 +57,7 @@ def test_odd_bug() -> None:
 
 
 def test_mult_common() -> None:
-    a = Charclass((("a", "a"),))
+    a = Charclass("a")
     assert Mult(a, Multiplier(Bound(3), Bound(4))).common(
         Mult(a, Multiplier(Bound(2), Bound(5)))
     ) == Mult(a, Multiplier(Bound(2), Bound(3)))
@@ -70,7 +70,7 @@ def test_mult_common() -> None:
 
 
 def test_mult_dock() -> None:
-    a = Charclass((("a", "a"),))
+    a = Charclass("a")
     assert Mult(a, Multiplier(Bound(4), Bound(5))).dock(
         Mult(a, Multiplier(Bound(3), Bound(3)))
     ) == Mult(a, Multiplier(Bound(1), Bound(2)))

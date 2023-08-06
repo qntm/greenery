@@ -74,7 +74,9 @@ class Charclass:
     ord_ranges: List[Tuple[int, int], ...]
     negated: bool
 
-    def __init__(self, ranges: Tuple[Tuple[str, str]] = (), negated: bool = False):
+    def __init__(self, ranges: str | Tuple[Tuple[str, str]] = (), negated: bool = False):
+        if isinstance(ranges, str):
+            ranges = tuple((char, char) for char in ranges)
         if not isinstance(ranges, tuple):
             raise TypeError(f"Bad ranges: {ranges!r}")
         for range in ranges:
@@ -281,15 +283,9 @@ class Charclass:
         return Charclass(new_ranges, new_negated)
 
 # Standard character classes
-WORDCHAR = Charclass(
-    tuple((c, c) for c in "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz")
-)
-DIGIT = Charclass(
-    tuple((c, c) for c in "0123456789")
-)
-SPACECHAR = Charclass(
-    tuple((c, c) for c in "\t\n\v\f\r ")
-)
+WORDCHAR = Charclass("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz")
+DIGIT = Charclass("0123456789")
+SPACECHAR = Charclass("\t\n\v\f\r ")
 
 # This `Charclass` expresses "no possibilities at all"
 # and can never match anything.
@@ -331,6 +327,8 @@ def repartition(
     of all possible characters and can be combined to create all of the
     originals.
     Return a map from each original `Charclass` to its constituent pieces.
+    TODO: performance improvements in the case where there are >1000000
+    possible characters in the alphabet?
     """
     alphabet = set()
     for charclass in charclasses:

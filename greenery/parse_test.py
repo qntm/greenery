@@ -17,9 +17,9 @@ if __name__ == "__main__":
 
 
 def test_charclass_matching() -> None:
-    assert match_charclass("a", 0) == (Charclass((("a", "a"),)), 1)
-    assert match_charclass("aa", 1) == (Charclass((("a", "a"),)), 2)
-    assert match_charclass("a$", 1) == (Charclass((("$", "$"),)), 2)
+    assert match_charclass("a", 0) == (Charclass("a"), 1)
+    assert match_charclass("aa", 1) == (Charclass("a"), 2)
+    assert match_charclass("a$", 1) == (Charclass("$"), 2)
     assert match_charclass(".", 0) == (DOT, 1)
 
     with pytest.raises(IndexError):
@@ -34,62 +34,12 @@ def test_charclass_matching() -> None:
 def test_negatives_inside_charclasses() -> None:
     assert match_charclass("[\\D]", 0) == (~DIGIT, 4)
     assert match_charclass("[a\\D]", 0) == (~DIGIT, 5)
-    assert match_charclass("[a1\\D]", 0) == (~Charclass((
-        ("0", "0"),
-        ("2", "2"),
-        ("3", "3"),
-        ("4", "4"),
-        ("5", "5"),
-        ("6", "6"),
-        ("7", "7"),
-        ("8", "8"),
-        ("9", "9"),
-    )), 6)
-    assert match_charclass("[1a\\D]", 0) == (~Charclass((
-        ("0", "0"),
-        ("2", "2"),
-        ("3", "3"),
-        ("4", "4"),
-        ("5", "5"),
-        ("6", "6"),
-        ("7", "7"),
-        ("8", "8"),
-        ("9", "9"),
-    )), 6)
-    assert match_charclass("[1\\D]", 0) == (~Charclass((
-        ("0", "0"),
-        ("2", "2"),
-        ("3", "3"),
-        ("4", "4"),
-        ("5", "5"),
-        ("6", "6"),
-        ("7", "7"),
-        ("8", "8"),
-        ("9", "9"),
-    )), 5)
+    assert match_charclass("[a1\\D]", 0) == (~Charclass("023456789"), 6)
+    assert match_charclass("[1a\\D]", 0) == (~Charclass("023456789"), 6)
+    assert match_charclass("[1\\D]", 0) == (~Charclass("023456789"), 5)
     assert match_charclass("[\\Da]", 0) == (~DIGIT, 5)
-    assert match_charclass("[\\D1]", 0) == (~Charclass((
-        ("0", "0"),
-        ("2", "2"),
-        ("3", "3"),
-        ("4", "4"),
-        ("5", "5"),
-        ("6", "6"),
-        ("7", "7"),
-        ("8", "8"),
-        ("9", "9"),
-    )), 5)
-    assert match_charclass("[\\D1a]", 0) == (~Charclass((
-        ("0", "0"),
-        ("2", "2"),
-        ("3", "3"),
-        ("4", "4"),
-        ("5", "5"),
-        ("6", "6"),
-        ("7", "7"),
-        ("8", "8"),
-        ("9", "9"),
-    )), 6)
+    assert match_charclass("[\\D1]", 0) == (~Charclass("023456789"), 5)
+    assert match_charclass("[\\D1a]", 0) == (~Charclass("023456789"), 6)
     assert match_charclass("[\\D\\d]", 0) == (DOT, 6)
     assert match_charclass("[\\D\\D]", 0) == (~DIGIT, 6)
 
@@ -101,62 +51,12 @@ def test_negatives_inside_charclasses() -> None:
 def test_negated_negatives_inside_charclasses() -> None:
     assert match_charclass("[^\\D]", 0) == (DIGIT, 5)
     assert match_charclass("[^a\\D]", 0) == (DIGIT, 6)
-    assert match_charclass("[^a1\\D]", 0) == (Charclass((
-        ("0", "0"),
-        ("2", "2"),
-        ("3", "3"),
-        ("4", "4"),
-        ("5", "5"),
-        ("6", "6"),
-        ("7", "7"),
-        ("8", "8"),
-        ("9", "9"),
-    )), 7)
-    assert match_charclass("[^1a\\D]", 0) == (Charclass((
-        ("0", "0"),
-        ("2", "2"),
-        ("3", "3"),
-        ("4", "4"),
-        ("5", "5"),
-        ("6", "6"),
-        ("7", "7"),
-        ("8", "8"),
-        ("9", "9"),
-    )), 7)
-    assert match_charclass("[^1\\D]", 0) == (Charclass((
-        ("0", "0"),
-        ("2", "2"),
-        ("3", "3"),
-        ("4", "4"),
-        ("5", "5"),
-        ("6", "6"),
-        ("7", "7"),
-        ("8", "8"),
-        ("9", "9"),
-    )), 6)
+    assert match_charclass("[^a1\\D]", 0) == (Charclass("023456789"), 7)
+    assert match_charclass("[^1a\\D]", 0) == (Charclass("023456789"), 7)
+    assert match_charclass("[^1\\D]", 0) == (Charclass("023456789"), 6)
     assert match_charclass("[^\\Da]", 0) == (DIGIT, 6)
-    assert match_charclass("[^\\D1]", 0) == (Charclass((
-        ("0", "0"),
-        ("2", "2"),
-        ("3", "3"),
-        ("4", "4"),
-        ("5", "5"),
-        ("6", "6"),
-        ("7", "7"),
-        ("8", "8"),
-        ("9", "9"),
-    )), 6)
-    assert match_charclass("[^\\D1a]", 0) == (Charclass((
-        ("0", "0"),
-        ("2", "2"),
-        ("3", "3"),
-        ("4", "4"),
-        ("5", "5"),
-        ("6", "6"),
-        ("7", "7"),
-        ("8", "8"),
-        ("9", "9"),
-    )), 7)
+    assert match_charclass("[^\\D1]", 0) == (Charclass("023456789"), 6)
+    assert match_charclass("[^\\D1a]", 0) == (Charclass("023456789"), 7)
     assert match_charclass("[^\\D\\d]", 0) == (NULLCHARCLASS, 7)
     assert match_charclass("[^\\D\\D]", 0) == (DIGIT, 7)
 
@@ -183,19 +83,17 @@ def test_match_nightmare_charclass() -> None:
 
 
 def test_mult_matching() -> None:
-    assert match_mult("abcde[^fg]*", 5) == (Mult(~Charclass((("f", "f"), ("g", "g"))), STAR), 11)
+    assert match_mult("abcde[^fg]*", 5) == (Mult(~Charclass("fg"), STAR), 11)
     assert match_mult("abcde[^fg]*h{5}[a-z]+", 11) == (
-        Mult(Charclass((("h", "h"),)), Multiplier(Bound(5), Bound(5))),
+        Mult(Charclass("h"), Multiplier(Bound(5), Bound(5))),
         15,
     )
     assert match_mult("abcde[^fg]*h{5}[a-z]+T{1,}", 15) == (
-        Mult(Charclass(
-            tuple((char, char) for char in "abcdefghijklmnopqrstuvwxyz")
-        ), PLUS),
+        Mult(Charclass("abcdefghijklmnopqrstuvwxyz"), PLUS),
         21,
     )
     assert match_mult("abcde[^fg]*h{5}[a-z]+T{2,}", 21) == (
-        Mult(Charclass((("T", "T"),)), Multiplier(Bound(2), INF)),
+        Mult(Charclass("T"), Multiplier(Bound(2), INF)),
         26,
     )
 
@@ -224,47 +122,39 @@ def test_w_d_s() -> None:
 
 
 def test_mult_parsing() -> None:
-    assert parse("[a-g]+") == Pattern(Conc(Mult(Charclass(
-        tuple((char, char) for char in "abcdefg")
-    ), PLUS)))
+    assert parse("[a-g]+") == Pattern(Conc(Mult(Charclass("abcdefg"), PLUS)))
     assert parse("[a-g0-8$%]+") == Pattern(
-        Conc(Mult(Charclass(
-            tuple((char, char) for char in "abcdefg012345678$%")
-        ), PLUS))
+        Conc(Mult(Charclass("abcdefg012345678$%"), PLUS))
     )
     assert parse("[a-g0-8$%\\^]+") == Pattern(
-        Conc(Mult(Charclass(
-            tuple((char, char) for char in "abcdefg012345678$%^")
-        ), PLUS))
+        Conc(Mult(Charclass("abcdefg012345678$%^"), PLUS))
     )
 
 
 def test_conc_parsing() -> None:
     assert parse("abcde[^fg]*h{5}[a-z]+") == Pattern(
         Conc(
-            Mult(Charclass((("a", "a"),)), ONE),
-            Mult(Charclass((("b", "b"),)), ONE),
-            Mult(Charclass((("c", "c"),)), ONE),
-            Mult(Charclass((("d", "d"),)), ONE),
-            Mult(Charclass((("e", "e"),)), ONE),
-            Mult(~Charclass((("f", "f"), ("g", "g"))), STAR),
-            Mult(Charclass((("h", "h"),)), Multiplier(Bound(5), Bound(5))),
-            Mult(Charclass(
-                tuple((char, char) for char in "abcdefghijklmnopqrstuvwxyz")
-            ), PLUS),
+            Mult(Charclass("a"), ONE),
+            Mult(Charclass("b"), ONE),
+            Mult(Charclass("c"), ONE),
+            Mult(Charclass("d"), ONE),
+            Mult(Charclass("e"), ONE),
+            Mult(~Charclass("fg"), STAR),
+            Mult(Charclass("h"), Multiplier(Bound(5), Bound(5))),
+            Mult(Charclass("abcdefghijklmnopqrstuvwxyz"), PLUS),
         )
     )
     assert parse("[bc]*[ab]*") == Pattern(
         Conc(
-            Mult(Charclass((("b", "b"), ("c", "c"))), STAR),
-            Mult(Charclass((("a", "a"), ("b", "b"))), STAR),
+            Mult(Charclass("bc"), STAR),
+            Mult(Charclass("ab"), STAR),
         )
     )
     assert parse("abc...") == Pattern(
         Conc(
-            Mult(Charclass((("a", "a"),)), ONE),
-            Mult(Charclass((("b", "b"),)), ONE),
-            Mult(Charclass((("c", "c"),)), ONE),
+            Mult(Charclass("a"), ONE),
+            Mult(Charclass("b"), ONE),
+            Mult(Charclass("c"), ONE),
             Mult(DOT, ONE),
             Mult(DOT, ONE),
             Mult(DOT, ONE),
@@ -273,9 +163,9 @@ def test_conc_parsing() -> None:
     assert parse("\\d{4}-\\d{2}-\\d{2}") == Pattern(
         Conc(
             Mult(DIGIT, Multiplier(Bound(4), Bound(4))),
-            Mult(Charclass((("-", "-"),)), ONE),
+            Mult(Charclass("-"), ONE),
             Mult(DIGIT, Multiplier(Bound(2), Bound(2))),
-            Mult(Charclass((("-", "-"),)), ONE),
+            Mult(Charclass("-"), ONE),
             Mult(DIGIT, Multiplier(Bound(2), Bound(2))),
         )
     )
@@ -284,25 +174,25 @@ def test_conc_parsing() -> None:
 def test_pattern_parsing() -> None:
     assert parse("abc|def(ghi|jkl)") == Pattern(
         Conc(
-            Mult(Charclass((("a", "a"),)), ONE),
-            Mult(Charclass((("b", "b"),)), ONE),
-            Mult(Charclass((("c", "c"),)), ONE),
+            Mult(Charclass("a"), ONE),
+            Mult(Charclass("b"), ONE),
+            Mult(Charclass("c"), ONE),
         ),
         Conc(
-            Mult(Charclass((("d", "d"),)), ONE),
-            Mult(Charclass((("e", "e"),)), ONE),
-            Mult(Charclass((("f", "f"),)), ONE),
+            Mult(Charclass("d"), ONE),
+            Mult(Charclass("e"), ONE),
+            Mult(Charclass("f"), ONE),
             Mult(
                 Pattern(
                     Conc(
-                        Mult(Charclass((("g", "g"),)), ONE),
-                        Mult(Charclass((("h", "h"),)), ONE),
-                        Mult(Charclass((("i", "i"),)), ONE),
+                        Mult(Charclass("g"), ONE),
+                        Mult(Charclass("h"), ONE),
+                        Mult(Charclass("i"), ONE),
                     ),
                     Conc(
-                        Mult(Charclass((("j", "j"),)), ONE),
-                        Mult(Charclass((("k", "k"),)), ONE),
-                        Mult(Charclass((("l", "l"),)), ONE),
+                        Mult(Charclass("j"), ONE),
+                        Mult(Charclass("k"), ONE),
+                        Mult(Charclass("l"), ONE),
                     ),
                 ),
                 ONE,
