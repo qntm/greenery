@@ -718,8 +718,8 @@ def test_dead_default() -> None:
             5: {Charclass((("/", "/"),)): 5, ~Charclass((("/", "/"), ("*", "*"))): 5, Charclass((("*", "*"),)): 5},
         },
     )
-    assert blockquote.accepts(["/", "*", "whatever", "*", "/"])
-    assert not blockquote.accepts(["*", "*", "whatever", "*", "/"])
+    assert blockquote.accepts("/*whatever*/")
+    assert not blockquote.accepts("**whatever*/")
     assert (
         str(blockquote)
         == "  name final? \\* / [^*/] \n"
@@ -741,7 +741,7 @@ def test_dead_default() -> None:
     # strings.
     # reversed(blockquote)
     blockquote.reversed()
-    assert not blockquote.everythingbut().accepts(["/", "*", "whatever", "*", "/"])
+    assert not blockquote.everythingbut().accepts("/*whatever*/")
 
     # deliberately seek oblivion
     assert blockquote.everythingbut().accepts(["*"])

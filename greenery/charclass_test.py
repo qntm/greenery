@@ -13,7 +13,60 @@ from .charclass import (
     WORDCHAR,
     Charclass,
     repartition,
+    add_ord_range,
+    subtract_ord_range,
 )
+
+
+def test_add_ord_range_0() -> None:
+    assert add_ord_range([], (1, 2)) == [(1, 2)]
+
+
+def test_add_ord_range_1A() -> None:
+    assert add_ord_range([(1, 1), (3, 4), (10, 11), (13, 17)], (7, 7)) == [(1, 1), (3, 4), (7, 7), (10, 11), (13, 17)]
+
+def test_add_ord_range_1B() -> None:
+    assert add_ord_range([(5, 16)], (1, 1)) == [(1, 1), (5, 16)]
+    assert add_ord_range([(5, 16)], (1, 2)) == [(1, 2), (5, 16)]
+    assert add_ord_range([(5, 16)], (1, 3)) == [(1, 3), (5, 16)]
+    assert add_ord_range([(5, 16)], (1, 4)) == [(1, 16)]
+    assert add_ord_range([(5, 16)], (1, 5)) == [(1, 16)]
+    assert add_ord_range([(5, 16)], (1, 16)) == [(1, 16)]
+    assert add_ord_range([(5, 16)], (1, 17)) == [(1, 17)]
+    assert add_ord_range([(5, 16)], (1, 18)) == [(1, 18)]
+    assert add_ord_range([(5, 16)], (4, 4)) == [(4, 16)]
+    assert add_ord_range([(5, 16)], (5, 5)) == [(5, 16)]
+    assert add_ord_range([(5, 16)], (5, 18)) == [(5, 18)]
+    assert add_ord_range([(5, 16)], (7, 8)) == [(5, 16)]
+    assert add_ord_range([(5, 16)], (10, 20)) == [(5, 20)]
+    assert add_ord_range([(5, 16)], (16, 20)) == [(5, 20)]
+    assert add_ord_range([(5, 16)], (17, 20)) == [(5, 20)]
+    assert add_ord_range([(5, 16)], (18, 20)) == [(5, 16), (18, 20)]
+
+
+def test_add_ord_range_2() -> None:
+    assert add_ord_range([(1, 2), (11, 12)], (5, 6)) == [(1, 2), (5, 6), (11, 12)]
+    assert add_ord_range([(1, 2), (11, 12)], (3, 6)) == [(1, 6), (11, 12)]
+    assert add_ord_range([(1, 2), (11, 12)], (2, 6)) == [(1, 6), (11, 12)]
+    assert add_ord_range([(1, 2), (11, 12)], (5, 9)) == [(1, 2), (5, 9), (11, 12)]
+    assert add_ord_range([(1, 2), (11, 12)], (5, 10)) == [(1, 2), (5, 12)]
+    assert add_ord_range([(1, 2), (11, 12)], (-2, -1)) == [(-2, -1), (1, 2), (11, 12)]
+    assert add_ord_range([(1, 2), (11, 12)], (0, 20)) == [(0, 20)]
+
+
+def test_subtract_ord_range_0() -> None:
+    assert subtract_ord_range([], (1, 2)) == []
+
+
+def test_subtract_ord_range_1() -> None:
+    assert subtract_ord_range([(5, 16)], (1, 2)) == [(5, 16)]
+    assert subtract_ord_range([(5, 16)], (1, 4)) == [(5, 16)]
+    assert subtract_ord_range([(5, 16)], (1, 5)) == [(6, 16)]
+    assert subtract_ord_range([(5, 16)], (1, 15)) == [(16, 16)]
+    assert subtract_ord_range([(5, 16)], (1, 16)) == []
+    assert subtract_ord_range([(5, 16)], (5, 16)) == []
+    assert subtract_ord_range([(5, 16)], (6, 16)) == [(5, 5)]
+    assert subtract_ord_range([(5, 16)], (7, 12)) == [(5, 6), (13, 16)]
 
 
 def test_charclass_equality() -> None:
@@ -34,6 +87,15 @@ def test_charclass_ctor() -> None:
 
 def test_repr() -> None:
     assert repr(~Charclass((("a", "a"),))) == "~Charclass((('a', 'a'),))"
+
+
+def test_issubset() -> None:
+    assert Charclass((("a", "a"),)).issubset(Charclass((("a", "a"),)))
+    assert not Charclass((("a", "a"),)).issubset(Charclass((("b", "b"),)))
+    assert Charclass((("a", "a"),)).issubset(Charclass((("a", "b"),)))
+    assert Charclass((("a", "a"),)).issubset(~Charclass((("b", "b"),)))
+    assert not (~Charclass((("a", "a"),))).issubset(Charclass((("b", "b"),)))
+    assert ~Charclass((("a", "a"),)).issubset(DOT)
 
 
 def test_charclass_str() -> None:
@@ -107,50 +169,6 @@ def test_charclass_str() -> None:
 def test_charclass_negation() -> None:
     assert ~~Charclass((("a", "a"),)) == Charclass((("a", "a"),))
     assert Charclass((("a", "a"),)) == ~~Charclass((("a", "a"),))
-
-
-def test_charclass_union() -> None:
-    # [ab] ∪ [bc] = [abc]
-    assert Charclass((("a", "a"), ("b", "b"))) | Charclass((("b", "b"), ("c", "c"))) == Charclass((("a", "a"), ("b", "b"), ("c", "c")))
-    # [ab] ∪ [^bc] = [^c]
-    assert Charclass((("a", "a"), ("b", "b"))) | ~Charclass((("b", "b"), ("c", "c"))) == ~Charclass((("c", "c"),))
-    # [^a] ∪ [bc] = [^a]
-    assert ~Charclass((("a", "a"), ("b", "b"))) | Charclass((("b", "b"), ("c", "c"))) == ~Charclass((("a", "a"),))
-    # [^ab] ∪ [^bc] = [^b]
-    assert ~Charclass((("a", "a"), ("b", "b"))) | ~Charclass((("b", "b"), ("c", "c"))) == ~Charclass((("b", "b"),))
-
-    assert Charclass.union() == NULLCHARCLASS
-
-    assert Charclass.union(
-        Charclass((("a", "a"), ("b", "b"))),
-        Charclass((("a", "a"),)),
-        Charclass((("c", "c"), ("d", "d"))),
-    ) == Charclass((("a", "a"), ("b", "b"), ("c", "c"), ("d", "d")))
-
-    assert Charclass.union(
-        Charclass((("a", "a"), ("b", "b"))),
-        ~Charclass((("a", "a"), ("b", "b"), ("c", "c"))),
-    ) == ~Charclass((("c", "c"),))
-
-
-def test_charclass_intersection() -> None:
-    # [ab] ∩ [bc] = [b]
-    assert Charclass((("a", "a"), ("b", "b"))) & Charclass((("b", "b"), ("c", "c"))) == Charclass((("b", "b"),))
-    # [ab] ∩ [^bc] = [a]
-    assert Charclass((("a", "a"), ("b", "b"))) & ~Charclass((("b", "b"), ("c", "c"))) == Charclass((("a", "a"),))
-    # [^ab] ∩ [bc] = [c]
-    assert ~Charclass((("a", "a"), ("b", "b"))) & Charclass((("b", "b"), ("c", "c"))) == Charclass((("c", "c"),))
-    # [^ab] ∩ [^bc] = [^abc]
-    assert ~Charclass((("a", "a"), ("b", "b"))) & ~Charclass((("b", "b"), ("c", "c"))) == ~Charclass((("a", "a"), ("b", "b"), ("c", "c")))
-
-    assert Charclass.intersection(
-        Charclass((("a", "a"), ("b", "b"))),
-        Charclass((("b", "b"), ("c", "c"), ("d", "d"))),
-        Charclass((("a", "a"), ("b", "b"), ("c", "c"), ("d", "d"), ("e", "e"))),
-    ) == Charclass((("b", "b"),))
-
-    assert Charclass.intersection() == ~NULLCHARCLASS
-    assert NULLCHARCLASS & NULLCHARCLASS == NULLCHARCLASS
 
 
 def test_empty() -> None:

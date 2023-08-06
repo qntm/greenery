@@ -19,6 +19,105 @@ from dataclasses import dataclass
 from typing import ClassVar, Dict, Iterable, List, Mapping, Tuple
 
 
+def add_ord_range(ord_ranges, new_ord_range):
+    """
+    Assume all existing ord ranges are sorted, and also disjoint
+    So no cases of [[12, 17], [2, 3]] or [[4, 6], [7, 8]].
+    Potentially some performance enhancement is possible here, stop
+    cloning `ord_ranges` over and over?
+    """
+    # All ranges before this index
+    # fit strictly before the newcomer
+    start = 0
+
+    # All ranges with this index or larger
+    # fit strictly after the newcomer
+    end = len(ord_ranges)
+
+    for i in range(len(ord_ranges)):
+        if ord_ranges[i][1] + 1 < new_ord_range[0]:
+            start = i + 1
+        if new_ord_range[1] + 1 < ord_ranges[i][0]:
+            end = i
+            break
+
+    # Ranges between those indices will be spliced out and replaced:
+    if start < end:
+        new_ord_range = (
+            min(new_ord_range[0], ord_ranges[start][0]),
+            max(new_ord_range[1], ord_ranges[end - 1][1]),
+        )
+    return ord_ranges[:start] + [new_ord_range] + ord_ranges[end:]
+
+
+def intersect_ord_range(ord_ranges, new_ord_range):
+    """
+    Assume all existing ord ranges are sorted, and also disjoint
+    So no cases of [[12, 17], [2, 3]] or [[4, 6], [7, 8]].
+    Potentially some performance enhancement is possible here, stop
+    cloning `ord_ranges` over and over?
+    """
+    # All ranges before this index
+    # fit strictly before the newcomer
+    start = 0
+
+    # All ranges with this index or larger
+    # fit strictly after the newcomer
+    end = len(ord_ranges)
+
+    for i in range(len(ord_ranges)):
+        if ord_ranges[i][1] + 1 < new_ord_range[0]:
+            start = i + 1
+        if new_ord_range[1] + 1 < ord_ranges[i][0]:
+            end = i
+            break
+
+    # Ranges between those indices will be spliced out and replaced
+    new_ord_ranges = ord_ranges[start:end]
+    if start < end:
+        new_ord_ranges[start] = (
+            max(new_ord_ranges[start][0], new_ord_range[0]),
+            new_ord_ranges[start][1]
+        )
+        new_ord_ranges[end - 1] = (
+            new_ord_ranges[end - 1][0],
+            min(new_ord_ranges[end - 1][1], new_ord_range[1]),
+        )
+    return new_ord_ranges
+
+
+def subtract_ord_range(ord_ranges, new_ord_range):
+    """
+    Assume all existing ord ranges are sorted, and also disjoint
+    So no cases of [[12, 17], [2, 3]] or [[4, 6], [7, 8]].
+    Potentially some performance enhancement is possible here, stop
+    cloning `ord_ranges` over and over?
+    """
+    # All ranges before this index
+    # fit strictly before the newcomer
+    start = 0
+
+    # All ranges with this index or larger
+    # fit strictly after the newcomer
+    end = len(ord_ranges)
+
+    for i in range(len(ord_ranges)):
+        if ord_ranges[i][1] + 1 < new_ord_range[0]:
+            start = i + 1
+        if new_ord_range[1] + 1 < ord_ranges[i][0]:
+            end = i
+            break
+
+    # Ranges between those indices will be spliced out and maybe replaced:
+    new_ord_ranges = []
+    if start < end:
+        if ord_ranges[start][0] < new_ord_range[0]:
+            new_ord_ranges.append((ord_ranges[start][0], new_ord_range[0] - 1))
+        if ord_ranges[end - 1][1] > new_ord_range[1]:
+            new_ord_ranges.append((new_ord_range[1] + 1, ord_ranges[end - 1][1]))
+    return ord_ranges[:start] + new_ord_ranges + ord_ranges[end:]
+
+
 @dataclass(frozen=True, init=False)
 class Charclass:
     """
@@ -30,14 +129,14 @@ class Charclass:
     combination functions.
     """
 
-    ranges: Tuple[Tuple[str, str], ...]
+    ord_ranges: List[Tuple[int, int], ...]
     negated: bool
 
     def __init__(self, ranges: Tuple[Tuple[str, str]] = (), negated: bool = False):
         if not isinstance(ranges, tuple):
             raise TypeError(f"Bad ranges: {ranges!r}")
         for range in ranges:
-            if range[0] != range[1]:
+            if len(range) != 2 or range[0] > range[1]:
                 raise Exception('Bad range')
             for char in range:
                 if not isinstance(char, str):
@@ -45,28 +144,33 @@ class Charclass:
                 if len(char) != 1:
                     raise ValueError("`Charclass` can only contain single chars", char)
 
-        object.__setattr__(self, "ranges", tuple(sorted(ranges)))
+        # Rebalance ranges!
+        ord_ranges = []
+        for (first, last) in ranges:
+            ord_ranges = add_ord_range(ord_ranges, (ord(first), ord(last)))
+        ranges = tuple((chr(first_u), chr(last_u)) for (first_u, last_u) in ord_ranges)
+
+        object.__setattr__(self, "ranges", ranges)
+        object.__setattr__(self, "ord_ranges", tuple(ord_ranges))
         object.__setattr__(self, "negated", negated)
 
     def __lt__(self, other: Charclass, /) -> bool:
         if self.negated < other.negated:
             return True
-        if self.negated == other.negated:
-            self_min = min(ord(range[0]) for range in self.ranges)
-            other_min = min(ord(range[0]) for range in other.ranges)
-            if self_min < other_min:
+        if self.negated == other.negated and \
+        self.ord_ranges[0][0] < other.ord_ranges[0][0]:
                 return True
         return False
 
     def __eq__(self, other: object, /) -> bool:
         return (
             isinstance(other, Charclass)
-            and self.ranges == other.ranges
+            and self.ord_ranges == other.ord_ranges
             and self.negated == other.negated
         )
 
     def __hash__(self, /) -> int:
-        return hash((self.ranges, self.negated))
+        return hash((self.ord_ranges, self.negated))
 
     # These are the characters carrying special meanings when they appear
     # "outdoors" within a regular expression. To be interpreted literally, they
@@ -111,8 +215,10 @@ class Charclass:
             return f"[^{self.escape()}]"
 
         # single character, not contained inside square brackets.
-        if len(self.ranges) == 1 and self.ranges[0][0] == self.ranges[0][1]:
-            char = self.ranges[0][0]
+        if len(self.ord_ranges) == 1 and \
+        self.ord_ranges[0][0] == self.ord_ranges[0][1]:
+            u = self.ord_ranges[0][0]
+            char = chr(u)
 
             # e.g. if char is "\t", return "\\t"
             if char in escapes:
@@ -124,8 +230,8 @@ class Charclass:
             # If char is an ASCII control character, don't print it directly,
             # return a hex escape sequence e.g. "\\x00". Note that this
             # includes tab and other characters already handled above
-            if 0 <= ord(char) <= 0x1F or ord(char) == 0x7F:
-                return f"\\x{ord(char):02x}"
+            if 0 <= u <= 0x1F or u == 0x7F:
+                return f"\\x{u:02x}"
 
             return char
 
@@ -147,62 +253,42 @@ class Charclass:
 
             return char
 
-        def record_range() -> str:
-            # there's no point in putting a range when the whole thing is
-            # 3 characters or fewer. "abc" -> "abc" but "abcd" -> "a-d"
-            strs = [
-                # "ab" or "abc" or "abcd"
-                "".join(escape_char(c) for c in current_range),
-                # "a-b" or "a-c" or "a-d"
-                (escape_char(current_range[0]) + "-" + escape_char(current_range[-1])),
-            ]
-            return sorted(strs, key=len)[0]
-
         output = ""
 
-        # use shorthand for known character ranges
-        # note the nested processing order. DO NOT process \d before processing
-        # \w. if more character class constants arise which do not nest nicely,
-        # a problem will arise because there is no clear ordering to use...
-
-        # look for ranges
-        current_range = ""
-        for char in sorted((range[0] for range in self.ranges), key=ord):
-            # range is not empty: new char must fit after previous one
-            if current_range:
-                i = ord(char)
-
-                # char doesn't fit old range: restart
-                if i != ord(current_range[-1]) + 1:
-                    output += record_range()
-                    current_range = ""
-
-            current_range += char
-
-        if current_range:
-            output += record_range()
+        for (first_u, last_u) in self.ord_ranges:
+            # there's no point in putting a range when the whole thing is
+            # 3 characters or fewer. "abc" -> "abc" but "abcd" -> "a-d"
+            if last_u <= first_u + 2:
+                # "a" or "ab" or "abc" or "abcd"
+                for u in range(first_u, last_u + 1):
+                    output += escape_char(chr(u))
+            else:
+                # "a-b" or "a-c" or "a-d"
+                output += escape_char(chr(first_u)) + "-" + escape_char(chr(last_u))
 
         return output
 
     def get_chars(self, /):
-        for (first, last) in self.ranges:
-            for u in range(ord(first), ord(last) + 1):
+        for (first_u, last_u) in self.ord_ranges:
+            for u in range(first_u, last_u + 1):
                 yield chr(u)
 
     def num_chars(self, /) -> int:
         num = 0
-        for (first, last) in self.ranges:
-            num += ord(last) + 1 - ord(first)
+        for (first_u, last_u) in self.ord_ranges:
+            num += last_u + 1 - first_u
         return num
 
     def has_char(self, char, /) -> Boolean:
-        for (first, last) in self.ranges:
-            if first <= char <= last:
+        u = ord(char)
+        for (first_u, last_u) in self.ord_ranges:
+            if first_u <= u <= last_u:
                 return True
         return False
 
     def __repr__(self, /) -> str:
         sign = "~" if self.negated else ""
+        # TODO
         return f"{sign}Charclass({self.ranges!r})"
 
     def reduce(self, /) -> Charclass:
@@ -210,7 +296,7 @@ class Charclass:
         return self
 
     def empty(self, /) -> bool:
-        return not self.ranges and not self.negated
+        return not self.ord_ranges and not self.negated
 
     # set operations
     def negate(self, /) -> Charclass:
@@ -226,30 +312,29 @@ class Charclass:
     def reversed(self, /) -> Charclass:
         return self
 
-    def union(*predicates: Charclass) -> Charclass:
-        # TODO
-        closed_sets = [frozenset({range[0] for range in cc.ranges}) for cc in predicates if not cc.negated]
-        include = frozenset.union(*closed_sets) if closed_sets else frozenset()
-
-        open_sets = [frozenset({range[0] for range in cc.ranges}) for cc in predicates if cc.negated]
-        exclude = frozenset.intersection(*open_sets) if open_sets else frozenset()
-
-        is_open = bool(open_sets)
-        chars = (exclude - include) if is_open else (include - exclude)
-
-        return Charclass(tuple((char, char) for char in chars), negated=is_open)
-
-    __or__ = union
-
-    def intersection(*predicates: Charclass) -> Charclass:
-        # ¬A AND ¬B = ¬(A OR B)
-        # ¬A AND B = B - A
-        # A AND ¬B = A - B
-        # A AND B
-        return ~Charclass.union(*(~cc for cc in predicates))
-
-    __and__ = intersection
-
+    def issubset(self, other: Charclass, /) -> bool:
+        # TODO: performance
+        if self.negated:
+            if other.negated:
+                for char in other.get_chars():
+                    if not self.has_char(char):
+                        return False
+                return True
+            else:
+                # Technically this isn't completely impossible but B would have
+                # to be gigantic. TODO: maybe ditch the negation dealie?
+                return False
+        else:
+            if other.negated:
+                for char in self.get_chars():
+                    if other.has_char(char):
+                        return False
+                return True
+            else:
+                for char in self.get_chars():
+                    if not other.has_char(char):
+                        return False
+                return True
 
 # Standard character classes
 WORDCHAR = Charclass(
@@ -305,18 +390,16 @@ def repartition(
     """
     alphabet = set()
     for charclass in charclasses:
-        for range in charclass.ranges:
-            alphabet.add(range[0])
+        for (first_u, last_u) in charclass.ord_ranges:
+            for u in range(first_u, last_u + 1):
+                alphabet.add(chr(u))
 
     # Group all of the possible characters by "signature".
     # A signature is a tuple of Booleans telling us which character classes
     # a particular character is mentioned in.
     signatures: Dict[Tuple[bool, ...], List[str]] = {}
     for char in sorted(alphabet):
-        signature = tuple(
-            char in [range[0] for range in charclass.ranges]
-            for charclass in charclasses
-        )
+        signature = tuple(charclass.has_char(char) for charclass in charclasses)
         if signature not in signatures:
             signatures[signature] = []
         signatures[signature].append(char)
@@ -335,7 +418,7 @@ def repartition(
     for charclass in charclasses:
         partition[charclass] = []
         for newcharclass in newcharclasses:
-            if newcharclass & charclass == newcharclass:
+            if newcharclass.issubset(charclass):
                 partition[charclass].append(newcharclass)
 
     return partition
