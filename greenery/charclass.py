@@ -30,11 +30,10 @@ class Charclass:
     combination functions.
     """
 
-    chars: frozenset[str]
+    ranges: List[Tuple[str, str]]
     negated: bool
 
     def __init__(self, chars: Iterable[str] = (), negated: bool = False):
-        chars = frozenset(chars)
         # chars should consist only of chars
         for c in chars:
             if not isinstance(c, str):
@@ -42,27 +41,28 @@ class Charclass:
             if len(c) != 1:
                 raise ValueError("`Charclass` can only contain single chars", c)
 
-        object.__setattr__(self, "chars", chars)
+        object.__setattr__(self, "ranges", tuple((c, c) for c in sorted(chars)))
         object.__setattr__(self, "negated", negated)
 
     def __lt__(self, other: Charclass, /) -> bool:
         if self.negated < other.negated:
             return True
-        if self.negated == other.negated and min(
-            ord(char) for char in self.chars
-        ) < min(ord(char) for char in other.chars):
-            return True
+        if self.negated == other.negated:
+            self_min = min(ord(range[0]) for range in self.ranges)
+            other_min = min(ord(range[0]) for range in other.ranges)
+            if self_min < other_min:
+                return True
         return False
 
     def __eq__(self, other: object, /) -> bool:
         return (
             isinstance(other, Charclass)
-            and self.chars == other.chars
+            and self.ranges == other.ranges
             and self.negated == other.negated
         )
 
     def __hash__(self, /) -> int:
-        return hash((self.chars, self.negated))
+        return hash((self.ranges, self.negated))
 
     # These are the characters carrying special meanings when they appear
     # "outdoors" within a regular expression. To be interpreted literally, they
@@ -107,9 +107,8 @@ class Charclass:
             return f"[^{self.escape()}]"
 
         # single character, not contained inside square brackets.
-        if len(self.chars) == 1:
-            # Python lacks the Axiom of Choice
-            char = "".join(self.chars)
+        if len(self.ranges) == 1 and self.ranges[0][0] == self.ranges[0][1]:
+            char = self.ranges[0][0]
 
             # e.g. if char is "\t", return "\\t"
             if char in escapes:
@@ -164,7 +163,7 @@ class Charclass:
 
         # look for ranges
         current_range = ""
-        for char in sorted(self.chars, key=ord):
+        for char in sorted((range[0] for range in self.ranges), key=ord):
             # range is not empty: new char must fit after previous one
             if current_range:
                 i = ord(char)
@@ -181,9 +180,21 @@ class Charclass:
 
         return output
 
+    def num_chars(self, /) -> int:
+        num = 0
+        for range in self.ranges:
+            num += ord(range[1]) - ord(range[0]) + 1
+        return num
+
+    def has_char(self, char, /) -> Boolean:
+        for range in self.ranges:
+            if range[0] <= char <= range[1]:
+                return True
+        return False
+
     def __repr__(self, /) -> str:
         sign = "~" if self.negated else ""
-        chars = "".join(sorted(self.chars))
+        chars = "".join(sorted(range[0] for range in self.ranges))
         return f"{sign}Charclass({chars!r})"
 
     def reduce(self, /) -> Charclass:
@@ -191,7 +202,7 @@ class Charclass:
         return self
 
     def empty(self, /) -> bool:
-        return not self.chars and not self.negated
+        return not self.ranges and not self.negated
 
     # set operations
     def negate(self, /) -> Charclass:
@@ -199,7 +210,7 @@ class Charclass:
         Negate the current `Charclass`. e.g. [ab] becomes [^ab]. Call
         using "charclass2 = ~charclass1"
         """
-        return Charclass(self.chars, negated=not self.negated)
+        return Charclass("".join(range[0] for range in self.ranges), negated=not self.negated)
 
     def __invert__(self, /) -> Charclass:
         return self.negate()
@@ -208,10 +219,10 @@ class Charclass:
         return self
 
     def union(*predicates: Charclass) -> Charclass:
-        closed_sets = [cc.chars for cc in predicates if not cc.negated]
+        closed_sets = [frozenset({range[0] for range in cc.ranges}) for cc in predicates if not cc.negated]
         include = frozenset.union(*closed_sets) if closed_sets else frozenset()
 
-        open_sets = [cc.chars for cc in predicates if cc.negated]
+        open_sets = [frozenset({range[0] for range in cc.ranges}) for cc in predicates if cc.negated]
         exclude = frozenset.intersection(*open_sets) if open_sets else frozenset()
 
         is_open = bool(open_sets)
@@ -279,15 +290,18 @@ def repartition(
     """
     alphabet = set()
     for charclass in charclasses:
-        for char in charclass.chars:
-            alphabet.add(char)
+        for range in charclass.ranges:
+            alphabet.add(range[0])
 
     # Group all of the possible characters by "signature".
     # A signature is a tuple of Booleans telling us which character classes
     # a particular character is mentioned in.
     signatures: Dict[Tuple[bool, ...], List[str]] = {}
     for char in sorted(alphabet):
-        signature = tuple(char in charclass.chars for charclass in charclasses)
+        signature = tuple(
+            char in [range[0] for range in charclass.ranges]
+            for charclass in charclasses
+        )
         if signature not in signatures:
             signatures[signature] = []
         signatures[signature].append(char)

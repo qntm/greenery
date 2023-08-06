@@ -100,35 +100,36 @@ class Fsm:
         for state, state_trans in map.items():
             if state not in states:
                 raise ValueError(f"Transition from unknown state {state!r}")
-            for symbol, dest in state_trans.items():
-                if symbol not in alphabet:
+            for charclass, dest in state_trans.items():
+                if charclass not in alphabet:
                     raise ValueError(
-                        f"Invalid symbol {symbol!r}"
+                        f"Invalid symbol {charclass!r}"
                         f" in transition from {state!r}"
                         f" to {dest!r}"
                     )
                 if dest not in states:
                     raise ValueError(
                         f"Transition for state {state!r}"
-                        f" and symbol {symbol!r}"
+                        f" and symbol {charclass!r}"
                         f" leads to {dest!r},"
                         " which is not a state"
                     )
         for state in states:
             if state not in map:
                 raise ValueError(f"State {state!r} missing from map")
-            for symbol in alphabet:
-                if symbol not in map[state]:
-                    raise ValueError(f"Symbol {symbol!r} missing from map[{state!r}]")
+            for charclass in alphabet:
+                if charclass not in map[state]:
+                    raise ValueError(f"Symbol {charclass!r} missing from map[{state!r}]")
 
         chars = set()
         negated_chars = set()
-        for symbol in alphabet:
-            target = negated_chars if symbol.negated else chars
-            for char in symbol.chars:
-                if char in target:
+        for charclass in alphabet:
+            target = negated_chars if charclass.negated else chars
+            for range in charclass.ranges:
+                # TODO
+                if range[0] in target:
                     raise ValueError(f"Alphabet {alphabet!r} has overlaps")
-                target.add(char)
+                target.add(range[0])
 
         if chars != negated_chars:
             raise ValueError(f"Alphabet {alphabet!r} is not a proper partition")
@@ -149,14 +150,10 @@ class Fsm:
         """
         state = self.initial
         for char in chars:
-            found = None
             for charclass in self.map[state]:
-                if (char in charclass.chars) != charclass.negated:
-                    found = charclass
+                if charclass.has_char(char) != charclass.negated:
+                    state = self.map[state][charclass]
                     break
-            if found is None:
-                raise Exception("This should be impossible")
-            state = self.map[state][found]
         return state in self.finals
 
     def __contains__(self, string: Iterable[str], /) -> bool:
@@ -542,7 +539,7 @@ class Fsm:
                 if charclass.negated:
                     chars = otherchars
                 else:
-                    chars = charclass.chars
+                    chars = [range[0] for range in charclass.ranges]
                 for char in sorted(chars):
                     nstate = self.map[cstate][charclass]
                     nstring = cstring + char
@@ -618,12 +615,12 @@ class Fsm:
 
                 num_strings[state] = None  # i.e. "computing..."
                 n = 0
-                for symbol in self.map[state]:
-                    if symbol.negated:
-                        num_transitions = (1 << 20) + (1 << 16) - len(symbol.chars)
+                for charclass in self.map[state]:
+                    if charclass.negated:
+                        num_transitions = (1 << 20) + (1 << 16) - charclass.num_chars()
                     else:
-                        num_transitions = len(symbol.chars)
-                    nstate = self.map[state][symbol]
+                        num_transitions = charclass.num_chars()
+                    nstate = self.map[state][charclass]
                     if nstate in self.finals:
                         n += num_transitions
                     n += num_transitions * get_num_strings(nstate)
@@ -729,14 +726,10 @@ class Fsm:
         # Consume the input string.
         state = self.initial
         for char in string:
-            found = None
             for charclass in self.map[state]:
-                if (char in charclass.chars) != charclass.negated:
-                    found = charclass
+                if charclass.has_char(char) != charclass.negated:
+                    state = self.map[state][charclass]
                     break
-            if found is None:
-                raise Exception("This should be impossible")
-            state = self.map[state][found]
 
         # OK so now we have consumed that string, use the new location as
         # the starting point.
