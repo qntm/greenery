@@ -65,6 +65,22 @@ def test_negated_negatives_inside_charclasses() -> None:
     assert match_charclass("[^\\S \\D]", 0) == (NULLCHARCLASS, 8)
 
 
+def test_match_nightmare_charclass() -> None:
+    assert match_charclass("[\t\n\r -\uD7FF\uE000-\uFFFD\U00010000-\U0010FFFF]", 0) == (
+        Charclass(
+            (
+                ("\t", "\t"),
+                ("\n", "\n"),
+                ("\r", "\r"),
+                (" ", "\uD7FF"),
+                ("\uE000", "\uFFFD"),
+                ("\U00010000", "\U0010FFFF"),
+            )
+        ),
+        14,
+    )
+
+
 def test_mult_matching() -> None:
     assert match_mult("abcde[^fg]*", 5) == (Mult(~Charclass("fg"), STAR), 11)
     assert match_mult("abcde[^fg]*h{5}[a-z]+", 11) == (
@@ -191,3 +207,23 @@ def test_pattern_parsing() -> None:
 
     # Named groups
     assert parse("(?P<ng1>abc)") == parse("(abc)")
+
+
+def test_nightmare_pattern() -> None:
+    assert parse("[\t\n\r -\uD7FF\uE000-\uFFFD\U00010000-\U0010FFFF]*") == Pattern(
+        Conc(
+            Mult(
+                Charclass(
+                    (
+                        ("\t", "\t"),
+                        ("\n", "\n"),
+                        ("\r", "\r"),
+                        (" ", "\uD7FF"),
+                        ("\uE000", "\uFFFD"),
+                        ("\U00010000", "\U0010FFFF"),
+                    )
+                ),
+                STAR,
+            )
+        )
+    )

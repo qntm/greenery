@@ -1,3 +1,5 @@
+# pylint: disable=fixme,too-many-locals,too-many-branches
+
 from __future__ import annotations
 
 __all__ = (
@@ -11,13 +13,60 @@ __all__ = (
     "SPACECHAR",
     "WORDCHAR",
     "escapes",
+    "negate",
     "shorthand",
+    "repartition",
 )
 
 from dataclasses import dataclass
-from typing import ClassVar, Iterable, Mapping
+from typing import ClassVar, Dict, Iterable, Iterator, List, Mapping, Tuple
 
-from .fsm import ANYTHING_ELSE, AnythingElse, Fsm
+NUM_UNICODE_CHARS = (1 << 16) + (1 << 20)
+
+
+def negate(ord_ranges: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
+    u = 0
+    negated = []
+    for ord_range in ord_ranges:
+        if u < ord_range[0]:
+            negated.append((u, ord_range[0] - 1))
+        u = ord_range[1] + 1
+    if u < NUM_UNICODE_CHARS - 1:
+        negated.append((u, NUM_UNICODE_CHARS - 1))
+    return negated
+
+
+def add_ord_range(
+    ord_ranges: List[Tuple[int, int]], new_ord_range: Tuple[int, int]
+) -> List[Tuple[int, int]]:
+    """
+    Assume all existing ord ranges are sorted, and also disjoint
+    So no cases of [[12, 17], [2, 3]] or [[4, 6], [7, 8]].
+    Potentially some performance enhancement is possible here, stop
+    cloning `ord_ranges` over and over?
+    """
+    # All ranges before this index
+    # fit strictly before the newcomer
+    start = 0
+
+    # All ranges with this index or larger
+    # fit strictly after the newcomer
+    end = len(ord_ranges)
+
+    for i, ord_range in enumerate(ord_ranges):
+        if ord_range[1] + 1 < new_ord_range[0]:
+            start = i + 1
+        if new_ord_range[1] + 1 < ord_range[0]:
+            end = i
+            break
+
+    # Ranges between those indices will be spliced out and replaced.
+    if start < end:
+        new_ord_range = (
+            min(new_ord_range[0], ord_ranges[start][0]),
+            max(new_ord_range[1], ord_ranges[end - 1][1]),
+        )
+    return ord_ranges[:start] + [new_ord_range] + ord_ranges[end:]
 
 
 @dataclass(frozen=True, init=False)
@@ -31,30 +80,52 @@ class Charclass:
     combination functions.
     """
 
-    chars: frozenset[str]
+    ord_ranges: List[Tuple[int, int]]
     negated: bool
 
-    def __init__(self, chars: Iterable[str] = (), negated: bool = False):
-        chars = frozenset(chars)
-        # chars should consist only of chars
-        for c in chars:
-            if not isinstance(c, str):
-                raise TypeError(f"Can't put {c!r} in a `Charclass`", c)
-            if len(c) != 1:
-                raise ValueError("`Charclass` can only contain single chars", c)
+    def __init__(
+        self, ranges: str | Tuple[Tuple[str, str], ...] = "", negated: bool = False
+    ):
+        if isinstance(ranges, str):
+            ranges = tuple((char, char) for char in ranges)
+        if not isinstance(ranges, tuple):
+            raise TypeError(f"Bad ranges: {ranges!r}")
+        for r in ranges:
+            if len(r) != 2 or r[0] > r[1]:
+                raise ValueError(f"Bad range: {r!r}")
+            for char in r:
+                if not isinstance(char, str):
+                    raise TypeError(f"Can't put {char!r} in a `Charclass`", char)
+                if len(char) != 1:
+                    raise ValueError("`Charclass` can only contain single chars", char)
 
-        object.__setattr__(self, "chars", chars)
+        # Rebalance ranges!
+        ord_ranges: List[Tuple[int, int]] = []
+        for first, last in ranges:
+            ord_ranges = add_ord_range(ord_ranges, (ord(first), ord(last)))
+
+        object.__setattr__(self, "ord_ranges", tuple(ord_ranges))
         object.__setattr__(self, "negated", negated)
+
+    def __lt__(self, other: Charclass, /) -> bool:
+        if self.negated < other.negated:
+            return True
+        if (
+            self.negated == other.negated
+            and self.ord_ranges[0][0] < other.ord_ranges[0][0]
+        ):
+            return True
+        return False
 
     def __eq__(self, other: object, /) -> bool:
         return (
             isinstance(other, Charclass)
-            and self.chars == other.chars
+            and self.ord_ranges == other.ord_ranges
             and self.negated == other.negated
         )
 
     def __hash__(self, /) -> int:
-        return hash((self.chars, self.negated))
+        return hash((self.ord_ranges, self.negated))
 
     # These are the characters carrying special meanings when they appear
     # "outdoors" within a regular expression. To be interpreted literally, they
@@ -68,25 +139,6 @@ class Charclass:
     # also that the hyphen and caret do NOT appear above.
     classSpecial: ClassVar[frozenset[str]] = frozenset("\\[]^-")
 
-    # Shorthand codes for use inside `Charclass`es e.g. [abc\d]
-    w: ClassVar[frozenset[str]] = frozenset(
-        "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz"
-    )
-    d: ClassVar[frozenset[str]] = frozenset("0123456789")
-    s: ClassVar[frozenset[str]] = frozenset("\t\n\v\f\r ")
-
-    shorthand: ClassVar[Mapping[frozenset[str], str]] = {
-        w: "\\w",
-        d: "\\d",
-        s: "\\s",
-    }
-
-    negated_shorthand: ClassVar[Mapping[frozenset[str], str]] = {
-        w: "\\W",
-        d: "\\D",
-        s: "\\S",
-    }
-
     def __str__(self, /) -> str:
         # pylint: disable=too-many-return-statements
 
@@ -99,9 +151,9 @@ class Charclass:
             return f"[^{self.escape()}]"
 
         # single character, not contained inside square brackets.
-        if len(self.chars) == 1:
-            # Python lacks the Axiom of Choice
-            char = "".join(self.chars)
+        if len(self.ord_ranges) == 1 and self.ord_ranges[0][0] == self.ord_ranges[0][1]:
+            u = self.ord_ranges[0][0]
+            char = chr(u)
 
             # e.g. if char is "\t", return "\\t"
             if char in escapes:
@@ -113,8 +165,8 @@ class Charclass:
             # If char is an ASCII control character, don't print it directly,
             # return a hex escape sequence e.g. "\\x00". Note that this
             # includes tab and other characters already handled above
-            if 0 <= ord(char) <= 0x1F or ord(char) == 0x7F:
-                return f"\\x{ord(char):02x}"
+            if 0 <= u <= 0x1F or u == 0x7F:
+                return f"\\x{u:02x}"
 
             return char
 
@@ -136,77 +188,34 @@ class Charclass:
 
             return char
 
-        def record_range() -> str:
-            # there's no point in putting a range when the whole thing is
-            # 3 characters or fewer. "abc" -> "abc" but "abcd" -> "a-d"
-            strs = [
-                # "ab" or "abc" or "abcd"
-                "".join(escape_char(c) for c in current_range),
-                # "a-b" or "a-c" or "a-d"
-                (escape_char(current_range[0]) + "-" + escape_char(current_range[-1])),
-            ]
-            return sorted(strs, key=len)[0]
-
         output = ""
 
-        # use shorthand for known character ranges
-        # note the nested processing order. DO NOT process \d before processing
-        # \w. if more character class constants arise which do not nest nicely,
-        # a problem will arise because there is no clear ordering to use...
-
-        # look for ranges
-        current_range = ""
-        for char in sorted(self.chars, key=ord):
-            # range is not empty: new char must fit after previous one
-            if current_range:
-                i = ord(char)
-
-                # char doesn't fit old range: restart
-                if i != ord(current_range[-1]) + 1:
-                    output += record_range()
-                    current_range = ""
-
-            current_range += char
-
-        if current_range:
-            output += record_range()
+        for first_u, last_u in self.ord_ranges:
+            # there's no point in putting a range when the whole thing is
+            # 3 characters or fewer. "abc" -> "abc" but "abcd" -> "a-d"
+            if last_u <= first_u + 2:
+                # "a" or "ab" or "abc" or "abcd"
+                for u in range(first_u, last_u + 1):
+                    output += escape_char(chr(u))
+            else:
+                # "a-b" or "a-c" or "a-d"
+                output += escape_char(chr(first_u)) + "-" + escape_char(chr(last_u))
 
         return output
 
-    def to_fsm(
-        self,
-        /,
-        alphabet: Iterable[str | AnythingElse] | None = None,
-    ) -> Fsm:
-        alphabet = self.alphabet() if alphabet is None else frozenset(alphabet)
-
-        # If negated, make a singular FSM accepting any other characters
-        # If normal, make a singular FSM accepting only these characters
-        symbols = (alphabet - self.chars) if self.negated else self.chars
-
-        # State 0 is initial, 1 is final
-        return Fsm(
-            alphabet=set(alphabet),
-            states={0, 1},
-            initial=0,
-            finals={1},
-            map={0: {symbol: 1 for symbol in symbols}},
-        )
-
     def __repr__(self, /) -> str:
         sign = "~" if self.negated else ""
-        chars = "".join(sorted(self.chars))
-        return f"{sign}Charclass({chars!r})"
+        ranges = tuple(
+            (chr(first_u), chr(last_u)) for (first_u, last_u) in self.ord_ranges
+        )
+        return f"{sign}Charclass({ranges!r})"
 
     def reduce(self, /) -> Charclass:
         # `Charclass`es cannot be reduced.
         return self
 
-    def alphabet(self, /) -> frozenset[str | AnythingElse]:
-        return self.chars | {ANYTHING_ELSE}
-
     def empty(self, /) -> bool:
-        return not self.chars and not self.negated
+        return not self.ord_ranges and not self.negated
 
     # set operations
     def negate(self, /) -> Charclass:
@@ -214,34 +223,71 @@ class Charclass:
         Negate the current `Charclass`. e.g. [ab] becomes [^ab]. Call
         using "charclass2 = ~charclass1"
         """
-        return Charclass(self.chars, negated=not self.negated)
+        ranges = tuple(
+            (chr(first_u), chr(last_u)) for (first_u, last_u) in self.ord_ranges
+        )
+        return Charclass(ranges, negated=not self.negated)
 
     def __invert__(self, /) -> Charclass:
         return self.negate()
 
+    def get_chars(self, /) -> Iterator[str]:
+        """
+        Use this with caution, it can iterate over 1,000,000+ characters
+        """
+        for first_u, last_u in self.ord_ranges:
+            for u in range(first_u, last_u + 1):
+                yield chr(u)
+
+    def num_chars(self, /) -> int:
+        num = 0
+        for first_u, last_u in self.ord_ranges:
+            num += last_u + 1 - first_u
+        return NUM_UNICODE_CHARS - num if self.negated else num
+
+    def accepts(self, char: str, /) -> bool:
+        u = ord(char)
+        for first_u, last_u in self.ord_ranges:
+            if first_u <= u <= last_u:
+                return not self.negated
+        return self.negated
+
     def reversed(self, /) -> Charclass:
         return self
 
-    def union(*predicates: Charclass) -> Charclass:
-        closed_sets = [cc.chars for cc in predicates if not cc.negated]
-        include = frozenset.union(*closed_sets) if closed_sets else frozenset()
+    def union(self, other: Charclass, /) -> Charclass:
+        # TODO: make this able to efficiently unite many Charclasses at once,
+        # again
+        self_ord_ranges = list(self.ord_ranges)
+        if self.negated:
+            self_ord_ranges = negate(self_ord_ranges)
 
-        open_sets = [cc.chars for cc in predicates if cc.negated]
-        exclude = frozenset.intersection(*open_sets) if open_sets else frozenset()
+        other_ord_ranges = list(other.ord_ranges)
+        if other.negated:
+            other_ord_ranges = negate(other_ord_ranges)
 
-        is_open = bool(open_sets)
-        chars = (exclude - include) if is_open else (include - exclude)
+        new_ord_ranges = self_ord_ranges
+        for ord_range in other_ord_ranges:
+            new_ord_ranges = add_ord_range(new_ord_ranges, ord_range)
 
-        return Charclass(chars, negated=is_open)
+        new_negated = self.negated or other.negated
+        if new_negated:
+            new_ord_ranges = negate(new_ord_ranges)
+        new_ranges = tuple(
+            (chr(first_u), chr(last_u)) for (first_u, last_u) in new_ord_ranges
+        )
+        return Charclass(new_ranges, new_negated)
 
     __or__ = union
 
-    def intersection(*predicates: Charclass) -> Charclass:
-        # ¬A AND ¬B = ¬(A OR B)
-        # ¬A AND B = B - A
-        # A AND ¬B = A - B
-        # A AND B
-        return ~Charclass.union(*(~cc for cc in predicates))
+    def issubset(self, other: Charclass, /) -> bool:
+        return self | other == other
+
+    def intersection(self, other: Charclass, /) -> Charclass:
+        # TODO: is this actually efficient?
+        # TODO: make this able to efficiently intersect many Charclasses at once,
+        # again
+        return ~(~self | ~other)
 
     __and__ = intersection
 
@@ -280,3 +326,69 @@ escapes: Mapping[str, str] = {
     "\f": "\\f",  # form feed
     "\r": "\\r",  # carriage return
 }
+
+
+def repartition(
+    charclasses: Iterable[Charclass],
+) -> Mapping[Charclass, Iterable[Charclass]]:
+    """
+    Accept an iterable of `Charclass`es which may overlap somewhat.
+    Construct a minimal collection of `Charclass`es which partition the space
+    of all possible characters and can be combined to create all of the
+    originals.
+    Return a map from each original `Charclass` to its constituent pieces.
+    """
+    ord_range_boundaries = set()
+    for charclass in charclasses:
+        for first_u, last_u in charclass.ord_ranges:
+            ord_range_boundaries.add(first_u)
+            ord_range_boundaries.add(last_u + 1)
+    ord_range_boundaries_2 = sorted(ord_range_boundaries)
+
+    ord_ranges = []
+    for i, ord_range_boundary in enumerate(ord_range_boundaries_2):
+        if i + 1 < len(ord_range_boundaries_2):
+            ord_ranges.append((ord_range_boundary, ord_range_boundaries_2[i + 1] - 1))
+
+    # Group all of the possible ranges by "signature".
+    # A signature is a tuple of Booleans telling us which character classes
+    # a particular range is mentioned in.
+    # (Whether it's *accepted* is actually not relevant.)
+    signatures: Dict[Tuple[bool, ...], List[Tuple[int, int]]] = {}
+    for ord_range in ord_ranges:
+        signature = []
+        for charclass in charclasses:
+            ord_range_in_charclass = False
+            for x in charclass.ord_ranges:
+                if x[0] <= ord_range[0] and ord_range[1] <= x[1]:
+                    ord_range_in_charclass = True
+                    break
+            signature.append(ord_range_in_charclass)
+        signature2 = tuple(signature)
+        if signature2 not in signatures:
+            signatures[signature2] = []
+        signatures[signature2].append(ord_range)
+
+    # From the signatures we can gather the new Charclasses
+    newcharclasses = []
+    newcharclasses.append(
+        ~Charclass(
+            tuple((chr(first_u), chr(last_u)) for (first_u, last_u) in ord_ranges)
+        )
+    )
+    for ord_ranges2 in signatures.values():
+        newcharclasses.append(
+            Charclass(
+                tuple((chr(first_u), chr(last_u)) for (first_u, last_u) in ord_ranges2)
+            )
+        )
+
+    # Now compute the breakdowns
+    partition: Dict[Charclass, List[Charclass]] = {}
+    for charclass in charclasses:
+        partition[charclass] = []
+        for newcharclass in newcharclasses:
+            if newcharclass.issubset(charclass):
+                partition[charclass].append(newcharclass)
+
+    return partition

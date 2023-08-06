@@ -8,7 +8,17 @@ __all__ = (
 from typing import Collection, Tuple, TypeVar
 
 from .bound import INF, Bound
-from .charclass import Charclass, escapes, shorthand
+from .charclass import (
+    DIGIT,
+    NONDIGITCHAR,
+    NONSPACECHAR,
+    NONWORDCHAR,
+    SPACECHAR,
+    WORDCHAR,
+    Charclass,
+    escapes,
+    shorthand,
+)
 from .multiplier import Multiplier, symbolic
 from .rxelems import Conc, Mult, Pattern
 
@@ -107,21 +117,27 @@ def match_internal_char(string: str, i: int) -> MatchResult[str]:
     return char, j
 
 
-def match_class_interior_1(
+def match_inner_charclass(
     string: str,
     i: int,
-) -> MatchResult[tuple[frozenset[str], bool]]:
-    # Attempt 1: shorthand e.g. "\w"
-    for chars, cc_shorthand in Charclass.shorthand.items():
-        try:
-            return (chars, False), static(string, i, cc_shorthand)
-        except NoMatch:
-            pass
+) -> MatchResult[Charclass]:
+    """
+    We have to return several ranges, because of \\\\w etc.
+    """
+    # Attempt 1: shorthand
+    inner_shorthand = {
+        "\\w": WORDCHAR,
+        "\\d": DIGIT,
+        "\\s": SPACECHAR,
+        "\\W": NONWORDCHAR,
+        "\\D": NONDIGITCHAR,
+        "\\S": NONSPACECHAR,
+        # no ".": DOT,
+    }
 
-    # Attempt 1B: shorthand e.g. "\W"
-    for chars, cc_shorthand in Charclass.negated_shorthand.items():
+    for cc_shorthand, charclass in inner_shorthand.items():
         try:
-            return (chars, True), static(string, i, cc_shorthand)
+            return charclass, static(string, i, cc_shorthand)
         except NoMatch:
             pass
 
@@ -130,35 +146,31 @@ def match_class_interior_1(
         first, j = match_internal_char(string, i)  # `first` is "d"
         k = static(string, j, "-")
         last, k = match_internal_char(string, k)  # `last` is "h"
-
-        first_index = ord(first)  # 100
-        last_index = ord(last)  # 104
-
-        # Be strict here, "d-d" is not allowed
-        if first_index >= last_index:
-            raise NoMatch(f"Range {first!r} to {last!r} not allowed")
-
-        chars = frozenset(chr(i) for i in range(first_index, last_index + 1))
-        return (chars, False), k
+        return Charclass(((first, last),)), k
     except NoMatch:
         pass
 
     # Attempt 3: just a character on its own
     char, j = match_internal_char(string, i)
-    return (frozenset(char), False), j
+    return Charclass(((char, char),)), j
 
 
 def match_class_interior(string: str, i: int) -> MatchResult[Charclass]:
-    predicates = []
+    inner_charclasses = []
     try:
         while True:
             # Match an internal character, range, or other charclass predicate.
-            (internal, internal_negated), i = match_class_interior_1(string, i)
-            predicates.append(Charclass(internal, negated=internal_negated))
+            inner_charclass, i = match_inner_charclass(string, i)
+            inner_charclasses.append(inner_charclass)
     except NoMatch:
         pass
 
-    return Charclass.union(*predicates), i
+    # Use the existing Charclass union functionality
+    charclass = Charclass()
+    for inner_charclass in inner_charclasses:
+        charclass |= inner_charclass
+
+    return charclass, i
 
 
 def match_charclass(string: str, i: int) -> MatchResult[Charclass]:
@@ -195,21 +207,21 @@ def match_charclass(string: str, i: int) -> MatchResult[Charclass]:
     # e.g. if seeing "\\t", return "\t"
     for char, escaped_mnemonic in escapes.items():
         try:
-            return Charclass(char), static(string, i, escaped_mnemonic)
+            return Charclass(((char, char),)), static(string, i, escaped_mnemonic)
         except NoMatch:
             pass
 
     # e.g. if seeing "\\{", return "{"
     for char in Charclass.allSpecial:
         try:
-            return Charclass(char), static(string, i, "\\" + char)
+            return Charclass(((char, char),)), static(string, i, "\\" + char)
         except NoMatch:
             pass
 
     # e.g. if seeing "\\x40", return "@"
     try:
         char, j = unescape_hex(string, i)
-        return Charclass(char), j
+        return Charclass(((char, char),)), j
     except NoMatch:
         pass
 
@@ -218,7 +230,7 @@ def match_charclass(string: str, i: int) -> MatchResult[Charclass]:
     if char in Charclass.allSpecial:
         raise NoMatch
 
-    return Charclass(char), i
+    return Charclass(((char, char),)), i
 
 
 def match_multiplicand(string: str, i: int) -> MatchResult[Pattern | Charclass]:

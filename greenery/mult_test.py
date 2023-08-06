@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from .bound import INF, Bound
 from .charclass import DIGIT, Charclass
-from .fsm import ANYTHING_ELSE
 from .multiplier import ONE, PLUS, QM, STAR, Multiplier
 from .rxelems import Mult
 
@@ -41,20 +40,17 @@ def test_odd_bug() -> None:
     int5A = Mult(
         Charclass("bc"),
         STAR,
-    ).to_fsm({"a", "b", "c", ANYTHING_ELSE})
-    assert int5A.accepts([])
+    ).to_fsm()
     assert int5A.accepts("")
 
     int5B = Mult(
         Charclass("c"),
         ONE,
-    ).to_fsm({"a", "b", "c", ANYTHING_ELSE})
+    ).to_fsm()
     assert int5B.accepts("c")
-    assert int5B.accepts(["c"])
 
-    int5C = int5A + int5B
+    int5C = int5A.concatenate(int5B)
     assert int5C.accepts("c")
-    assert int5C.accepts(["c"])
 
 
 def test_mult_common() -> None:

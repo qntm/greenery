@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import pickle
 import time
-from typing import Any
 
 import pytest
 
-from .charclass import DIGIT, WORDCHAR
-from .fsm import ANYTHING_ELSE, Fsm
+from .charclass import Charclass
+from .fsm import Fsm
 from .parse import parse
 from .rxelems import from_fsm
 
@@ -49,41 +48,32 @@ def test_parse_str_round_trip() -> None:
 # Test to_fsm() and alphabet-related functionality
 
 
-def test_alphabet() -> None:
-    # `.alphabet()` should include `ANYTHING_ELSE`
-    assert parse("").alphabet() == {ANYTHING_ELSE}
-
-
 def test_pattern_fsm() -> None:
     # "a[^a]"
     anota = parse("a[^a]").to_fsm()
-    assert len(anota.states) == 3
+    assert len(anota.states) == 4
     assert not anota.accepts("a")
-    assert not anota.accepts(["a"])
     assert not anota.accepts("b")
-    assert not anota.accepts(["b"])
     assert not anota.accepts("aa")
-    assert not anota.accepts(["a", "a"])
     assert anota.accepts("ab")
-    assert anota.accepts(["a", "b"])
-    assert anota.accepts(["a", ANYTHING_ELSE])
+    assert anota.accepts("ac")
     assert not anota.accepts("ba")
     assert not anota.accepts("bb")
 
     # "0\\d"
-    zeroD = parse("0\\d").to_fsm(DIGIT.chars)
+    zeroD = parse("0\\d").to_fsm()
     assert zeroD.accepts("01")
     assert not zeroD.accepts("10")
 
     # "\\d{2}"
-    d2 = parse("\\d{2}").to_fsm(DIGIT.chars)
+    d2 = parse("\\d{2}").to_fsm()
     assert not d2.accepts("")
     assert not d2.accepts("1")
     assert d2.accepts("11")
     assert not d2.accepts("111")
 
     # abc|def(ghi|jkl)
-    conventional = parse("abc|def(ghi|jkl)").to_fsm(WORDCHAR.chars)
+    conventional = parse("abc|def(ghi|jkl)").to_fsm()
     assert not conventional.accepts("a")
     assert not conventional.accepts("ab")
     assert conventional.accepts("abc")
@@ -98,7 +88,7 @@ def test_fsm() -> None:
     # context.
     assert parse("a.b").to_fsm().accepts("acb")
 
-    bad = parse("0{2}|1{2}").to_fsm({"0", "1", ANYTHING_ELSE})
+    bad = parse("0{2}|1{2}").to_fsm()
     assert bad.accepts("00")
     assert bad.accepts("11")
     assert not bad.accepts("01")
@@ -270,14 +260,17 @@ def test_forin() -> None:
 def test_cardinality() -> None:
     # pylint: disable-next=compare-to-zero
     assert parse("[]").cardinality() == 0
-    assert parse("[]?").cardinality() == 1
-    assert parse("[]{0,6}").cardinality() == 1
     assert parse("[ab]{3}").cardinality() == 8
     assert parse("[ab]{2,3}").cardinality() == 12
     assert len(parse("abc|def(ghi|jkl)")) == 3
-
     with pytest.raises(OverflowError):
         len(parse(".*"))
+
+
+def test_cardinality_harder() -> None:
+    assert parse("[]?").cardinality() == 1
+    assert parse("[]{0,6}").cardinality() == 1
+    assert parse("[ab]{0,3}").cardinality() == 15
 
 
 ###############################################################################
@@ -300,13 +293,13 @@ def test_dot() -> None:
 def test_abstar() -> None:
     # Buggggs.
     abstar = Fsm(
-        alphabet={"a", ANYTHING_ELSE, "b"},
+        alphabet={Charclass("a"), ~Charclass("ab"), Charclass("b")},
         states={0, 1},
         initial=0,
         finals={0},
         map={
-            0: {"a": 0, ANYTHING_ELSE: 1, "b": 0},
-            1: {"a": 1, ANYTHING_ELSE: 1, "b": 1},
+            0: {Charclass("a"): 0, ~Charclass("ab"): 1, Charclass("b"): 0},
+            1: {Charclass("a"): 1, ~Charclass("ab"): 1, Charclass("b"): 1},
         },
     )
     assert str(from_fsm(abstar)) == "[ab]*"
@@ -314,16 +307,16 @@ def test_abstar() -> None:
 
 def test_adotb() -> None:
     adotb = Fsm(
-        alphabet={"a", ANYTHING_ELSE, "b"},
+        alphabet={Charclass("a"), ~Charclass("ab"), Charclass("b")},
         states={0, 1, 2, 3, 4},
         initial=0,
         finals={4},
         map={
-            0: {"a": 2, ANYTHING_ELSE: 1, "b": 1},
-            1: {"a": 1, ANYTHING_ELSE: 1, "b": 1},
-            2: {"a": 3, ANYTHING_ELSE: 3, "b": 3},
-            3: {"a": 1, ANYTHING_ELSE: 1, "b": 4},
-            4: {"a": 1, ANYTHING_ELSE: 1, "b": 1},
+            0: {Charclass("a"): 2, ~Charclass("ab"): 1, Charclass("b"): 1},
+            1: {Charclass("a"): 1, ~Charclass("ab"): 1, Charclass("b"): 1},
+            2: {Charclass("a"): 3, ~Charclass("ab"): 3, Charclass("b"): 3},
+            3: {Charclass("a"): 1, ~Charclass("ab"): 1, Charclass("b"): 4},
+            4: {Charclass("a"): 1, ~Charclass("ab"): 1, Charclass("b"): 1},
         },
     )
     assert str(from_fsm(adotb)) == "a.b"
@@ -335,15 +328,15 @@ def test_rxelems_recursion_error() -> None:
         str(
             from_fsm(
                 Fsm(
-                    alphabet={"0", "1"},
+                    alphabet={Charclass("0"), Charclass("1"), ~Charclass("01")},
                     states={0, 1, 2, 3},
                     initial=3,
                     finals={1},
                     map={
-                        0: {"0": 1, "1": 1},
-                        1: {"0": 2, "1": 2},
-                        2: {"0": 2, "1": 2},
-                        3: {"0": 0, "1": 2},
+                        0: {Charclass("0"): 1, Charclass("1"): 1, ~Charclass("01"): 2},
+                        1: {Charclass("0"): 2, Charclass("1"): 2, ~Charclass("01"): 2},
+                        2: {Charclass("0"): 2, Charclass("1"): 2, ~Charclass("01"): 2},
+                        3: {Charclass("0"): 0, Charclass("1"): 2, ~Charclass("01"): 2},
                     },
                 )
             )
@@ -357,13 +350,14 @@ def test_even_star_bug1() -> None:
     # row), but when from_fsm() is called, the result is "a+". Turned out to be
     # a fault in the rxelems.multiplier.__mul__() routine
     elesscomplex = Fsm(
-        alphabet={"a"},
-        states={0, 1},
+        alphabet={Charclass("a"), ~Charclass("a")},
+        states={0, 1, 2},
         initial=0,
         finals={1},
         map={
-            0: {"a": 1},
-            1: {"a": 0},
+            0: {Charclass("a"): 1, ~Charclass("a"): 2},
+            1: {Charclass("a"): 0, ~Charclass("a"): 2},
+            2: {Charclass("a"): 2, ~Charclass("a"): 2},
         },
     )
     assert not elesscomplex.accepts("")
@@ -377,11 +371,11 @@ def test_even_star_bug1() -> None:
     assert elesscomplex.accepts("a")
     assert not elesscomplex.accepts("aa")
     assert elesscomplex.accepts("aaa")
-    gen = elesscomplex.strings()
-    assert next(gen) == ["a"]
-    assert next(gen) == ["a", "a", "a"]
-    assert next(gen) == ["a", "a", "a", "a", "a"]
-    assert next(gen) == ["a", "a", "a", "a", "a", "a", "a"]
+    gen = elesscomplex.strings([])
+    assert next(gen) == "a"
+    assert next(gen) == "aaa"
+    assert next(gen) == "aaaaa"
+    assert next(gen) == "aaaaaaa"
 
 
 def test_binary_3() -> None:
@@ -390,17 +384,17 @@ def test_binary_3() -> None:
     # Allows "0" on its own, but not leading zeroes.
     div3 = from_fsm(
         Fsm(
-            alphabet={"0", "1"},
-            states={"initial", "zero", 0, 1, 2, None},
-            initial="initial",
-            finals={"zero", 0},
+            alphabet={Charclass("0"), Charclass("1"), ~Charclass("01")},
+            states={-2, -1, 0, 1, 2, 3},
+            initial=-2,
+            finals={-1, 0},
             map={
-                "initial": {"0": "zero", "1": 1},
-                "zero": {"0": None, "1": None},
-                0: {"0": 0, "1": 1},
-                1: {"0": 2, "1": 0},
-                2: {"0": 1, "1": 2},
-                None: {"0": None, "1": None},
+                -2: {Charclass("0"): -1, Charclass("1"): 1, ~Charclass("01"): 3},
+                -1: {Charclass("0"): 3, Charclass("1"): 3, ~Charclass("01"): 3},
+                0: {Charclass("0"): 0, Charclass("1"): 1, ~Charclass("01"): 3},
+                1: {Charclass("0"): 2, Charclass("1"): 0, ~Charclass("01"): 3},
+                2: {Charclass("0"): 1, Charclass("1"): 2, ~Charclass("01"): 3},
+                3: {Charclass("0"): 3, Charclass("1"): 3, ~Charclass("01"): 3},
             },
         )
     )
@@ -423,22 +417,33 @@ def test_base_N() -> None:
     base = 2
     N = 3
     assert base <= 10
+    anything_else = ~Charclass("".join(str(i) for i in range(base)))
     divN = from_fsm(
         Fsm(
-            alphabet={str(i) for i in range(base)},
-            states=frozenset(range(N)) | {"initial", "zero", None},
-            initial="initial",
-            finals={"zero", 0},
+            alphabet=({Charclass(str(i)) for i in range(base)} | {anything_else}),
+            states=frozenset(range(N)) | {-2, -1, N},
+            initial=-2,
+            finals={-1, 0},
             map={
-                "initial": {
-                    "0": "zero",
-                    **{str(j): j % N for j in range(1, base)},
+                -2: {
+                    Charclass("0"): -1,
+                    **{Charclass(str(j)): j % N for j in range(1, base)},
+                    anything_else: N,
                 },
-                "zero": {str(j): None for j in range(base)},
-                None: {str(j): None for j in range(base)},
+                -1: {
+                    **{Charclass(str(j)): N for j in range(base)},
+                    anything_else: N,
+                },
                 **{
-                    i: {str(j): (i * base + j) % N for j in range(base)}
+                    i: {
+                        **{Charclass(str(j)): (i * base + j) % N for j in range(base)},
+                        anything_else: N,
+                    }
                     for i in range(N)
+                },
+                N: {
+                    **{Charclass(str(j)): N for j in range(base)},
+                    anything_else: N,
                 },
             },
         )
@@ -452,44 +457,20 @@ def test_base_N() -> None:
         a = b
 
 
-def test_bad_alphabet() -> None:
-    # You can use anything you like in your FSM alphabet, but if you try to
-    # convert it to an `rxelems` object then the only acceptable symbols are
-    # single characters or `ANYTHING_ELSE`.
-
-    # NOTE: This used to test with `None`, before type annotations were added.
-    # However, `None` is not `OrderedHashable` and can't be used with an `Fsm`
-    # alphabet at runtime to begin with, regardless of type annotations or even
-    # expanding `AlphabetType` to the most general usable constraints.
-    # By default, sorting a collection with `None` raises a `TypeError`.
-    # That has nothing to do with `from_fsm`.
-    bad_symbols: tuple[Any, ...] = ((), 0, ("a",), "", "aa", "ab", True)
-
-    for bad_symbol in bad_symbols:
-        f = Fsm(
-            alphabet={bad_symbol},
-            states={0},
-            initial=0,
-            finals=(),
-            map={0: {bad_symbol: 0}},
-        )
-
-        with pytest.raises(TypeError, match="Symbol.*cannot be used"):
-            from_fsm(f)
-
-
 def test_dead_default() -> None:
     blockquote = from_fsm(
         Fsm(
-            alphabet={"/", "*", ANYTHING_ELSE},
-            states={0, 1, 2, 3, 4},
+            alphabet={Charclass("/"), Charclass("*"), ~Charclass("/*")},
+            states={0, 1, 2, 3, 4, 5},
             initial=0,
             finals={4},
             map={
-                0: {"/": 1},
-                1: {"*": 2},
-                2: {"/": 2, ANYTHING_ELSE: 2, "*": 3},
-                3: {"/": 4, ANYTHING_ELSE: 2, "*": 3},
+                0: {Charclass("/"): 1, ~Charclass("/*"): 5, Charclass("*"): 5},
+                1: {Charclass("/"): 5, ~Charclass("/*"): 5, Charclass("*"): 2},
+                2: {Charclass("/"): 2, ~Charclass("/*"): 2, Charclass("*"): 3},
+                3: {Charclass("/"): 4, ~Charclass("/*"): 2, Charclass("*"): 3},
+                4: {Charclass("/"): 5, ~Charclass("/*"): 5, Charclass("*"): 5},
+                5: {Charclass("/"): 5, ~Charclass("/*"): 5, Charclass("*"): 5},
             },
         )
     )
@@ -903,6 +884,7 @@ def test_derive() -> None:
     assert str(parse("a+|b+").derive("a")) == "a*"
     assert str(parse("abc|ade").derive("a")) == "bc|de"
     assert str(parse("abc|ade").derive("ab")) == "c"
+    assert str(parse("abc|ade").derive("c")) == "[]"
 
 
 def test_bug_36_1() -> None:
@@ -934,7 +916,13 @@ def test_isdisjoint() -> None:
 def test_bug_slow() -> None:
     # issue #43
     m = Fsm(
-        alphabet={"R", "L", "U", "D"},
+        alphabet={
+            Charclass("R"),
+            Charclass("L"),
+            Charclass("U"),
+            Charclass("D"),
+            ~Charclass("RLUD"),
+        },
         states={
             0,
             1,
@@ -957,31 +945,165 @@ def test_bug_slow() -> None:
             18,
             19,
             20,
+            21,
         },
         initial=0,
         finals={20},
         map={
-            0: {"D": 1, "U": 2},
-            1: {"L": 3},
-            2: {"L": 4},
-            3: {"U": 5},
-            4: {"D": 6},
-            5: {"R": 7},
-            6: {"R": 8},
-            7: {"U": 9},
-            8: {"D": 10},
-            9: {"L": 11},
-            10: {"L": 12},
-            11: {"L": 13},
-            12: {"L": 14},
-            13: {"D": 15},
-            14: {"U": 16},
-            15: {"R": 17},
-            16: {"R": 18},
-            17: {"D": 19},
-            18: {"U": 19},
-            19: {"L": 20},
-            20: {},
+            0: {
+                Charclass("R"): 21,
+                Charclass("L"): 21,
+                Charclass("U"): 2,
+                Charclass("D"): 1,
+                ~Charclass("RLUD"): 21,
+            },
+            1: {
+                Charclass("R"): 21,
+                Charclass("L"): 3,
+                Charclass("U"): 21,
+                Charclass("D"): 21,
+                ~Charclass("RLUD"): 21,
+            },
+            2: {
+                Charclass("R"): 21,
+                Charclass("L"): 4,
+                Charclass("U"): 21,
+                Charclass("D"): 21,
+                ~Charclass("RLUD"): 21,
+            },
+            3: {
+                Charclass("R"): 21,
+                Charclass("L"): 21,
+                Charclass("U"): 5,
+                Charclass("D"): 21,
+                ~Charclass("RLUD"): 21,
+            },
+            4: {
+                Charclass("R"): 21,
+                Charclass("L"): 21,
+                Charclass("U"): 21,
+                Charclass("D"): 6,
+                ~Charclass("RLUD"): 21,
+            },
+            5: {
+                Charclass("R"): 7,
+                Charclass("L"): 21,
+                Charclass("U"): 21,
+                Charclass("D"): 21,
+                ~Charclass("RLUD"): 21,
+            },
+            6: {
+                Charclass("R"): 8,
+                Charclass("L"): 21,
+                Charclass("U"): 21,
+                Charclass("D"): 21,
+                ~Charclass("RLUD"): 21,
+            },
+            7: {
+                Charclass("R"): 21,
+                Charclass("L"): 21,
+                Charclass("U"): 9,
+                Charclass("D"): 21,
+                ~Charclass("RLUD"): 21,
+            },
+            8: {
+                Charclass("R"): 21,
+                Charclass("L"): 21,
+                Charclass("U"): 21,
+                Charclass("D"): 10,
+                ~Charclass("RLUD"): 21,
+            },
+            9: {
+                Charclass("R"): 21,
+                Charclass("L"): 11,
+                Charclass("U"): 21,
+                Charclass("D"): 21,
+                ~Charclass("RLUD"): 21,
+            },
+            10: {
+                Charclass("R"): 21,
+                Charclass("L"): 12,
+                Charclass("U"): 21,
+                Charclass("D"): 21,
+                ~Charclass("RLUD"): 21,
+            },
+            11: {
+                Charclass("R"): 21,
+                Charclass("L"): 13,
+                Charclass("U"): 21,
+                Charclass("D"): 21,
+                ~Charclass("RLUD"): 21,
+            },
+            12: {
+                Charclass("R"): 21,
+                Charclass("L"): 14,
+                Charclass("U"): 21,
+                Charclass("D"): 21,
+                ~Charclass("RLUD"): 21,
+            },
+            13: {
+                Charclass("R"): 21,
+                Charclass("L"): 21,
+                Charclass("U"): 21,
+                Charclass("D"): 15,
+                ~Charclass("RLUD"): 21,
+            },
+            14: {
+                Charclass("R"): 21,
+                Charclass("L"): 21,
+                Charclass("U"): 16,
+                Charclass("D"): 21,
+                ~Charclass("RLUD"): 21,
+            },
+            15: {
+                Charclass("R"): 17,
+                Charclass("L"): 21,
+                Charclass("U"): 21,
+                Charclass("D"): 21,
+                ~Charclass("RLUD"): 21,
+            },
+            16: {
+                Charclass("R"): 18,
+                Charclass("L"): 21,
+                Charclass("U"): 21,
+                Charclass("D"): 21,
+                ~Charclass("RLUD"): 21,
+            },
+            17: {
+                Charclass("R"): 21,
+                Charclass("L"): 21,
+                Charclass("U"): 21,
+                Charclass("D"): 19,
+                ~Charclass("RLUD"): 21,
+            },
+            18: {
+                Charclass("R"): 21,
+                Charclass("L"): 21,
+                Charclass("U"): 19,
+                Charclass("D"): 21,
+                ~Charclass("RLUD"): 21,
+            },
+            19: {
+                Charclass("R"): 21,
+                Charclass("L"): 20,
+                Charclass("U"): 21,
+                Charclass("D"): 21,
+                ~Charclass("RLUD"): 21,
+            },
+            20: {
+                Charclass("R"): 21,
+                Charclass("L"): 21,
+                Charclass("U"): 21,
+                Charclass("D"): 21,
+                ~Charclass("RLUD"): 21,
+            },
+            21: {
+                Charclass("R"): 21,
+                Charclass("L"): 21,
+                Charclass("U"): 21,
+                Charclass("D"): 21,
+                ~Charclass("RLUD"): 21,
+            },
         },
     )
     t1 = time.time()
@@ -996,12 +1118,14 @@ def test_bug_48_simpler() -> None:
         str(
             from_fsm(
                 Fsm(
-                    alphabet={"d"},
-                    states={0, 1},
+                    alphabet={Charclass("d"), ~Charclass("d")},
+                    states={0, 1, 2},
                     initial=0,
                     finals={1},
                     map={
-                        0: {"d": 1},
+                        0: {Charclass("d"): 1, ~Charclass("d"): 2},
+                        1: {Charclass("d"): 2, ~Charclass("d"): 2},
+                        2: {Charclass("d"): 2, ~Charclass("d"): 2},
                     },
                 )
             )
@@ -1011,39 +1135,191 @@ def test_bug_48_simpler() -> None:
 
 
 def test_bug_48() -> None:
-    # pylint: disable=too-many-locals
-
-    S5, S26, S45, S63, S80, S97, S113, S127, S140, S152, S163, S175, S182 = range(13)
-    char0, char1, char2, char3, char4, char5, char6, char7, char8 = (
-        "_",
-        "a",
-        "d",
-        "e",
-        "g",
-        "m",
-        "n",
-        "o",
-        "p",
-    )
-
     machine = Fsm(
-        alphabet={char0, char1, char2, char3, char4, char5, char6, char7, char8},
-        states={S5, S26, S45, S63, S80, S97, S113, S127, S140, S152, S163, S175, S182},
-        initial=S5,
-        finals={S182},
+        alphabet={
+            Charclass("_"),
+            Charclass("a"),
+            Charclass("d"),
+            Charclass("e"),
+            Charclass("g"),
+            Charclass("m"),
+            Charclass("n"),
+            Charclass("o"),
+            Charclass("p"),
+            ~Charclass("_adegmnop"),
+        },
+        states={0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13},
+        initial=0,
+        finals={12},
         map={
-            S113: {char0: S127},
-            S127: {char7: S140},
-            S140: {char6: S152},
-            S152: {char0: S163},
-            S163: {char5: S175},
-            S175: {char8: S182},
-            S26: {char1: S45},
-            S45: {char5: S63},
-            S5: {char2: S26},
-            S63: {char1: S80},
-            S80: {char4: S97},
-            S97: {char3: S113},
+            0: {
+                Charclass("_"): 13,
+                Charclass("a"): 13,
+                Charclass("d"): 1,
+                Charclass("e"): 13,
+                Charclass("g"): 13,
+                Charclass("m"): 13,
+                Charclass("n"): 13,
+                Charclass("o"): 13,
+                Charclass("p"): 13,
+                ~Charclass("_adegmnop"): 13,
+            },
+            1: {
+                Charclass("_"): 13,
+                Charclass("a"): 2,
+                Charclass("d"): 13,
+                Charclass("e"): 13,
+                Charclass("g"): 13,
+                Charclass("m"): 13,
+                Charclass("n"): 13,
+                Charclass("o"): 13,
+                Charclass("p"): 13,
+                ~Charclass("_adegmnop"): 13,
+            },
+            2: {
+                Charclass("_"): 13,
+                Charclass("a"): 13,
+                Charclass("d"): 13,
+                Charclass("e"): 13,
+                Charclass("g"): 13,
+                Charclass("m"): 3,
+                Charclass("n"): 13,
+                Charclass("o"): 13,
+                Charclass("p"): 13,
+                ~Charclass("_adegmnop"): 13,
+            },
+            3: {
+                Charclass("_"): 13,
+                Charclass("a"): 4,
+                Charclass("d"): 13,
+                Charclass("e"): 13,
+                Charclass("g"): 13,
+                Charclass("m"): 13,
+                Charclass("n"): 13,
+                Charclass("o"): 13,
+                Charclass("p"): 13,
+                ~Charclass("_adegmnop"): 13,
+            },
+            4: {
+                Charclass("_"): 13,
+                Charclass("a"): 13,
+                Charclass("d"): 13,
+                Charclass("e"): 13,
+                Charclass("g"): 5,
+                Charclass("m"): 13,
+                Charclass("n"): 13,
+                Charclass("o"): 13,
+                Charclass("p"): 13,
+                ~Charclass("_adegmnop"): 13,
+            },
+            5: {
+                Charclass("_"): 13,
+                Charclass("a"): 13,
+                Charclass("d"): 13,
+                Charclass("e"): 6,
+                Charclass("g"): 13,
+                Charclass("m"): 13,
+                Charclass("n"): 13,
+                Charclass("o"): 13,
+                Charclass("p"): 13,
+                ~Charclass("_adegmnop"): 13,
+            },
+            6: {
+                Charclass("_"): 7,
+                Charclass("a"): 13,
+                Charclass("d"): 13,
+                Charclass("e"): 13,
+                Charclass("g"): 13,
+                Charclass("m"): 13,
+                Charclass("n"): 13,
+                Charclass("o"): 13,
+                Charclass("p"): 13,
+                ~Charclass("_adegmnop"): 13,
+            },
+            7: {
+                Charclass("_"): 13,
+                Charclass("a"): 13,
+                Charclass("d"): 13,
+                Charclass("e"): 13,
+                Charclass("g"): 13,
+                Charclass("m"): 13,
+                Charclass("n"): 13,
+                Charclass("o"): 8,
+                Charclass("p"): 13,
+                ~Charclass("_adegmnop"): 13,
+            },
+            8: {
+                Charclass("_"): 13,
+                Charclass("a"): 13,
+                Charclass("d"): 13,
+                Charclass("e"): 13,
+                Charclass("g"): 13,
+                Charclass("m"): 13,
+                Charclass("n"): 9,
+                Charclass("o"): 13,
+                Charclass("p"): 13,
+                ~Charclass("_adegmnop"): 13,
+            },
+            9: {
+                Charclass("_"): 10,
+                Charclass("a"): 13,
+                Charclass("d"): 13,
+                Charclass("e"): 13,
+                Charclass("g"): 13,
+                Charclass("m"): 13,
+                Charclass("n"): 13,
+                Charclass("o"): 13,
+                Charclass("p"): 13,
+                ~Charclass("_adegmnop"): 13,
+            },
+            10: {
+                Charclass("_"): 13,
+                Charclass("a"): 13,
+                Charclass("d"): 13,
+                Charclass("e"): 13,
+                Charclass("g"): 13,
+                Charclass("m"): 11,
+                Charclass("n"): 13,
+                Charclass("o"): 13,
+                Charclass("p"): 13,
+                ~Charclass("_adegmnop"): 13,
+            },
+            11: {
+                Charclass("_"): 13,
+                Charclass("a"): 13,
+                Charclass("d"): 13,
+                Charclass("e"): 13,
+                Charclass("g"): 13,
+                Charclass("m"): 13,
+                Charclass("n"): 13,
+                Charclass("o"): 13,
+                Charclass("p"): 12,
+                ~Charclass("_adegmnop"): 13,
+            },
+            12: {
+                Charclass("_"): 13,
+                Charclass("a"): 13,
+                Charclass("d"): 13,
+                Charclass("e"): 13,
+                Charclass("g"): 13,
+                Charclass("m"): 13,
+                Charclass("n"): 13,
+                Charclass("o"): 13,
+                Charclass("p"): 13,
+                ~Charclass("_adegmnop"): 13,
+            },
+            13: {
+                Charclass("_"): 13,
+                Charclass("a"): 13,
+                Charclass("d"): 13,
+                Charclass("e"): 13,
+                Charclass("g"): 13,
+                Charclass("m"): 13,
+                Charclass("n"): 13,
+                Charclass("o"): 13,
+                Charclass("p"): 13,
+                ~Charclass("_adegmnop"): 13,
+            },
         },
     )
 

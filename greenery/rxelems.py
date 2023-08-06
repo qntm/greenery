@@ -15,11 +15,11 @@ __all__ = (
 from dataclasses import dataclass
 from enum import Enum, auto
 from functools import reduce
-from typing import Iterable, Iterator
+from typing import Iterator
 
 from .bound import INF, Bound
 from .charclass import NULLCHARCLASS, Charclass
-from .fsm import ANYTHING_ELSE, AnythingElse, Fsm, StateType, epsilon, null
+from .fsm import EPSILON, NULL, Fsm, StateType, from_charclass
 from .multiplier import ONE, QM, STAR, ZERO, Multiplier
 
 
@@ -154,19 +154,8 @@ class Conc:
 
         return self
 
-    def to_fsm(self, /, alphabet: Iterable[str | AnythingElse] | None = None) -> Fsm:
-        if alphabet is None:
-            alphabet = self.alphabet()
-
-        # start with a component accepting only the empty string
-        fsm1 = epsilon(alphabet)
-        for mult in self.mults:
-            fsm1 += mult.to_fsm(alphabet)
-        return fsm1
-
-    def alphabet(self, /) -> frozenset[str | AnythingElse]:
-        components = self.mults
-        return frozenset().union(*(c.alphabet() for c in components)) | {ANYTHING_ELSE}
+    def to_fsm(self, /) -> Fsm:
+        return Fsm.concatenate(EPSILON, *(mult.to_fsm() for mult in self.mults))
 
     def empty(self, /) -> bool:
         return any(mult.empty() for mult in self.mults)
@@ -275,15 +264,6 @@ def from_fsm(f: Fsm) -> Pattern:
     """
     # pylint: disable=too-many-branches
 
-    # Make sure the supplied alphabet is kosher. It must contain only single-
-    # character strings or `ANYTHING_ELSE`.
-    for symbol in f.alphabet:
-        if symbol is ANYTHING_ELSE:
-            continue
-        if isinstance(symbol, str) and len(symbol) == 1:
-            continue
-        raise TypeError(f"Symbol {symbol!r} cannot be used in a regular expression")
-
     outside = _Outside.TOKEN
 
     # The set of strings that would be accepted by this FSM if you started
@@ -327,15 +307,8 @@ def from_fsm(f: Fsm) -> Pattern:
 
     # Populate it with some initial data.
     for a in f.map:
-        for symbol in f.map[a]:
-            b = f.map[a][symbol]
-
-            charclass = (
-                ~Charclass(frozenset(s for s in f.alphabet if s is not ANYTHING_ELSE))
-                if symbol is ANYTHING_ELSE
-                else Charclass(frozenset((symbol,)))
-            )
-
+        for charclass in f.map[a]:
+            b = f.map[a][charclass]
             brz[a][b] = Pattern(*brz[a][b].concs, Conc(Mult(charclass, ONE))).reduce()
 
     # Now perform our back-substitution
@@ -409,20 +382,11 @@ class Pattern:
         args = ", ".join(repr(conc) for conc in self.concs)
         return f"Pattern({args})"
 
-    def alphabet(self, /) -> frozenset[str | AnythingElse]:
-        components = self.concs
-        return frozenset().union(*(c.alphabet() for c in components)) | {ANYTHING_ELSE}
-
     def empty(self, /) -> bool:
         return all(conc.empty() for conc in self.concs)
 
     def intersection(self, other: Pattern, /) -> Pattern:
-        # A deceptively simple method for an astoundingly difficult operation
-        alphabet = self.alphabet() | other.alphabet()
-
-        # Which means that we can build finite state machines sharing that
-        # alphabet
-        combined = self.to_fsm(alphabet) & other.to_fsm(alphabet)
+        combined = self.to_fsm() & other.to_fsm()
         return from_fsm(combined)
 
     def __and__(self, other: Pattern, /) -> Pattern:
@@ -433,8 +397,7 @@ class Pattern:
         Return a regular expression which matches any string which `self`
         matches but none of the strings which `other` matches.
         """
-        alphabet = frozenset().union(*(elem.alphabet() for elem in elems))
-        return from_fsm(Fsm.difference(*(elem.to_fsm(alphabet) for elem in elems)))
+        return from_fsm(Fsm.difference(*(elem.to_fsm() for elem in elems)))
 
     def __sub__(self, other: Pattern, /) -> Pattern:
         return self.difference(other)
@@ -583,10 +546,7 @@ class Pattern:
         Return a regular expression matching only the strings recognised by
         `self` or `other` but not both.
         """
-        alphabet = frozenset().union(*(elem.alphabet() for elem in elems))
-        return from_fsm(
-            Fsm.symmetric_difference(*(elem.to_fsm(alphabet) for elem in elems))
-        )
+        return from_fsm(Fsm.symmetric_difference(*(elem.to_fsm() for elem in elems)))
 
     def __xor__(self, other: Pattern, /) -> Pattern:
         return self.symmetric_difference(other)
@@ -627,14 +587,8 @@ class Pattern:
 
         return reduce(lambda x, y: x.common(y, suffix=suffix), self.concs)
 
-    def to_fsm(self, /, alphabet: Iterable[str | AnythingElse] | None = None) -> Fsm:
-        if alphabet is None:
-            alphabet = self.alphabet()
-
-        fsm1 = null(alphabet)
-        for conc in self.concs:
-            fsm1 |= conc.to_fsm(alphabet)
-        return fsm1
+    def to_fsm(self, /) -> Fsm:
+        return Fsm.union(NULL, *(conc.to_fsm() for conc in self.concs))
 
     def reversed(self, /) -> Pattern:
         return Pattern(*(c.reversed() for c in self.concs))
@@ -695,6 +649,9 @@ class Pattern:
         """
         return self.matches(string)
 
+    # pylint: disable=fixme
+    # TODO: this is a misuse of __reversed__
+    # and should be removed next major version
     def __reversed__(self, /) -> Pattern:
         return self.reversed()
 
@@ -718,25 +675,8 @@ class Pattern:
         is raised once all such strings have been returned, although a
         regex with a * in may match infinitely many strings.
         """
-
-        # In the case of a regex like "[^abc]", there are infinitely many
-        # (well, a very large finite number of) single characters which will
-        # match. It's not productive to iterate over all of these giving every
-        # single example. You must supply your own "otherchar" to stand in for
-        # all of these possibilities.
-        for symbols in self.to_fsm().strings():
-            # Have to represent `ANYTHING_ELSE` somehow.
-            chars = []
-            for symbol in symbols:
-                if isinstance(symbol, str):
-                    char = symbol
-                elif otherchar is not None:
-                    char = otherchar
-                else:
-                    raise TypeError("Please choose an `otherchar`")
-                chars.append(char)
-
-            yield "".join(chars)
+        otherchars = [] if otherchar is None else [otherchar]
+        return self.to_fsm().strings(otherchars)
 
     def __iter__(self, /) -> Iterator[str]:
         """
@@ -799,10 +739,6 @@ class Mult:
         # Multiplicands disagree, no common part at all.
         return Mult(NULLCHARCLASS, ZERO)
 
-    def alphabet(self, /) -> frozenset[str | AnythingElse]:
-        components = (self.multiplicand,)
-        return frozenset().union(*(c.alphabet() for c in components)) | {ANYTHING_ELSE}
-
     def empty(self, /) -> bool:
         return self.multiplicand.empty() and self.multiplier.min > Bound(0)
 
@@ -861,14 +797,15 @@ class Mult:
             return f"{self.multiplicand}{self.multiplier}"
         raise TypeError(f"Unknown type {type(self.multiplicand)}")
 
-    def to_fsm(self, /, alphabet: Iterable[str | AnythingElse] | None = None) -> Fsm:
-        if alphabet is None:
-            alphabet = self.alphabet()
-
+    def to_fsm(self, /) -> Fsm:
         # worked example: (min, max) = (5, 7) or (5, INF)
         # (mandatory, optional) = (5, 2) or (5, INF)
 
-        unit = self.multiplicand.to_fsm(alphabet)
+        unit = (
+            from_charclass(self.multiplicand)
+            if isinstance(self.multiplicand, Charclass)
+            else self.multiplicand.to_fsm()
+        )
         # accepts e.g. "ab"
 
         # Yuck. `mandatory` cannot be infinite: it's just a natural number.
@@ -876,7 +813,7 @@ class Mult:
         assert self.multiplier.mandatory.v is not None
 
         # accepts "ababababab"
-        mandatory = unit * self.multiplier.mandatory.v
+        mandatory = unit.times(self.multiplier.mandatory.v)
 
         # unlimited additional copies
         if self.multiplier.optional == INF:
@@ -884,16 +821,16 @@ class Mult:
             # accepts "(ab)*"
 
         else:
-            optional = epsilon(alphabet) | unit
+            optional = EPSILON | unit
             # accepts "(ab)?"
 
             # Implied by `!= INF`.
             assert self.multiplier.optional.v is not None
 
-            optional *= self.multiplier.optional.v
+            optional = optional.times(self.multiplier.optional.v)
             # accepts "(ab)?(ab)?"
 
-        return mandatory + optional
+        return mandatory.concatenate(optional)
 
     def reversed(self, /) -> Mult:
         return Mult(self.multiplicand.reversed(), self.multiplier)
