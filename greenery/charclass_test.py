@@ -117,7 +117,7 @@ def test_charclass_str() -> None:
     assert str(NONDIGITCHAR) == "\\D"
     assert str(NONSPACECHAR) == "\\S"
     assert str(DOT) == "."
-    assert str(~Charclass(())) == "."
+    assert str(~Charclass("")) == "."
     assert str(~Charclass("a")) == "[^a]"
     assert str(~Charclass("{")) == "[^{]"
     assert str(~Charclass("\t")) == "[^\\t]"
@@ -138,6 +138,23 @@ def test_charclass_union() -> None:
     assert ~Charclass("ab") | Charclass("bc") == ~Charclass("a")
     # [^ab] ∪ [^bc] = [^b]
     assert ~Charclass("ab") | ~Charclass("bc") == ~Charclass("b")
+
+
+def test_charclass_intersection() -> None:
+    # [ab] ∩ [bc] = [b]
+    assert Charclass("ab") & Charclass("bc") == Charclass("b")
+    # [ab] ∩ [^bc] = [a]
+    assert Charclass("ab") & ~Charclass("bc") == Charclass("a")
+    # [^ab] ∩ [bc] = [c]
+    assert ~Charclass("ab") & Charclass("bc") == Charclass("c")
+    # [^ab] ∩ [^bc] = [^abc]
+    assert ~Charclass("ab") & ~Charclass("bc") == ~Charclass("abc")
+
+    assert (
+        Charclass("ab") &
+        Charclass("bcd") &
+        Charclass("abcde")
+    ) == Charclass("b")
 
 
 def test_empty() -> None:
@@ -280,7 +297,7 @@ def test_repartition_advanced_2() -> None:
             DIGIT
         ],
         DOT: [
-            ~Charclass("0", "z"),)),
+            ~Charclass((("0", "z"),)),
             DIGIT,
             Charclass(((":", "@"), ("[", "^"), ("`", "`"))),
             Charclass("ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz"),

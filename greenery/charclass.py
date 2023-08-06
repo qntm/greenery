@@ -201,27 +201,6 @@ class Charclass:
 
         return output
 
-    def get_chars(self, /) -> Iterator[str]:
-        """
-        Use this with caution, it can iterate over 1,000,000+ characters
-        """
-        for first_u, last_u in self.ord_ranges:
-            for u in range(first_u, last_u + 1):
-                yield chr(u)
-
-    def num_chars(self, /) -> int:
-        num = 0
-        for first_u, last_u in self.ord_ranges:
-            num += last_u + 1 - first_u
-        return NUM_UNICODE_CHARS - num if self.negated else num
-
-    def accepts(self, char: str, /) -> bool:
-        u = ord(char)
-        for first_u, last_u in self.ord_ranges:
-            if first_u <= u <= last_u:
-                return not self.negated
-        return self.negated
-
     def __repr__(self, /) -> str:
         sign = "~" if self.negated else ""
         ranges = tuple(
@@ -250,13 +229,33 @@ class Charclass:
     def __invert__(self, /) -> Charclass:
         return self.negate()
 
+    def get_chars(self, /) -> Iterator[str]:
+        """
+        Use this with caution, it can iterate over 1,000,000+ characters
+        """
+        for first_u, last_u in self.ord_ranges:
+            for u in range(first_u, last_u + 1):
+                yield chr(u)
+
+    def num_chars(self, /) -> int:
+        num = 0
+        for first_u, last_u in self.ord_ranges:
+            num += last_u + 1 - first_u
+        return NUM_UNICODE_CHARS - num if self.negated else num
+
+    def accepts(self, char: str, /) -> bool:
+        u = ord(char)
+        for first_u, last_u in self.ord_ranges:
+            if first_u <= u <= last_u:
+                return not self.negated
+        return self.negated
+
     def reversed(self, /) -> Charclass:
         return self
 
-    def issubset(self, other: Charclass, /) -> bool:
-        return self | other == other
-
-    def __or__(self, other: Charclass, /) -> Charclass:
+    def union(self, other: Charclass, /) -> Charclass:
+        # TODO: make this able to efficiently unite many Charclasses at once,
+        # again
         self_ord_ranges = list(self.ord_ranges)
         if self.negated:
             self_ord_ranges = negate(self_ord_ranges)
@@ -277,9 +276,18 @@ class Charclass:
         )
         return Charclass(new_ranges, new_negated)
 
-    def __and__(self, other: Charclass, /) -> Charclass:
+    __or__ = union
+
+    def issubset(self, other: Charclass, /) -> bool:
+        return self | other == other
+
+    def intersection(self, other: Charclass, /) -> Charclass:
+        # TODO: is this actually efficient?
+        # TODO: make this able to efficiently intersect many Charclasses at once,
+        # again
         return ~(~self | ~other)
 
+    __and__ = intersection
 
 # Standard character classes
 WORDCHAR = Charclass("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz")

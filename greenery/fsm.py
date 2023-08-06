@@ -101,17 +101,17 @@ class Fsm:
         for state, state_trans in map.items():
             if state not in states:
                 raise ValueError(f"Transition from unknown state {state!r}")
-            for charclass, dest in state_trans.items():
-                if charclass not in alphabet:
+            for symbol, dest in state_trans.items():
+                if symbol not in alphabet:
                     raise ValueError(
-                        f"Invalid symbol {charclass!r}"
+                        f"Invalid symbol {symbol!r}"
                         f" in transition from {state!r}"
                         f" to {dest!r}"
                     )
                 if dest not in states:
                     raise ValueError(
                         f"Transition for state {state!r}"
-                        f" and symbol {charclass!r}"
+                        f" and symbol {symbol!r}"
                         f" leads to {dest!r},"
                         " which is not a state"
                     )
@@ -234,9 +234,6 @@ class Fsm:
     def concatenate(*fsms: Fsm) -> Fsm:
         """
         Concatenate arbitrarily many finite state machines together.
-        For example, if self accepts "0*" and other accepts "1+(0|1)",
-        will return a finite state machine accepting "0*1+(0|1)".
-        Accomplished by effectively following non-deterministically.
         """
         unified_fsms = unify_alphabets(fsms)
 
@@ -291,6 +288,16 @@ class Fsm:
         alphabet = unified_fsms[0].alphabet if len(unified_fsms) > 0 else {~Charclass()}
 
         return crawl(alphabet, initial, final, follow).reduce()
+
+    def __add__(self, other: Fsm, /) -> Fsm:
+        """
+        Concatenate two finite state machines together.
+        For example, if self accepts "0*" and other accepts "1+(0|1)",
+        will return a finite state machine accepting "0*1+(0|1)".
+        Accomplished by effectively following non-deterministically.
+        Call using "fsm3 = fsm1 + fsm2"
+        """
+        return self.concatenate(other)
 
     def star(self, /) -> Fsm:
         """
@@ -360,6 +367,12 @@ class Fsm:
             return frozenset(next_metastate)
 
         return crawl(alphabet, initial, final, follow).reduce()
+
+    def __mul__(self, multiplier: int, /) -> Fsm:
+        """
+        Given an FSM and a multiplier, return the multiplied FSM.
+        """
+        return self.times(multiplier)
 
     def union(*fsms: Fsm) -> Fsm:
         """
