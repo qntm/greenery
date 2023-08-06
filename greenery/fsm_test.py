@@ -254,11 +254,7 @@ def test_crawl_reduction() -> None:
             2: {Charclass("0"): 3, Charclass("1"): 4, ~Charclass("01"): 5},
             3: {Charclass("0"): 3, Charclass("1"): 4, ~Charclass("01"): 5},
             4: {Charclass("0"): 5, Charclass("1"): 5, ~Charclass("01"): 5},
-            5: {
-                Charclass("0"): 5,
-                Charclass("1"): 5,
-                ~Charclass("01"): 5,
-            },
+            5: {Charclass("0"): 5, Charclass("1"): 5, ~Charclass("01"): 5},
         },
     ).reduce()
     assert len(merged.states) == 3
@@ -300,11 +296,7 @@ def test_star_advanced() -> None:
             0: {Charclass("a"): 0, Charclass("b"): 1, ~Charclass("ab"): 3},
             1: {Charclass("a"): 2, Charclass("b"): 3, ~Charclass("ab"): 3},
             2: {Charclass("a"): 3, Charclass("b"): 3, ~Charclass("ab"): 3},
-            3: {
-                Charclass("a"): 3,
-                Charclass("b"): 3,
-                ~Charclass("ab"): 3,
-            },
+            3: {Charclass("a"): 3, Charclass("b"): 3, ~Charclass("ab"): 3},
         },
     ).star()
     assert starred.alphabet == frozenset(
@@ -977,12 +969,10 @@ def test_replace_alphabet() -> None:
         },
     )
 
-    fsm2 = fsm1.replace_alphabet(
-        {
-            Charclass("z"): [Charclass("a"), Charclass("b")],
-            ~Charclass("z"): [Charclass("c"), ~Charclass("abc")],
-        }
-    )
+    fsm2 = fsm1.replace_alphabet({
+        Charclass("z"): [Charclass("a"), Charclass("b")],
+        ~Charclass("z"): [Charclass("c"), ~Charclass("abc")],
+    })
 
     assert fsm2.map == {
         0: {
@@ -1148,11 +1138,11 @@ def test_bad_alphabets() -> None:
 
     with pytest.raises(ValueError, match="not a proper partition"):
         Fsm(
-            alphabet={Charclass("a"), ~Charclass("b")},
+            alphabet={Charclass("a"), ~Charclass("ab")},
             states={0},
             initial=0,
             finals=(),
-            map={0: {Charclass("a"): 0, ~Charclass("b"): 0}},
+            map={0: {Charclass("a"): 0, ~Charclass("ab"): 0}},
         )
 
 

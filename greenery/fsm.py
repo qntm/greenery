@@ -25,7 +25,7 @@ from typing import (
     TypeVar,
 )
 
-from .charclass import Charclass, repartition
+from .charclass import Charclass, DOT, repartition
 
 AlphaType = Charclass
 StateType = int
@@ -124,16 +124,13 @@ class Fsm:
                         f"Symbol {charclass!r} missing from map[{state!r}]"
                     )
 
-        chars: Set[str] = set()
-        negated_chars: Set[str] = set()
+        # Check that the charclasses form a proper partition of all of Unicode
+        unified = Charclass()
         for charclass in alphabet:
-            target = negated_chars if charclass.negated else chars
-            for char in charclass.get_chars():
-                if char in target:
-                    raise ValueError(f"Alphabet {alphabet!r} has overlaps")
-                target.add(char)
-
-        if chars != negated_chars:
+            if unified & charclass != Charclass():
+                raise ValueError(f"Alphabet {alphabet!r} has overlaps")
+            unified |= charclass
+        if unified != DOT:
             raise ValueError(f"Alphabet {alphabet!r} is not a proper partition")
 
         # Initialise the hard way due to immutability.
@@ -143,7 +140,7 @@ class Fsm:
         object.__setattr__(self, "finals", finals)
         object.__setattr__(self, "map", map)
 
-    def accepts(self, chars: Iterable[str], /) -> bool:
+    def accepts(self, string: str, /) -> bool:
         """
         Test whether the present FSM accepts the supplied string (iterable
         of symbols). Equivalently, consider `self` as a possibly-infinite
@@ -151,14 +148,14 @@ class Fsm:
         actually mainly used for unit testing purposes.
         """
         state = self.initial
-        for char in chars:
+        for char in string:
             for charclass in self.map[state]:
                 if charclass.accepts(char):
                     state = self.map[state][charclass]
                     break
         return state in self.finals
 
-    def __contains__(self, string: Iterable[str], /) -> bool:
+    def __contains__(self, string: str, /) -> bool:
         """
         This lets you use the syntax `"a" in fsm1` to see whether the
         string "a" is in the set of strings accepted by `fsm1`.

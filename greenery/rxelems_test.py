@@ -1139,7 +1139,6 @@ def test_bug_48_simpler() -> None:
 
 
 def test_bug_48() -> None:
-    everything_else = ~Charclass("_adegmnop")
     machine = Fsm(
         alphabet={
             Charclass("_"),
@@ -1151,7 +1150,7 @@ def test_bug_48() -> None:
             Charclass("n"),
             Charclass("o"),
             Charclass("p"),
-            everything_else,
+            ~Charclass("_adegmnop"),
         },
         states={0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13},
         initial=0,
@@ -1167,7 +1166,7 @@ def test_bug_48() -> None:
                 Charclass("n"): 13,
                 Charclass("o"): 13,
                 Charclass("p"): 13,
-                everything_else: 13,
+                ~Charclass("_adegmnop"): 13,
             },
             1: {
                 Charclass("_"): 13,
@@ -1179,7 +1178,7 @@ def test_bug_48() -> None:
                 Charclass("n"): 13,
                 Charclass("o"): 13,
                 Charclass("p"): 13,
-                everything_else: 13,
+                ~Charclass("_adegmnop"): 13,
             },
             2: {
                 Charclass("_"): 13,
@@ -1191,7 +1190,7 @@ def test_bug_48() -> None:
                 Charclass("n"): 13,
                 Charclass("o"): 13,
                 Charclass("p"): 13,
-                everything_else: 13,
+                ~Charclass("_adegmnop"): 13,
             },
             3: {
                 Charclass("_"): 13,
@@ -1203,7 +1202,7 @@ def test_bug_48() -> None:
                 Charclass("n"): 13,
                 Charclass("o"): 13,
                 Charclass("p"): 13,
-                everything_else: 13,
+                ~Charclass("_adegmnop"): 13,
             },
             4: {
                 Charclass("_"): 13,
@@ -1215,7 +1214,7 @@ def test_bug_48() -> None:
                 Charclass("n"): 13,
                 Charclass("o"): 13,
                 Charclass("p"): 13,
-                everything_else: 13,
+                ~Charclass("_adegmnop"): 13,
             },
             5: {
                 Charclass("_"): 13,
@@ -1227,7 +1226,7 @@ def test_bug_48() -> None:
                 Charclass("n"): 13,
                 Charclass("o"): 13,
                 Charclass("p"): 13,
-                everything_else: 13,
+                ~Charclass("_adegmnop"): 13,
             },
             6: {
                 Charclass("_"): 7,
@@ -1239,7 +1238,7 @@ def test_bug_48() -> None:
                 Charclass("n"): 13,
                 Charclass("o"): 13,
                 Charclass("p"): 13,
-                everything_else: 13,
+                ~Charclass("_adegmnop"): 13,
             },
             7: {
                 Charclass("_"): 13,
@@ -1251,7 +1250,7 @@ def test_bug_48() -> None:
                 Charclass("n"): 13,
                 Charclass("o"): 8,
                 Charclass("p"): 13,
-                everything_else: 13,
+                ~Charclass("_adegmnop"): 13,
             },
             8: {
                 Charclass("_"): 13,
@@ -1263,7 +1262,7 @@ def test_bug_48() -> None:
                 Charclass("n"): 9,
                 Charclass("o"): 13,
                 Charclass("p"): 13,
-                everything_else: 13,
+                ~Charclass("_adegmnop"): 13,
             },
             9: {
                 Charclass("_"): 10,
@@ -1275,7 +1274,7 @@ def test_bug_48() -> None:
                 Charclass("n"): 13,
                 Charclass("o"): 13,
                 Charclass("p"): 13,
-                everything_else: 13,
+                ~Charclass("_adegmnop"): 13,
             },
             10: {
                 Charclass("_"): 13,
@@ -1287,7 +1286,7 @@ def test_bug_48() -> None:
                 Charclass("n"): 13,
                 Charclass("o"): 13,
                 Charclass("p"): 13,
-                everything_else: 13,
+                ~Charclass("_adegmnop"): 13,
             },
             11: {
                 Charclass("_"): 13,
@@ -1299,7 +1298,7 @@ def test_bug_48() -> None:
                 Charclass("n"): 13,
                 Charclass("o"): 13,
                 Charclass("p"): 12,
-                everything_else: 13,
+                ~Charclass("_adegmnop"): 13,
             },
             12: {
                 Charclass("_"): 13,
@@ -1311,7 +1310,7 @@ def test_bug_48() -> None:
                 Charclass("n"): 13,
                 Charclass("o"): 13,
                 Charclass("p"): 13,
-                everything_else: 13,
+                ~Charclass("_adegmnop"): 13,
             },
             13: {
                 Charclass("_"): 13,
@@ -1323,7 +1322,7 @@ def test_bug_48() -> None:
                 Charclass("n"): 13,
                 Charclass("o"): 13,
                 Charclass("p"): 13,
-                everything_else: 13,
+                ~Charclass("_adegmnop"): 13,
             },
         },
     )

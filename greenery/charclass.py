@@ -11,6 +11,7 @@ __all__ = (
     "SPACECHAR",
     "WORDCHAR",
     "escapes",
+    "negate",
     "shorthand",
     "repartition",
 )
@@ -201,6 +202,9 @@ class Charclass:
         return output
 
     def get_chars(self, /) -> Iterator[str]:
+        """
+        Use this with caution, it can iterate over 1,000,000+ characters
+        """
         for first_u, last_u in self.ord_ranges:
             for u in range(first_u, last_u + 1):
                 yield chr(u)
@@ -250,14 +254,7 @@ class Charclass:
         return self
 
     def issubset(self, other: Charclass, /) -> bool:
-        # TODO: performance
-        if self.negated:
-            if other.negated:
-                return not any(self.accepts(char) for char in other.get_chars())
-            # Technically this isn't completely impossible but B would have
-            # to be gigantic. TODO: maybe ditch the negation dealie?
-            return False
-        return all(other.accepts(char) for char in self.get_chars())
+        return self | other == other
 
     def __or__(self, other: Charclass, /) -> Charclass:
         self_ord_ranges = list(self.ord_ranges)
@@ -279,6 +276,9 @@ class Charclass:
             (chr(first_u), chr(last_u)) for (first_u, last_u) in new_ord_ranges
         )
         return Charclass(new_ranges, new_negated)
+
+    def __and__(self, other: Charclass, /) -> Charclass:
+        return ~(~self | ~other)
 
 
 # Standard character classes
