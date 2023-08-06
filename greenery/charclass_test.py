@@ -18,85 +18,42 @@ from .charclass import (
 
 
 def test_add_ord_range_0() -> None:
-    assert add_ord_range([], False, (1, 2), False) == ([(1, 2)], False)
+    assert add_ord_range([], (1, 2)) == [(1, 2)]
 
 
 def test_add_ord_range_1A() -> None:
     assert add_ord_range(
         [(1, 1), (3, 4), (10, 11), (13, 17)],
-        False,
         (7, 7),
-        False
-    ) == ([(1, 1), (3, 4), (7, 7), (10, 11), (13, 17)], False)
+    ) == [(1, 1), (3, 4), (7, 7), (10, 11), (13, 17)]
 
 def test_add_ord_range_1B() -> None:
-    assert add_ord_range([(5, 16)], False, (1, 1), False) == ([(1, 1), (5, 16)], False)
-    assert add_ord_range([(5, 16)], False, (1, 2), False) == ([(1, 2), (5, 16)], False)
-    assert add_ord_range([(5, 16)], False, (1, 3), False) == ([(1, 3), (5, 16)], False)
-    assert add_ord_range([(5, 16)], False, (1, 4), False) == ([(1, 16)], False)
-    assert add_ord_range([(5, 16)], False, (1, 5), False) == ([(1, 16)], False)
-    assert add_ord_range([(5, 16)], False, (1, 16), False) == ([(1, 16)], False)
-    assert add_ord_range([(5, 16)], False, (1, 17), False) == ([(1, 17)], False)
-    assert add_ord_range([(5, 16)], False, (1, 18), False) == ([(1, 18)], False)
-    assert add_ord_range([(5, 16)], False, (4, 4), False) == ([(4, 16)], False)
-    assert add_ord_range([(5, 16)], False, (5, 5), False) == ([(5, 16)], False)
-    assert add_ord_range([(5, 16)], False, (5, 18), False) == ([(5, 18)], False)
-    assert add_ord_range([(5, 16)], False, (7, 8), False) == ([(5, 16)], False)
-    assert add_ord_range([(5, 16)], False, (10, 20), False) == ([(5, 20)], False)
-    assert add_ord_range([(5, 16)], False, (16, 20), False) == ([(5, 20)], False)
-    assert add_ord_range([(5, 16)], False, (17, 20), False) == ([(5, 20)], False)
-    assert add_ord_range([(5, 16)], False, (18, 20), False) == ([(5, 16), (18, 20)], False)
+    assert add_ord_range([(5, 16)], (1, 1)) == [(1, 1), (5, 16)]
+    assert add_ord_range([(5, 16)], (1, 2)) == [(1, 2), (5, 16)]
+    assert add_ord_range([(5, 16)], (1, 3)) == [(1, 3), (5, 16)]
+    assert add_ord_range([(5, 16)], (1, 4)) == [(1, 16)]
+    assert add_ord_range([(5, 16)], (1, 5)) == [(1, 16)]
+    assert add_ord_range([(5, 16)], (1, 16)) == [(1, 16)]
+    assert add_ord_range([(5, 16)], (1, 17)) == [(1, 17)]
+    assert add_ord_range([(5, 16)], (1, 18)) == [(1, 18)]
+    assert add_ord_range([(5, 16)], (4, 4)) == [(4, 16)]
+    assert add_ord_range([(5, 16)], (5, 5)) == [(5, 16)]
+    assert add_ord_range([(5, 16)], (5, 18)) == [(5, 18)]
+    assert add_ord_range([(5, 16)], (7, 8)) == [(5, 16)]
+    assert add_ord_range([(5, 16)], (10, 20)) == [(5, 20)]
+    assert add_ord_range([(5, 16)], (16, 20)) == [(5, 20)]
+    assert add_ord_range([(5, 16)], (17, 20)) == [(5, 20)]
+    assert add_ord_range([(5, 16)], (18, 20)) == [(5, 16), (18, 20)]
 
 
 def test_add_ord_range_2() -> None:
-    assert add_ord_range([(1, 2), (11, 12)], False, (5, 6), False) == ([(1, 2), (5, 6), (11, 12)], False)
-    assert add_ord_range([(1, 2), (11, 12)], False, (3, 6), False) == ([(1, 6), (11, 12)], False)
-    assert add_ord_range([(1, 2), (11, 12)], False, (2, 6), False) == ([(1, 6), (11, 12)], False)
-    assert add_ord_range([(1, 2), (11, 12)], False, (5, 9), False) == ([(1, 2), (5, 9), (11, 12)], False)
-    assert add_ord_range([(1, 2), (11, 12)], False, (5, 10), False) == ([(1, 2), (5, 12)], False)
-    assert add_ord_range([(1, 2), (11, 12)], False, (-2, -1), False) == ([(-2, -1), (1, 2), (11, 12)], False)
-    assert add_ord_range([(1, 2), (11, 12)], False, (0, 20), False) == ([(0, 20)], False)
-
-
-def test_add_ord_range_0_n() -> None:
-    assert add_ord_range([], False, (1, 2), True) == ([(1, 2)], True)
-
-
-def test_add_ord_range_1A_n() -> None:
-    assert add_ord_range(
-        [(1, 1), (3, 4), (10, 11), (13, 17)],
-        False,
-        (7, 7),
-        True
-    ) == ([(7, 7)], True)
-
-def test_add_ord_range_1B_n() -> None:
-    assert add_ord_range([(5, 16)], False, (1, 1), True) == ([(1, 1)], True)
-    assert add_ord_range([(5, 16)], False, (1, 2), True) == ([(1, 2)], True)
-    assert add_ord_range([(5, 16)], False, (1, 3), True) == ([(1, 3)], True)
-    assert add_ord_range([(5, 16)], False, (1, 4), True) == ([(1, 4)], True)
-    assert add_ord_range([(5, 16)], False, (1, 5), True) == ([(1, 4)], True)
-    assert add_ord_range([(5, 16)], False, (1, 16), True) == ([(1, 4)], True)
-    assert add_ord_range([(5, 16)], False, (1, 17), True) == ([(1, 4), (17, 17)], True)
-    assert add_ord_range([(5, 16)], False, (1, 18), True) == ([(1, 4), (17, 18)], True)
-    assert add_ord_range([(5, 16)], False, (4, 4), True) == ([(4, 4)], True)
-    assert add_ord_range([(5, 16)], False, (5, 5), True) == ([], True)
-    assert add_ord_range([(5, 16)], False, (5, 18), True) == ([(17, 18)], True)
-    assert add_ord_range([(5, 16)], False, (7, 8), True) == ([], True)
-    assert add_ord_range([(5, 16)], False, (10, 20), True) == ([(17, 20)], True)
-    assert add_ord_range([(5, 16)], False, (16, 20), True) == ([(17, 20)], True)
-    assert add_ord_range([(5, 16)], False, (17, 20), True) == ([(17, 20)], True)
-    assert add_ord_range([(5, 16)], False, (18, 20), True) == ([(18, 20)], True)
-
-
-def test_add_ord_range_2_n() -> None:
-    assert add_ord_range([(1, 2), (11, 12)], False, (5, 6), True) == ([(5, 6)], True)
-    assert add_ord_range([(1, 2), (11, 12)], False, (3, 6), True) == ([(3, 6)], True)
-    assert add_ord_range([(1, 2), (11, 12)], False, (2, 6), True) == ([(3, 6)], True)
-    assert add_ord_range([(1, 2), (11, 12)], False, (5, 9), True) == ([(5, 9)], True)
-    assert add_ord_range([(1, 2), (11, 12)], False, (5, 10), True) == ([(5, 10)], True)
-    assert add_ord_range([(1, 2), (11, 12)], False, (-2, -1), True) == ([], True)
-    assert add_ord_range([(1, 2), (11, 12)], False, (0, 20), True) == ([(0, 0), (3, 10), (13, 20)], True)
+    assert add_ord_range([(1, 2), (11, 12)], (5, 6)) == [(1, 2), (5, 6), (11, 12)]
+    assert add_ord_range([(1, 2), (11, 12)], (3, 6)) == [(1, 6), (11, 12)]
+    assert add_ord_range([(1, 2), (11, 12)], (2, 6)) == [(1, 6), (11, 12)]
+    assert add_ord_range([(1, 2), (11, 12)], (5, 9)) == [(1, 2), (5, 9), (11, 12)]
+    assert add_ord_range([(1, 2), (11, 12)], (5, 10)) == [(1, 2), (5, 12)]
+    assert add_ord_range([(1, 2), (11, 12)], (-2, -1)) == [(-2, -1), (1, 2), (11, 12)]
+    assert add_ord_range([(1, 2), (11, 12)], (0, 20)) == [(0, 20)]
 
 
 def test_charclass_equality() -> None:
@@ -199,6 +156,17 @@ def test_charclass_str() -> None:
 def test_charclass_negation() -> None:
     assert ~~Charclass((("a", "a"),)) == Charclass((("a", "a"),))
     assert Charclass((("a", "a"),)) == ~~Charclass((("a", "a"),))
+
+
+def test_charclass_union() -> None:
+    # [ab] ∪ [bc] = [abc]
+    assert Charclass((("a", "b"),)) | Charclass((("b", "c"),)) == Charclass((("a", "c"),))
+    # [ab] ∪ [^bc] = [^c]
+    assert Charclass((("a", "b"),)) | ~Charclass((("b", "c"),)) == ~Charclass((("c", "c"),))
+    # [^a] ∪ [bc] = [^a]
+    assert ~Charclass((("a", "b"),)) | Charclass((("b", "c"),)) == ~Charclass((("a", "a"),))
+    # [^ab] ∪ [^bc] = [^b]
+    assert ~Charclass((("a", "b"),)) | ~Charclass((("b", "c"),)) == ~Charclass((("b", "b"),))
 
 
 def test_empty() -> None:

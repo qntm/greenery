@@ -29,44 +29,35 @@ def negate(ord_ranges):
         negated.append((u, 1114111))
     return negated
 
-def add_ord_range(ord_ranges, negated, new_ord_range, new_negated):
+def add_ord_range(ord_ranges, new_ord_range):
     """
     Assume all existing ord ranges are sorted, and also disjoint
     So no cases of [[12, 17], [2, 3]] or [[4, 6], [7, 8]].
     Potentially some performance enhancement is possible here, stop
     cloning `ord_ranges` over and over?
     """
+    # All ranges before this index
+    # fit strictly before the newcomer
+    start = 0
+
+    # All ranges with this index or larger
+    # fit strictly after the newcomer
+    end = len(ord_ranges)
+
+    for i in range(len(ord_ranges)):
+        if ord_ranges[i][1] + 1 < new_ord_range[0]:
+            start = i + 1
+        if new_ord_range[1] + 1 < ord_ranges[i][0]:
+            end = i
+            break
+
     # Ranges between those indices will be spliced out and replaced.
-    if negated:
-        raise Exception('not implemented')
-    else:
-        if new_negated:
-            new_ord_ranges = ord_ranges
-            for ord_range in negate([new_ord_range]):
-                (new_ord_ranges, _) = add_ord_range(new_ord_ranges, negated, ord_range, False)
-            return negate(new_ord_ranges), True
-        else:
-            # All ranges before this index
-            # fit strictly before the newcomer
-            start = 0
-
-            # All ranges with this index or larger
-            # fit strictly after the newcomer
-            end = len(ord_ranges)
-
-            for i in range(len(ord_ranges)):
-                if ord_ranges[i][1] + 1 < new_ord_range[0]:
-                    start = i + 1
-                if new_ord_range[1] + 1 < ord_ranges[i][0]:
-                    end = i
-                    break
-
-            if start < end:
-                new_ord_range = (
-                    min(new_ord_range[0], ord_ranges[start][0]),
-                    max(new_ord_range[1], ord_ranges[end - 1][1]),
-                )
-            return ord_ranges[:start] + [new_ord_range] + ord_ranges[end:], False
+    if start < end:
+        new_ord_range = (
+            min(new_ord_range[0], ord_ranges[start][0]),
+            max(new_ord_range[1], ord_ranges[end - 1][1]),
+        )
+    return ord_ranges[:start] + [new_ord_range] + ord_ranges[end:]
 
 
 @dataclass(frozen=True, init=False)
@@ -88,7 +79,7 @@ class Charclass:
             raise TypeError(f"Bad ranges: {ranges!r}")
         for range in ranges:
             if len(range) != 2 or range[0] > range[1]:
-                raise Exception('Bad range')
+                raise Exception(f"Bad range: {range!r}")
             for char in range:
                 if not isinstance(char, str):
                     raise TypeError(f"Can't put {char!r} in a `Charclass`", char)
@@ -96,9 +87,9 @@ class Charclass:
                     raise ValueError("`Charclass` can only contain single chars", char)
 
         # Rebalance ranges!
-        (ord_ranges, n) = ([], False)
+        ord_ranges = []
         for (first, last) in ranges:
-            (ord_ranges, n) = add_ord_range(ord_ranges, n, (ord(first), ord(last)), False)
+            ord_ranges = add_ord_range(ord_ranges, (ord(first), ord(last)))
         ranges = tuple((chr(first_u), chr(last_u)) for (first_u, last_u) in ord_ranges)
 
         object.__setattr__(self, "ranges", ranges)
@@ -134,35 +125,6 @@ class Charclass:
     # backslash. Notice how much smaller this class is than the one above; note
     # also that the hyphen and caret do NOT appear above.
     classSpecial: ClassVar[frozenset[str]] = frozenset("\\[]^-")
-
-    # Shorthand ranges for use inside `Charclass`es e.g. [abc\d]
-    w = (
-        ("0", "9"),
-        ("A", "Z"),
-        ("_", "_"),
-        ("a", "z"),
-    )
-    d = (("0", "9"),)
-    s = (
-        ("\t", "\t"),
-        ("\n", "\n"),
-        ("\v", "\v"),
-        ("\f", "\f"),
-        ("\r", "\r"),
-        (" ", " "),
-    )
-
-    shorthand: ClassVar[Mapping[frozenset[str], str]] = {
-        w: "\\w",
-        d: "\\d",
-        s: "\\s",
-    }
-
-    negated_shorthand: ClassVar[Mapping[frozenset[str], str]] = {
-        w: "\\W",
-        d: "\\D",
-        s: "\\S",
-    }
 
     def __str__(self, /) -> str:
         # pylint: disable=too-many-return-statements
@@ -296,6 +258,27 @@ class Charclass:
                     if not other.has_char(char):
                         return False
                 return True
+
+    def __or__(self, other: Charclass, /) -> Charclass:
+        self_ord_ranges = list(self.ord_ranges)
+        if self.negated:
+            self_ord_ranges = negate(self_ord_ranges)
+
+        other_ord_ranges = list(other.ord_ranges)
+        if other.negated:
+            other_ord_ranges = negate(other_ord_ranges)
+
+        new_ord_ranges = self_ord_ranges
+        for ord_range in other_ord_ranges:
+            new_ord_ranges = add_ord_range(new_ord_ranges, ord_range)
+
+        new_negated = self.negated or other.negated
+        if new_negated:
+            new_ord_ranges = negate(new_ord_ranges)
+        new_ranges = tuple(
+            (chr(first_u), chr(last_u)) for (first_u, last_u) in new_ord_ranges
+        )
+        return Charclass(new_ranges, new_negated)
 
 # Standard character classes
 WORDCHAR = Charclass(
