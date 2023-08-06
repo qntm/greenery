@@ -289,6 +289,7 @@ class Charclass:
 
     __and__ = intersection
 
+
 # Standard character classes
 WORDCHAR = Charclass("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz")
 DIGIT = Charclass("0123456789")
@@ -337,7 +338,7 @@ def repartition(
     """
     ord_range_boundaries = set()
     for charclass in charclasses:
-        for (first_u, last_u) in charclass.ord_ranges:
+        for first_u, last_u in charclass.ord_ranges:
             ord_range_boundaries.add(first_u)
             ord_range_boundaries.add(last_u + 1)
     ord_range_boundaries = sorted(ord_range_boundaries)
@@ -345,10 +346,7 @@ def repartition(
     ord_ranges = []
     for i, ord_range_boundary in enumerate(ord_range_boundaries):
         if i + 1 < len(ord_range_boundaries):
-            ord_ranges.append((
-                ord_range_boundary,
-                ord_range_boundaries[i + 1] - 1
-            ))
+            ord_ranges.append((ord_range_boundary, ord_range_boundaries[i + 1] - 1))
 
     # Group all of the possible ranges by "signature".
     # A signature is a tuple of Booleans telling us which character classes
@@ -372,15 +370,15 @@ def repartition(
     # From the signatures we can gather the new Charclasses
     newcharclasses = []
     newcharclasses.append(
-        ~Charclass(tuple(
-            (chr(first_u), chr(last_u)) for (first_u, last_u) in ord_ranges
-        ))
+        ~Charclass(
+            tuple((chr(first_u), chr(last_u)) for (first_u, last_u) in ord_ranges)
+        )
     )
     for ord_ranges in signatures.values():
         newcharclasses.append(
-            Charclass(tuple(
-                (chr(first_u), chr(last_u)) for (first_u, last_u) in ord_ranges
-            ))
+            Charclass(
+                tuple((chr(first_u), chr(last_u)) for (first_u, last_u) in ord_ranges)
+            )
         )
 
     # Now compute the breakdowns

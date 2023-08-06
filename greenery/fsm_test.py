@@ -969,10 +969,12 @@ def test_replace_alphabet() -> None:
         },
     )
 
-    fsm2 = fsm1.replace_alphabet({
-        Charclass("z"): [Charclass("a"), Charclass("b")],
-        ~Charclass("z"): [Charclass("c"), ~Charclass("abc")],
-    })
+    fsm2 = fsm1.replace_alphabet(
+        {
+            Charclass("z"): [Charclass("a"), Charclass("b")],
+            ~Charclass("z"): [Charclass("c"), ~Charclass("abc")],
+        }
+    )
 
     assert fsm2.map == {
         0: {

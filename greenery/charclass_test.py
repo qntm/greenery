@@ -150,11 +150,7 @@ def test_charclass_intersection() -> None:
     # [^ab] ∩ [^bc] = [^abc]
     assert ~Charclass("ab") & ~Charclass("bc") == ~Charclass("abc")
 
-    assert (
-        Charclass("ab") &
-        Charclass("bcd") &
-        Charclass("abcde")
-    ) == Charclass("b")
+    assert (Charclass("ab") & Charclass("bcd") & Charclass("abcde")) == Charclass("b")
 
 
 def test_empty() -> None:
@@ -169,20 +165,14 @@ def test_repartition_elementary() -> None:
 
 
 def test_repartition_elementary_2() -> None:
-    assert repartition([
-        Charclass("a"),
-        ~Charclass("a")
-    ]) == {
+    assert repartition([Charclass("a"), ~Charclass("a")]) == {
         Charclass("a"): [Charclass("a")],
         ~Charclass("a"): [~Charclass("a")],
     }
 
 
 def test_repartition_basic() -> None:
-    assert repartition([
-        Charclass("a"),
-        Charclass("abc")
-    ]) == {
+    assert repartition([Charclass("a"), Charclass("abc")]) == {
         Charclass("a"): [
             Charclass("a"),
         ],
@@ -194,11 +184,7 @@ def test_repartition_basic() -> None:
 
 
 def test_repartition_negation() -> None:
-    assert repartition([
-        Charclass("ab"),
-        Charclass("a"),
-        ~Charclass("ab")
-    ]) == {
+    assert repartition([Charclass("ab"), Charclass("a"), ~Charclass("ab")]) == {
         Charclass("ab"): [
             Charclass("a"),
             Charclass("b"),
@@ -213,11 +199,7 @@ def test_repartition_negation() -> None:
 
 
 def test_repartition_negation_2() -> None:
-    assert repartition([
-        Charclass("ab"),
-        Charclass("abc"),
-        ~Charclass("ab")
-    ]) == {
+    assert repartition([Charclass("ab"), Charclass("abc"), ~Charclass("ab")]) == {
         Charclass("ab"): [
             Charclass("ab"),
         ],
@@ -282,20 +264,12 @@ def test_repartition_advanced() -> None:
 
 
 def test_repartition_advanced_2() -> None:
-    assert repartition([
-        WORDCHAR,
-        DIGIT,
-        DOT,
-        NONDIGITCHAR,
-        NULLCHARCLASS
-    ]) == {
+    assert repartition([WORDCHAR, DIGIT, DOT, NONDIGITCHAR, NULLCHARCLASS]) == {
         WORDCHAR: [
             DIGIT,
             Charclass("ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz"),
         ],
-        DIGIT: [
-            DIGIT
-        ],
+        DIGIT: [DIGIT],
         DOT: [
             ~Charclass((("0", "z"),)),
             DIGIT,
