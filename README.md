@@ -151,6 +151,78 @@ Represents a non-negative integer or infinity.
 
 Special `Bound` representing no limit. Can be used as an upper bound only.
 
+### Charclass
+
+This class represents a _character class_ such as `a`, `\w`, `.`, `[A-Za-z0-9_]`, and so on. `Charclass`es must be constructed longhand either using a string containing all the desired characters, or a tuple of ranges, where each range is a pair of characters to be used as the range's inclusive endpoints. Use `~` to negate a `Charclass`.
+
+* `a` = `Charclass("a")`
+* `[abyz]` = `Charclass("abyz")`
+* `[a-z]` = `Charclass("abcdefghijklmnopqrstuvwxyz")` or `Charclass((("a", "z"),))`
+* `\w` = `Charclass((("a", "z"), ("A", "Z"), ("0", "9"), ("_", "_")))`
+* `[^x]` = `~Charclass("x")`
+* `\D` = `~Charclass("0123456789")`
+* `.` = `~Charclass(())`
+
+### Fsm
+
+An `Fsm` is a finite state machine which accepts strings (or more generally iterables of Unicode characters) as input. This is used internally by `Pattern` for most regular expression manipulation operations.
+
+In theory, accepting strings as input means that every `Fsm`'s alphabet is the same: the set of all 1,114,112 possible Unicode characters which can make up a string. But this is a very large alphabet and would result in extremely large transition maps, and have very poor performance. So, in practice, `Fsm` uses not single characters but `Charclass`es (see above) for its alphabet and its map transitions.
+
+```python
+# FSM accepting only the string "a"
+a = Fsm(
+    alphabet={Charclass("a"), ~Charclass("a")},
+    states={0, 1, 2},
+    initial=0,
+    finals={1},
+    map={
+        0: {Charclass("a"): 1, ~Charclass("a"): 2},
+        1: {Charclass("a"): 2, ~Charclass("a"): 2},
+        2: {Charclass("a"): 2, ~Charclass("a"): 2},
+    },
+)
+```
+
+Notes:
+
+* The `Charclass`es which make up the alphabet must _partition_ the space of all Unicode characters - every Unicode character must be a member of exactly one `Charclass` in the alphabet.
+* States must be integers.
+* The map must be complete. Omitting transition symbols or states is not permitted.
+
+A regular language is a possibly-infinite set of strings. With this in mind, `Fsm` implements several [methods like those on `frozenset`](https://docs.python.org/3/library/stdtypes.html#frozenset).
+
+Method | Behaviour
+---|---
+`fsm.accepts("a")` | Returns `True` if the FSM accepts string or `False` if not.
+`fsm.strings()` | Returns a generator of all the strings which this FSM accepts.
+`fsm.empty()` | Returns `True` if this FSM accepts no strings, otherwise `False`.
+`fsm.cardinality()` | Returns the number of strings which the FSM accepts. Throws an `OverflowError` if this number is infinite.
+`fsm1.equivalent(fsm2)` | Returns `True` if the two FSMs accept exactly the same strings, otherwise `False`.
+`fsm.copy()` | Returns a shallow copy of `fsm`.
+`fsm.everythingbut()` | Returns an FSM which accepts every string not matched by the original. `fsm.everythingbut().everythingbut()` matches the same strings as `fsm`.
+`fsm1.concatenate(fsm2, ...)` | Returns an FSM which accepts any string of the form *a·b·...* where *a* is a string accepted by `fsm1`, *b* is a string accepted by `fsm2` and so on.
+`fsm.times(multiplier)` | Returns the input FSM concatenated with itself `multiplier` times. `multiplier` must be a non-negative integer.
+`fsm.star()` | Returns an FSM which is the Kleene star closure of the original.
+`fsm1.union(fsm2, ...)` | Returns an FSM accepting any string matched by any of the input FSMs. This is also called *alternation*.
+`fsm1.intersection(fsm2, ...)` | Returns an FSM accepting any string matched by all input FSMs.
+`fsm1.difference(fsm2, ...)` | Subtract the set of strings matched by `fsm2` onwards from those matched by `fsm1` and return the resulting FSM.
+`fsm1.symmetric_difference(fsm2, ...)` | Returns an FSM matching any string accepted by `fsm1` or `fsm2` but not both.
+`fsm.derive(string)` | Return the [Brzozowski derivative](https://en.wikipedia.org/wiki/Brzozowski_derivative) of the input FSM with respect to the input string.
+`fsm.reduce()` | Returns an FSM which is equivalent to `fsm` (*i.e.* accepts exactly the same strings) but has a minimal number of states.
+
+Note that methods combining FSMs usually output new FSMs with modified alphabets. For example, concatenating an FSM with alphabet `{Charclass("a"), ~Charclass("a")}` and another FSM with alphabet `{Charclass("abc"), ~Charclass("abc")}` usually results in a third FSM with a _repartitioned_ alphabet of `{Charclass("a"), Charclass("bc"), ~Charclass("abc")}`. Notice how all three alphabets partition the space of all Unicode characters.
+
+Several other methods on `Fsm` instances are available - these should not be used, they're subject to change.
+
+### EPSILON
+
+Special `Fsm` which accepts only the empty string.
+
+### NULL
+
+Special `Fsm` which accepts no strings.
+
 ## Development
 
 ### Running tests

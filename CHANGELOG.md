@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 4.2.0
+
+https://github.com/qntm/greenery/pull/106
+
+## 4.1.0
+
+https://github.com/qntm/greenery/pull/99
+
 ## 4.0.0
 
 https://github.com/qntm/greenery/pull/67
