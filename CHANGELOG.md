@@ -2,7 +2,7 @@
 
 ## 4.2.0
 
-Exposed `Fsm`, `NULL`, `EPSILON` and `Charclass`.
+https://github.com/qntm/greenery/pull/106
 
 ## 4.1.0
 
