@@ -153,7 +153,7 @@ Special `Bound` representing no limit. Can be used as an upper bound only.
 
 ### Charclass
 
-This class represents a _character class_ such as `a`, `\\w`, `.`, `[A-Za-z0-9_]`, and so on. `Charclass`es must be constructed longhand either using a string containing all the desired characters, or a tuple of ranges, where each range is a pair of characters to be used as the range's inclusive endpoints. Use `~` to negate a `Charclass`.
+This class represents a _character class_ such as `a`, `\w`, `.`, `[A-Za-z0-9_]`, and so on. `Charclass`es must be constructed longhand either using a string containing all the desired characters, or a tuple of ranges, where each range is a pair of characters to be used as the range's inclusive endpoints. Use `~` to negate a `Charclass`.
 
 * `a` = `Charclass("a")`
 * `[abyz]` = `Charclass("abyz")`
