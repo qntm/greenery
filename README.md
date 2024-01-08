@@ -167,7 +167,7 @@ This class represents a _character class_ such as `a`, `\w`, `.`, `[A-Za-z0-9_]`
 
 An `Fsm` is a finite state machine which accepts strings (or more generally iterables of Unicode characters) as input. This is used internally by `Pattern` for most regular expression manipulation operations.
 
-In theory, accepting strings as input means that every `Fsm`s alphabet is the same: the set of all 1,114,112 possible Unicode characters which can make up a string. But this is a very large alphabet and would result in extremely large transition maps, and have very poor performance. So, in practice, `Fsm` uses not single characters but `Charclass`es (see above) for its alphabet and its map transitions.
+In theory, accepting strings as input means that every `Fsm`'s alphabet is the same: the set of all 1,114,112 possible Unicode characters which can make up a string. But this is a very large alphabet and would result in extremely large transition maps, and have very poor performance. So, in practice, `Fsm` uses not single characters but `Charclass`es (see above) for its alphabet and its map transitions.
 
 ```python
 # FSM accepting only the string "a"
