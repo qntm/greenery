@@ -9,6 +9,7 @@ __all__ = (
     "StateType",
     "EPSILON",
     "NULL",
+    "Charclass",
 )
 
 from dataclasses import dataclass

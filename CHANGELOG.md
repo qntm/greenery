@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 4.2.0
+
+Exposed `Fsm`, `NULL`, `EPSILON` and `Charclass`.
+
+## 4.1.0
+
+https://github.com/qntm/greenery/pull/99
+
 ## 4.0.0
 
 https://github.com/qntm/greenery/pull/67
