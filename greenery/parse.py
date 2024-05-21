@@ -19,7 +19,7 @@ from .charclass import (
     escapes,
     shorthand,
 )
-from .multiplier import Multiplier, ONE, symbolic
+from .multiplier import ONE, Multiplier, symbolic
 from .rxelems import Conc, Mult, Pattern
 
 # Currently many statements are grouped by `try/except NoMatch` in order to try
