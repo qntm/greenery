@@ -333,7 +333,7 @@ def match_nonempty_greedy_multiplier(string: str, i: int) -> MatchResult[Multipl
 def match_nonempty_multiplier(string: str, i: int) -> MatchResult[Multiplier]:
     multiplier, j = match_nonempty_greedy_multiplier(string, i)
     try:
-        j = static(string, j, '?')
+        j = static(string, j, "?")
     except NoMatch:
         pass
     return multiplier, j

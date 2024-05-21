@@ -96,6 +96,7 @@ def test_mult_matching() -> None:
         26,
     )
 
+
 def test_lazy_multipliers() -> None:
     assert match_mult("abcde[^fg]*?", 5) == (Mult(~Charclass("fg"), STAR), 12)
     assert match_mult("abcde[^fg]*?h{5}?[a-z]+", 12) == (
