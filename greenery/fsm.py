@@ -69,6 +69,7 @@ class Fsm:
     map: Mapping[StateType, Mapping[AlphaType, StateType]]
 
     # noinspection PyShadowingBuiltins
+    # pylint: disable=too-many-arguments
     def __init__(
         self,
         /,

@@ -42,13 +42,6 @@ ignore-patterns=
         # Anything like __pycache__ or __mypycache__ or whatever.
         ^__.*cache.*__$,
 
-# Python code to execute, usually for sys.path manipulation such as
-# pygtk.require().
-init-hook=
-  import os, sys, pylint.config as plc
-  sys.path.append(os.path.dirname(plc.PYLINTRC))
-
-
 # Use multiple processes to speed up Pylint. Specifying 0 will auto-detect the
 # number of processors available to use.
 jobs=0
@@ -61,20 +54,16 @@ limit-inference-results=100
 # List of plugins (as comma separated values of python module names) to load,
 # usually to register additional checkers.
 load-plugins=
-        # see sibling file: ./_pylint_plugin.py
-        _pylint_plugin,
         pylint.extensions.bad_builtin,
         pylint.extensions.broad_try_clause,
         pylint.extensions.check_elif,
         pylint.extensions.code_style,
-        pylint.extensions.comparetozero,
         pylint.extensions.comparison_placement,
         pylint.extensions.confusing_elif,
         pylint.extensions.consider_ternary_expression,
         pylint.extensions.docparams,
         pylint.extensions.docstyle,
         pylint.extensions.empty_comment,
-        pylint.extensions.emptystring,
         pylint.extensions.eq_without_hash,
         pylint.extensions.for_any_all,
         pylint.extensions.mccabe,
@@ -146,6 +135,8 @@ enable=
         raw-checker-failed,
         use-symbolic-message-instead,
         useless-suppression,
+        use-implicit-booleaness-not-comparison-to-zero,
+        use-implicit-booleaness-not-comparison-to-string,
 
 
 [REPORTS]
