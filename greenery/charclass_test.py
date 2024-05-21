@@ -78,7 +78,7 @@ def test_issubset() -> None:
     assert Charclass("a").issubset(Charclass((("a", "b"),)))
     assert Charclass("a").issubset(~Charclass("b"))
     assert not (~Charclass("a")).issubset(Charclass("b"))
-    assert ~Charclass("a").issubset(DOT)
+    assert (~Charclass("a")).issubset(DOT)
 
 
 def test_charclass_str() -> None:

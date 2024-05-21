@@ -97,6 +97,22 @@ def test_mult_matching() -> None:
     )
 
 
+def test_lazy_multipliers() -> None:
+    assert match_mult("abcde[^fg]*?", 5) == (Mult(~Charclass("fg"), STAR), 12)
+    assert match_mult("abcde[^fg]*?h{5}?[a-z]+", 12) == (
+        Mult(Charclass("h"), Multiplier(Bound(5), Bound(5))),
+        17,
+    )
+    assert match_mult("abcde[^fg]*?h{5}?[a-z]+?T{1,}", 17) == (
+        Mult(Charclass("abcdefghijklmnopqrstuvwxyz"), PLUS),
+        24,
+    )
+    assert match_mult("abcde[^fg]*?h{5}?[a-z]+?T{2,}?", 24) == (
+        Mult(Charclass("T"), Multiplier(Bound(2), INF)),
+        30,
+    )
+
+
 def test_charclass_ranges() -> None:
     # Should accept arbitrary ranges of characters in charclasses. No longer
     # limited to alphanumerics. (User beware...)
@@ -128,6 +144,10 @@ def test_mult_parsing() -> None:
     assert parse("[a-g0-8$%\\^]+") == Pattern(
         Conc(Mult(Charclass("abcdefg012345678$%^"), PLUS))
     )
+
+
+def test_lazy_mult_parsing() -> None:
+    assert parse("[a-g]+?") == Pattern(Conc(Mult(Charclass("abcdefg"), PLUS)))
 
 
 def test_conc_parsing() -> None:

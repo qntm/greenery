@@ -1,7 +1,7 @@
--c constraints.txt
 black
 flake8
 isort
 mypy
 pylint
 pytest
+setuptools

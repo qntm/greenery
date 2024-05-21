@@ -60,7 +60,7 @@ An empty charclass `[]` is legal and matches no characters: when used in a regul
 
   This is because computing the intersection between `.*a.*` and `.*b.*` (1) is largely pointless and (2) usually results in gibberish coming out of the program.
 
-* The non-greedy operators `*?`, `+?`, `??` and `{m,n}?` are not supported, since they do not alter the regular language.
+* The non-greedy operators `*?`, `+?`, `??` and `{m,n}?` are permitted but do nothing. This is because they do not alter the regular language. For example, `abc{0,5}def` and `abc{0,5}?def` represent precisely the same set of strings.
 
 * Parentheses are used to alternate between multiple possibilities e.g. `(a|bc)` only, not for capture grouping. Here's why:
 
