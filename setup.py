@@ -4,7 +4,7 @@ from setuptools import setup
 
 setup(
     name="greenery",
-    version="4.2.0",
+    version="4.2.1",
     tests_require=["pytest"],
     packages=["greenery"],
     package_dir={"greenery": "greenery"},
