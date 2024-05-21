@@ -19,7 +19,7 @@ from .charclass import (
     escapes,
     shorthand,
 )
-from .multiplier import Multiplier, symbolic
+from .multiplier import Multiplier, ONE, symbolic
 from .rxelems import Conc, Mult, Pattern
 
 # Currently many statements are grouped by `try/except NoMatch` in order to try
@@ -294,7 +294,10 @@ def match_bound(string: str, i: int) -> MatchResult[Bound]:
     return INF, i
 
 
-def match_multiplier(string: str, i: int) -> MatchResult[Multiplier]:
+def match_nonempty_greedy_multiplier(string: str, i: int) -> MatchResult[Multiplier]:
+    """
+    Any multiplier which isn't the default empty string (equivalent to `{1,1}`)
+    """
     # {2,3} or {2,}
     try:
         j = static(string, i, "{")
@@ -315,16 +318,32 @@ def match_multiplier(string: str, i: int) -> MatchResult[Multiplier]:
     except NoMatch:
         pass
 
-    # "?"/"*"/"+"/""
-    # we do these in reverse order of symbol length, because
-    # that forces "" to be done last
+    # "?"/"*"/"+"
     for mult, symbol in sorted(symbolic.items(), key=lambda kv: -len(kv[1])):
+        if symbol == "":
+            continue
         try:
             return mult, static(string, i, symbol)
         except NoMatch:
             pass
 
     raise NoMatch
+
+
+def match_nonempty_multiplier(string: str, i: int) -> MatchResult[Multiplier]:
+    multiplier, j = match_nonempty_greedy_multiplier(string, i)
+    try:
+        j = static(string, j, '?')
+    except NoMatch:
+        pass
+    return multiplier, j
+
+
+def match_multiplier(string: str, i: int) -> MatchResult[Multiplier]:
+    try:
+        return match_nonempty_multiplier(string, i)
+    except NoMatch:
+        return ONE, i
 
 
 def match_mult(string: str, i: int) -> MatchResult[Mult]:
