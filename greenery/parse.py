@@ -319,8 +319,8 @@ def match_nonempty_greedy_multiplier(string: str, i: int) -> MatchResult[Multipl
         pass
 
     # "?"/"*"/"+"
-    for mult, symbol in sorted(symbolic.items(), key=lambda kv: -len(kv[1])):
-        if symbol == "":
+    for mult, symbol in symbolic.items():
+        if not symbol:
             continue
         try:
             return mult, static(string, i, symbol)
