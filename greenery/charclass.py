@@ -41,7 +41,7 @@ def collapse_ord_ranges(ord_ranges: List[Tuple[int, int]]) -> List[Tuple[int, in
     Assume all existing ord ranges are sorted, and also disjoint
     So no cases of [[12, 17], [2, 3]] or [[4, 6], [7, 8]].
     """
-    collapsed = []
+    collapsed: List[Tuple[int, int]] = []
 
     for ord_range in sorted(ord_ranges):
         if not collapsed or collapsed[-1][1] + 1 < ord_range[0]:
