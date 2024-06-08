@@ -36,37 +36,21 @@ def negate(ord_ranges: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
     return negated
 
 
-def add_ord_range(
-    ord_ranges: List[Tuple[int, int]], new_ord_range: Tuple[int, int]
-) -> List[Tuple[int, int]]:
+def collapse_ord_ranges(ord_ranges: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
     """
     Assume all existing ord ranges are sorted, and also disjoint
     So no cases of [[12, 17], [2, 3]] or [[4, 6], [7, 8]].
-    Potentially some performance enhancement is possible here, stop
-    cloning `ord_ranges` over and over?
     """
-    # All ranges before this index
-    # fit strictly before the newcomer
-    start = 0
+    collapsed: List[Tuple[int, int]] = []
 
-    # All ranges with this index or larger
-    # fit strictly after the newcomer
-    end = len(ord_ranges)
+    for ord_range in sorted(ord_ranges):
+        if not collapsed or collapsed[-1][1] + 1 < ord_range[0]:
+            collapsed.append(ord_range)
+        elif ord_range[1] > collapsed[-1][1]:
+            # merge into previous
+            collapsed[-1] = (collapsed[-1][0], ord_range[1])
 
-    for i, ord_range in enumerate(ord_ranges):
-        if ord_range[1] + 1 < new_ord_range[0]:
-            start = i + 1
-        if new_ord_range[1] + 1 < ord_range[0]:
-            end = i
-            break
-
-    # Ranges between those indices will be spliced out and replaced.
-    if start < end:
-        new_ord_range = (
-            min(new_ord_range[0], ord_ranges[start][0]),
-            max(new_ord_range[1], ord_ranges[end - 1][1]),
-        )
-    return ord_ranges[:start] + [new_ord_range] + ord_ranges[end:]
+    return collapsed
 
 
 @dataclass(frozen=True, init=False)
@@ -100,9 +84,8 @@ class Charclass:
                     raise ValueError("`Charclass` can only contain single chars", char)
 
         # Rebalance ranges!
-        ord_ranges: List[Tuple[int, int]] = []
-        for first, last in ranges:
-            ord_ranges = add_ord_range(ord_ranges, (ord(first), ord(last)))
+        ord_ranges = [(ord(first), ord(last)) for first, last in ranges]
+        ord_ranges = collapse_ord_ranges(ord_ranges)
 
         object.__setattr__(self, "ord_ranges", tuple(ord_ranges))
         object.__setattr__(self, "negated", negated)
@@ -266,9 +249,10 @@ class Charclass:
         if other.negated:
             other_ord_ranges = negate(other_ord_ranges)
 
-        new_ord_ranges = self_ord_ranges
-        for ord_range in other_ord_ranges:
-            new_ord_ranges = add_ord_range(new_ord_ranges, ord_range)
+        new_ord_ranges = []
+        new_ord_ranges.extend(self_ord_ranges)
+        new_ord_ranges.extend(other_ord_ranges)
+        new_ord_ranges = collapse_ord_ranges(new_ord_ranges)
 
         new_negated = self.negated or other.negated
         if new_negated:
