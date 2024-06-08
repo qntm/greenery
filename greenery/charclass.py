@@ -90,10 +90,8 @@ class Charclass:
                     raise ValueError("`Charclass` can only contain single chars", char)
 
         # Rebalance ranges!
-        ord_ranges: List[Tuple[int, int]] = []
-        for first, last in ranges:
-            ord_ranges.append((ord(first), ord(last)))
-            collapse_ord_ranges(ord_ranges)
+        ord_ranges = [(ord(first), ord(last)) for first, last in ranges]
+        collapse_ord_ranges(ord_ranges)
 
         object.__setattr__(self, "ord_ranges", tuple(ord_ranges))
         object.__setattr__(self, "negated", negated)
@@ -257,10 +255,10 @@ class Charclass:
         if other.negated:
             other_ord_ranges = negate(other_ord_ranges)
 
-        new_ord_ranges = self_ord_ranges
-        for ord_range in other_ord_ranges:
-            new_ord_ranges.append(ord_range)
-            collapse_ord_ranges(new_ord_ranges)
+        new_ord_ranges = []
+        new_ord_ranges.extend(self_ord_ranges)
+        new_ord_ranges.extend(other_ord_ranges)
+        collapse_ord_ranges(new_ord_ranges)
 
         new_negated = self.negated or other.negated
         if new_negated:
