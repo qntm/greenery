@@ -16,49 +16,43 @@ from .charclass import (
 )
 
 
-def collapse_ord_ranges_copy (a):
-    copy = list(a)
-    collapse_ord_ranges(copy)
-    return copy
-
-
 def test_collapse_ord_ranges_0() -> None:
-    assert collapse_ord_ranges_copy([(1, 2)]) == [(1, 2)]
+    assert collapse_ord_ranges([(1, 2)]) == [(1, 2)]
 
 
 def test_collapse_ord_ranges_1a() -> None:
-    assert collapse_ord_ranges_copy(
+    assert collapse_ord_ranges(
         [(1, 1), (3, 4), (10, 11), (13, 17), (7, 7)],
     ) == [(1, 1), (3, 4), (7, 7), (10, 11), (13, 17)]
 
 
 def test_collapse_ord_ranges_1b() -> None:
-    assert collapse_ord_ranges_copy([(5, 16), (1, 1)]) == [(1, 1), (5, 16)]
-    assert collapse_ord_ranges_copy([(5, 16), (1, 2)]) == [(1, 2), (5, 16)]
-    assert collapse_ord_ranges_copy([(5, 16), (1, 3)]) == [(1, 3), (5, 16)]
-    assert collapse_ord_ranges_copy([(5, 16), (1, 4)]) == [(1, 16)]
-    assert collapse_ord_ranges_copy([(5, 16), (1, 5)]) == [(1, 16)]
-    assert collapse_ord_ranges_copy([(5, 16), (1, 16)]) == [(1, 16)]
-    assert collapse_ord_ranges_copy([(5, 16), (1, 17)]) == [(1, 17)]
-    assert collapse_ord_ranges_copy([(5, 16), (1, 18)]) == [(1, 18)]
-    assert collapse_ord_ranges_copy([(5, 16), (4, 4)]) == [(4, 16)]
-    assert collapse_ord_ranges_copy([(5, 16), (5, 5)]) == [(5, 16)]
-    assert collapse_ord_ranges_copy([(5, 16), (5, 18)]) == [(5, 18)]
-    assert collapse_ord_ranges_copy([(5, 16), (7, 8)]) == [(5, 16)]
-    assert collapse_ord_ranges_copy([(5, 16), (10, 20)]) == [(5, 20)]
-    assert collapse_ord_ranges_copy([(5, 16), (16, 20)]) == [(5, 20)]
-    assert collapse_ord_ranges_copy([(5, 16), (17, 20)]) == [(5, 20)]
-    assert collapse_ord_ranges_copy([(5, 16), (18, 20)]) == [(5, 16), (18, 20)]
+    assert collapse_ord_ranges([(5, 16), (1, 1)]) == [(1, 1), (5, 16)]
+    assert collapse_ord_ranges([(5, 16), (1, 2)]) == [(1, 2), (5, 16)]
+    assert collapse_ord_ranges([(5, 16), (1, 3)]) == [(1, 3), (5, 16)]
+    assert collapse_ord_ranges([(5, 16), (1, 4)]) == [(1, 16)]
+    assert collapse_ord_ranges([(5, 16), (1, 5)]) == [(1, 16)]
+    assert collapse_ord_ranges([(5, 16), (1, 16)]) == [(1, 16)]
+    assert collapse_ord_ranges([(5, 16), (1, 17)]) == [(1, 17)]
+    assert collapse_ord_ranges([(5, 16), (1, 18)]) == [(1, 18)]
+    assert collapse_ord_ranges([(5, 16), (4, 4)]) == [(4, 16)]
+    assert collapse_ord_ranges([(5, 16), (5, 5)]) == [(5, 16)]
+    assert collapse_ord_ranges([(5, 16), (5, 18)]) == [(5, 18)]
+    assert collapse_ord_ranges([(5, 16), (7, 8)]) == [(5, 16)]
+    assert collapse_ord_ranges([(5, 16), (10, 20)]) == [(5, 20)]
+    assert collapse_ord_ranges([(5, 16), (16, 20)]) == [(5, 20)]
+    assert collapse_ord_ranges([(5, 16), (17, 20)]) == [(5, 20)]
+    assert collapse_ord_ranges([(5, 16), (18, 20)]) == [(5, 16), (18, 20)]
 
 
 def test_collapse_ord_ranges_2() -> None:
-    assert collapse_ord_ranges_copy([(1, 2), (11, 12), (5, 6)]) == [(1, 2), (5, 6), (11, 12)]
-    assert collapse_ord_ranges_copy([(1, 2), (11, 12), (3, 6)]) == [(1, 6), (11, 12)]
-    assert collapse_ord_ranges_copy([(1, 2), (11, 12), (2, 6)]) == [(1, 6), (11, 12)]
-    assert collapse_ord_ranges_copy([(1, 2), (11, 12), (5, 9)]) == [(1, 2), (5, 9), (11, 12)]
-    assert collapse_ord_ranges_copy([(1, 2), (11, 12), (5, 10)]) == [(1, 2), (5, 12)]
-    assert collapse_ord_ranges_copy([(1, 2), (11, 12), (-2, -1)]) == [(-2, -1), (1, 2), (11, 12)]
-    assert collapse_ord_ranges_copy([(1, 2), (11, 12), (0, 20)]) == [(0, 20)]
+    assert collapse_ord_ranges([(1, 2), (11, 12), (5, 6)]) == [(1, 2), (5, 6), (11, 12)]
+    assert collapse_ord_ranges([(1, 2), (11, 12), (3, 6)]) == [(1, 6), (11, 12)]
+    assert collapse_ord_ranges([(1, 2), (11, 12), (2, 6)]) == [(1, 6), (11, 12)]
+    assert collapse_ord_ranges([(1, 2), (11, 12), (5, 9)]) == [(1, 2), (5, 9), (11, 12)]
+    assert collapse_ord_ranges([(1, 2), (11, 12), (5, 10)]) == [(1, 2), (5, 12)]
+    assert collapse_ord_ranges([(1, 2), (11, 12), (-2, -1)]) == [(-2, -1), (1, 2), (11, 12)]
+    assert collapse_ord_ranges([(1, 2), (11, 12), (0, 20)]) == [(0, 20)]
 
 
 def test_charclass_equality() -> None:
