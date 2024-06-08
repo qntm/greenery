@@ -44,28 +44,20 @@ def add_ord_range(
     So no cases of [[12, 17], [2, 3]] or [[4, 6], [7, 8]].
     Modifies `ord_ranges` in place, returns nothing.
     """
-    # All ranges before this index
-    # fit strictly before the newcomer
-    start = 0
+    ord_ranges.append(new_ord_range)
+    ord_ranges.sort()
 
-    # All ranges with this index or larger
-    # fit strictly after the newcomer
-    end = len(ord_ranges)
-
-    for i, ord_range in enumerate(ord_ranges):
-        if ord_range[1] + 1 < new_ord_range[0]:
-            start = i + 1
-        if new_ord_range[1] + 1 < ord_range[0]:
-            end = i
-            break
-
-    # Ranges between those indices will be spliced out and replaced.
-    if start < end:
-        new_ord_range = (
-            min(new_ord_range[0], ord_ranges[start][0]),
-            max(new_ord_range[1], ord_ranges[end - 1][1]),
-        )
-    ord_ranges[start:end] = [new_ord_range]
+    i = 1
+    while i < len(ord_ranges):
+        if ord_ranges[i - 1][1] + 1 < ord_ranges[i][0]:
+            i += 1
+        else:
+            # merge into previous
+            ord_ranges[i - 1] = (
+                ord_ranges[i - 1][0],
+                max(ord_ranges[i - 1][1], ord_ranges[i][1])
+            )
+            ord_ranges.pop(i)
 
 
 @dataclass(frozen=True, init=False)

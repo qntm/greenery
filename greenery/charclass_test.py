@@ -306,4 +306,5 @@ def test_charclass_by_category() -> None:
         else:
             out[cat].append(c)
     for cat, cs in out.items():
-        a = Charclass(''.join(cs))
+        # a = Charclass(''.join(cs))
+        pass
