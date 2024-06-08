@@ -36,15 +36,14 @@ def negate(ord_ranges: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
     return negated
 
 
-def add_ord_range(
-    ord_ranges: List[Tuple[int, int]], new_ord_range: Tuple[int, int]
+def collapse_ord_ranges(
+    ord_ranges: List[Tuple[int, int]]
 ) -> None:
     """
     Assume all existing ord ranges are sorted, and also disjoint
     So no cases of [[12, 17], [2, 3]] or [[4, 6], [7, 8]].
     Modifies `ord_ranges` in place, returns nothing.
     """
-    ord_ranges.append(new_ord_range)
     ord_ranges.sort()
 
     i = 1
@@ -93,7 +92,8 @@ class Charclass:
         # Rebalance ranges!
         ord_ranges: List[Tuple[int, int]] = []
         for first, last in ranges:
-            add_ord_range(ord_ranges, (ord(first), ord(last)))
+            ord_ranges.append((ord(first), ord(last)))
+            collapse_ord_ranges(ord_ranges)
 
         object.__setattr__(self, "ord_ranges", tuple(ord_ranges))
         object.__setattr__(self, "negated", negated)
@@ -259,7 +259,8 @@ class Charclass:
 
         new_ord_ranges = self_ord_ranges
         for ord_range in other_ord_ranges:
-            add_ord_range(new_ord_ranges, ord_range)
+            new_ord_ranges.append(ord_range)
+            collapse_ord_ranges(new_ord_ranges)
 
         new_negated = self.negated or other.negated
         if new_negated:
