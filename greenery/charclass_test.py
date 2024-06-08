@@ -52,7 +52,11 @@ def test_collapse_ord_ranges_2() -> None:
     assert collapse_ord_ranges([(1, 2), (11, 12), (2, 6)]) == [(1, 6), (11, 12)]
     assert collapse_ord_ranges([(1, 2), (11, 12), (5, 9)]) == [(1, 2), (5, 9), (11, 12)]
     assert collapse_ord_ranges([(1, 2), (11, 12), (5, 10)]) == [(1, 2), (5, 12)]
-    assert collapse_ord_ranges([(1, 2), (11, 12), (-2, -1)]) == [(-2, -1), (1, 2), (11, 12)]
+    assert collapse_ord_ranges([(1, 2), (11, 12), (-2, -1)]) == [
+        (-2, -1),
+        (1, 2),
+        (11, 12),
+    ]
     assert collapse_ord_ranges([(1, 2), (11, 12), (0, 20)]) == [(0, 20)]
 
 
@@ -288,6 +292,7 @@ def test_repartition_advanced_2() -> None:
         ],
     }
 
+
 # This should take a reasonable amount of time
 # It was previously taking forever
 def test_charclass_by_category() -> None:
@@ -300,4 +305,4 @@ def test_charclass_by_category() -> None:
         else:
             out[cat].append(c)
     for cat, cs in out.items():
-        a = Charclass(''.join(cs))
+        a = Charclass("".join(cs))

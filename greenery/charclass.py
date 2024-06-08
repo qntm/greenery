@@ -36,9 +36,7 @@ def negate(ord_ranges: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
     return negated
 
 
-def collapse_ord_ranges(
-    ord_ranges: List[Tuple[int, int]]
-) -> List[Tuple[int, int]]:
+def collapse_ord_ranges(ord_ranges: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
     """
     Assume all existing ord ranges are sorted, and also disjoint
     So no cases of [[12, 17], [2, 3]] or [[4, 6], [7, 8]].
@@ -51,10 +49,7 @@ def collapse_ord_ranges(
         else:
             # merge into previous
             if ord_range[1] > collapsed[-1][1]:
-                collapsed[-1] = (
-                    collapsed[-1][0],
-                    ord_range[1]
-                )
+                collapsed[-1] = (collapsed[-1][0], ord_range[1])
 
     return collapsed
 
