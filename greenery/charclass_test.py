@@ -1,4 +1,5 @@
 from __future__ import annotations
+import unicodedata
 
 from .charclass import (
     DIGIT,
@@ -15,44 +16,50 @@ from .charclass import (
 )
 
 
+def add_ord_range_copy (a, b):
+    copy = list(a)
+    add_ord_range(copy, b)
+    return copy
+
+
 def test_add_ord_range_0() -> None:
-    assert add_ord_range([], (1, 2)) == [(1, 2)]
+    assert add_ord_range_copy([], (1, 2)) == [(1, 2)]
 
 
 def test_add_ord_range_1a() -> None:
-    assert add_ord_range(
+    assert add_ord_range_copy(
         [(1, 1), (3, 4), (10, 11), (13, 17)],
         (7, 7),
     ) == [(1, 1), (3, 4), (7, 7), (10, 11), (13, 17)]
 
 
 def test_add_ord_range_1b() -> None:
-    assert add_ord_range([(5, 16)], (1, 1)) == [(1, 1), (5, 16)]
-    assert add_ord_range([(5, 16)], (1, 2)) == [(1, 2), (5, 16)]
-    assert add_ord_range([(5, 16)], (1, 3)) == [(1, 3), (5, 16)]
-    assert add_ord_range([(5, 16)], (1, 4)) == [(1, 16)]
-    assert add_ord_range([(5, 16)], (1, 5)) == [(1, 16)]
-    assert add_ord_range([(5, 16)], (1, 16)) == [(1, 16)]
-    assert add_ord_range([(5, 16)], (1, 17)) == [(1, 17)]
-    assert add_ord_range([(5, 16)], (1, 18)) == [(1, 18)]
-    assert add_ord_range([(5, 16)], (4, 4)) == [(4, 16)]
-    assert add_ord_range([(5, 16)], (5, 5)) == [(5, 16)]
-    assert add_ord_range([(5, 16)], (5, 18)) == [(5, 18)]
-    assert add_ord_range([(5, 16)], (7, 8)) == [(5, 16)]
-    assert add_ord_range([(5, 16)], (10, 20)) == [(5, 20)]
-    assert add_ord_range([(5, 16)], (16, 20)) == [(5, 20)]
-    assert add_ord_range([(5, 16)], (17, 20)) == [(5, 20)]
-    assert add_ord_range([(5, 16)], (18, 20)) == [(5, 16), (18, 20)]
+    assert add_ord_range_copy([(5, 16)], (1, 1)) == [(1, 1), (5, 16)]
+    assert add_ord_range_copy([(5, 16)], (1, 2)) == [(1, 2), (5, 16)]
+    assert add_ord_range_copy([(5, 16)], (1, 3)) == [(1, 3), (5, 16)]
+    assert add_ord_range_copy([(5, 16)], (1, 4)) == [(1, 16)]
+    assert add_ord_range_copy([(5, 16)], (1, 5)) == [(1, 16)]
+    assert add_ord_range_copy([(5, 16)], (1, 16)) == [(1, 16)]
+    assert add_ord_range_copy([(5, 16)], (1, 17)) == [(1, 17)]
+    assert add_ord_range_copy([(5, 16)], (1, 18)) == [(1, 18)]
+    assert add_ord_range_copy([(5, 16)], (4, 4)) == [(4, 16)]
+    assert add_ord_range_copy([(5, 16)], (5, 5)) == [(5, 16)]
+    assert add_ord_range_copy([(5, 16)], (5, 18)) == [(5, 18)]
+    assert add_ord_range_copy([(5, 16)], (7, 8)) == [(5, 16)]
+    assert add_ord_range_copy([(5, 16)], (10, 20)) == [(5, 20)]
+    assert add_ord_range_copy([(5, 16)], (16, 20)) == [(5, 20)]
+    assert add_ord_range_copy([(5, 16)], (17, 20)) == [(5, 20)]
+    assert add_ord_range_copy([(5, 16)], (18, 20)) == [(5, 16), (18, 20)]
 
 
 def test_add_ord_range_2() -> None:
-    assert add_ord_range([(1, 2), (11, 12)], (5, 6)) == [(1, 2), (5, 6), (11, 12)]
-    assert add_ord_range([(1, 2), (11, 12)], (3, 6)) == [(1, 6), (11, 12)]
-    assert add_ord_range([(1, 2), (11, 12)], (2, 6)) == [(1, 6), (11, 12)]
-    assert add_ord_range([(1, 2), (11, 12)], (5, 9)) == [(1, 2), (5, 9), (11, 12)]
-    assert add_ord_range([(1, 2), (11, 12)], (5, 10)) == [(1, 2), (5, 12)]
-    assert add_ord_range([(1, 2), (11, 12)], (-2, -1)) == [(-2, -1), (1, 2), (11, 12)]
-    assert add_ord_range([(1, 2), (11, 12)], (0, 20)) == [(0, 20)]
+    assert add_ord_range_copy([(1, 2), (11, 12)], (5, 6)) == [(1, 2), (5, 6), (11, 12)]
+    assert add_ord_range_copy([(1, 2), (11, 12)], (3, 6)) == [(1, 6), (11, 12)]
+    assert add_ord_range_copy([(1, 2), (11, 12)], (2, 6)) == [(1, 6), (11, 12)]
+    assert add_ord_range_copy([(1, 2), (11, 12)], (5, 9)) == [(1, 2), (5, 9), (11, 12)]
+    assert add_ord_range_copy([(1, 2), (11, 12)], (5, 10)) == [(1, 2), (5, 12)]
+    assert add_ord_range_copy([(1, 2), (11, 12)], (-2, -1)) == [(-2, -1), (1, 2), (11, 12)]
+    assert add_ord_range_copy([(1, 2), (11, 12)], (0, 20)) == [(0, 20)]
 
 
 def test_charclass_equality() -> None:
@@ -286,3 +293,17 @@ def test_repartition_advanced_2() -> None:
             # This should be impossible or at least cause no problems in practice
         ],
     }
+
+# This should take a reasonable amount of time
+# It was previously taking forever
+def test_charclass_by_category() -> None:
+    out = {}
+    for i in range(0x101000):
+        c = chr(i)
+        cat = unicodedata.category(c)
+        if cat not in out:
+            out[cat] = [c]
+        else:
+            out[cat].append(c)
+    for cat, cs in out.items():
+        a = Charclass(''.join(cs))

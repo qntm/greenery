@@ -38,12 +38,11 @@ def negate(ord_ranges: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
 
 def add_ord_range(
     ord_ranges: List[Tuple[int, int]], new_ord_range: Tuple[int, int]
-) -> List[Tuple[int, int]]:
+) -> None:
     """
     Assume all existing ord ranges are sorted, and also disjoint
     So no cases of [[12, 17], [2, 3]] or [[4, 6], [7, 8]].
-    Potentially some performance enhancement is possible here, stop
-    cloning `ord_ranges` over and over?
+    Modifies `ord_ranges` in place, returns nothing.
     """
     # All ranges before this index
     # fit strictly before the newcomer
@@ -66,7 +65,7 @@ def add_ord_range(
             min(new_ord_range[0], ord_ranges[start][0]),
             max(new_ord_range[1], ord_ranges[end - 1][1]),
         )
-    return ord_ranges[:start] + [new_ord_range] + ord_ranges[end:]
+    ord_ranges[start:end] = [new_ord_range]
 
 
 @dataclass(frozen=True, init=False)
@@ -102,7 +101,7 @@ class Charclass:
         # Rebalance ranges!
         ord_ranges: List[Tuple[int, int]] = []
         for first, last in ranges:
-            ord_ranges = add_ord_range(ord_ranges, (ord(first), ord(last)))
+            add_ord_range(ord_ranges, (ord(first), ord(last)))
 
         object.__setattr__(self, "ord_ranges", tuple(ord_ranges))
         object.__setattr__(self, "negated", negated)
@@ -268,7 +267,7 @@ class Charclass:
 
         new_ord_ranges = self_ord_ranges
         for ord_range in other_ord_ranges:
-            new_ord_ranges = add_ord_range(new_ord_ranges, ord_range)
+            add_ord_range(new_ord_ranges, ord_range)
 
         new_negated = self.negated or other.negated
         if new_negated:
