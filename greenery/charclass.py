@@ -44,12 +44,11 @@ def collapse_ord_ranges(ord_ranges: List[Tuple[int, int]]) -> List[Tuple[int, in
     collapsed = []
 
     for ord_range in sorted(ord_ranges):
-        if len(collapsed) == 0 or collapsed[-1][1] + 1 < ord_range[0]:
+        if not len(collapsed) or collapsed[-1][1] + 1 < ord_range[0]:
             collapsed.append(ord_range)
-        else:
+        elif ord_range[1] > collapsed[-1][1]:
             # merge into previous
-            if ord_range[1] > collapsed[-1][1]:
-                collapsed[-1] = (collapsed[-1][0], ord_range[1])
+            collapsed[-1] = (collapsed[-1][0], ord_range[1])
 
     return collapsed
 
