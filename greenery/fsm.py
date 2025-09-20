@@ -86,8 +86,7 @@ class Fsm:
         `states` is the set of states for the FSM
         `initial` is the initial state
         `finals` is the set of accepting states
-        `map` may be sparse (i.e. it may omit transitions). In the case of
-        omitted transitions, a non-final "oblivion" state is simulated.
+        `map` must be complete
         """
         alphabet = frozenset(alphabet)
         states = frozenset(states)
