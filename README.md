@@ -243,4 +243,4 @@ pytest
 * Update the version in `./setup.py`
 * Trash `./dist`
 * `python -m build` - creates a `./dist` directory with some stuff in it
-* `python -m twine upload dist/*`
+* `python -m twine upload dist/*` ([doesn't work with Git Bash for Windows, use `cmd.exe`](https://stackoverflow.com/a/52245884/792705))
