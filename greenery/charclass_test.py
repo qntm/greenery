@@ -13,6 +13,7 @@ from .charclass import (
     WORDCHAR,
     Charclass,
     collapse_ord_ranges,
+    negate,
     repartition,
 )
 
@@ -306,3 +307,7 @@ def test_charclass_by_category() -> None:
             out[cat].append(c)
     for cat, cs in out.items():
         Charclass("".join(cs))
+
+def test_negate_last_character() -> None:
+    assert negate([(0, 0x10FFFE)]) == [(0x10FFFF, 0x10FFFF)]
+    assert negate([(0, 0x10FFFF)]) == []
