@@ -31,7 +31,7 @@ def negate(ord_ranges: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
         if u < ord_range[0]:
             negated.append((u, ord_range[0] - 1))
         u = ord_range[1] + 1
-    if u < NUM_UNICODE_CHARS - 1:
+    if u < NUM_UNICODE_CHARS:
         negated.append((u, NUM_UNICODE_CHARS - 1))
     return negated
 
