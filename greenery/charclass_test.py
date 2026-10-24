@@ -311,4 +311,4 @@ def test_charclass_by_category() -> None:
 
 def test_negate_last_character() -> None:
     assert negate([(0, 0x10FFFE)]) == [(0x10FFFF, 0x10FFFF)]
-    assert negate([(0, 0x10FFFF)]) == []
+    assert not negate([(0, 0x10FFFF)])
